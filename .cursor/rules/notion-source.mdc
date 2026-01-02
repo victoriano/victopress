@@ -1,0 +1,28 @@
+---
+description: When making architectural decisions, implementing features, or changing system design
+globs: 
+alwaysApply: false
+---
+
+# Architecture Reference
+
+Before implementing new features or making architectural changes, consult the architecture document in Notion:
+
+**📐 ARCHITECTURE.md:** https://www.notion.so/1dd18ac214874a9da121897a495adc1d
+
+This document contains:
+- Project objectives and philosophy (files-first)
+- Complete file structure and YAML formats
+- API endpoints and response formats
+- Technical decisions (Remix, Bun, R2, Sharp, etc.)
+- Storage and Image adapter interfaces
+- Multi-platform deployment configs (Cloudflare, Docker, AWS)
+- CMS admin functionalities and components
+
+## How to Use
+
+```
+notion-fetch with id: 1dd18ac214874a9da121897a495adc1d
+```
+
+Update this document when architectural decisions change.

@@ -1,0 +1,32 @@
+---
+description: When planning work, checking task status, or deciding what to implement next
+globs: 
+alwaysApply: false
+---
+
+# Roadmap & Task Reference
+
+Before starting new work or checking project status, consult the roadmap in Notion:
+
+**🗺️ ROADMAP.md:** https://www.notion.so/2cfda3d4e02c42cd91b5b1850381329a
+
+This document contains:
+- Phase 1: MVP (current focus)
+  - Initial setup tasks
+  - Content engine (zero-config indexer)
+  - Storage adapter (R2)
+  - Public frontend (galleries, blog, lightbox)
+  - CMS Admin panel
+  - Image optimization
+  - SEO
+- Phase 2: Open Source Ready
+- Phase 3: CLI + Advanced features
+- Phase 4: SaaS (future)
+
+## How to Use
+
+```
+notion-fetch with id: 2cfda3d4e02c42cd91b5b1850381329a
+```
+
+Update task checkboxes as work is completed.

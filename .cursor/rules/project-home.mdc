@@ -1,0 +1,27 @@
+---
+description: Project overview and quick links
+globs: 
+alwaysApply: true
+---
+
+# VictoPress Project
+
+A files-first photo gallery CMS for victoriano.me
+
+## Notion as Source of Truth
+
+All project documentation lives in Notion. The team can edit it as requirements evolve.
+
+| Document | URL | Use For |
+|----------|-----|---------|
+| **Project Home** | https://www.notion.so/2dc358038bc5806e8d7bdd5649e4cef2 | Overview, status, links |
+| **ARCHITECTURE.md** | https://www.notion.so/1dd18ac214874a9da121897a495adc1d | Technical specs, API design, file formats |
+| **ROADMAP.md** | https://www.notion.so/2cfda3d4e02c42cd91b5b1850381329a | Task list, phases, milestones |
+
+## Key Technical Decisions
+
+- **Framework:** Remix + TypeScript
+- **Package Manager:** Bun
+- **Storage:** S3-compatible (R2, S3, MinIO)
+- **Images:** Cloudflare Image Resizing / Sharp
+- **Deploy:** Multi-platform (Cloudflare, Docker, AWS)

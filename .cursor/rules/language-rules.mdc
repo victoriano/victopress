@@ -1,0 +1,20 @@
+---
+description: Language rules for code and documentation
+globs: 
+alwaysApply: true
+---
+
+# Language Rules
+
+**All code, comments, and documentation must be written in English.**
+
+This includes:
+- Source code and comments
+- Variable, function, and class names
+- Commit messages
+- README and documentation files
+- Configuration files
+- API documentation
+- Error messages and logs
+
+The user may communicate in Spanish, but all code output remains in English.
