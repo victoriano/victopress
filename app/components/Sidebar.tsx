@@ -69,7 +69,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
         </Link>
 
         {/* Gallery Navigation */}
-        <nav className="space-y-4">
+        <nav className="space-y-2">
           {navigation.map((item) => (
             <NavSection
               key={item.slug}
@@ -81,7 +81,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
           ))}
 
           {/* Static Links */}
-          <div className="space-y-3 pt-8 mt-4">
+          <div className="space-y-2 pt-6 mt-2">
             <StaticNavLink href="/blog" currentPath={location.pathname}>
               Blog
             </StaticNavLink>
@@ -196,13 +196,13 @@ function NavSection({
     );
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       {hasChildren ? (
         // Parent with children - clickable to toggle
         <button
           onClick={onToggle}
           className={`
-            block text-lg font-semibold transition-colors text-left w-full
+            block text-base font-semibold transition-colors text-left w-full
             ${isActive ? "text-gray-900 dark:text-white" : "text-gray-800 dark:text-gray-300"}
             hover:text-gray-900 dark:hover:text-white
           `}
@@ -221,7 +221,7 @@ function NavSection({
 
       {/* Children - only show when expanded */}
       {hasChildren && isExpanded && (
-        <div className="pl-4 space-y-2">
+        <div className="pl-4 space-y-1">
           {item.children!.map((child) => (
             <NavLink
               key={child.slug}
@@ -256,7 +256,7 @@ function NavLink({
       to={href}
       className={`
         block transition-colors
-        ${isChild ? "text-base text-gray-500 dark:text-gray-400 font-normal" : "text-lg font-semibold text-gray-800 dark:text-gray-300"}
+        ${isChild ? "text-sm text-gray-500 dark:text-gray-400 font-normal" : "text-base font-semibold text-gray-800 dark:text-gray-300"}
         ${isActive ? "text-gray-900 dark:text-white" : ""}
         hover:text-gray-900 dark:hover:text-white
       `}
@@ -281,7 +281,7 @@ function StaticNavLink({
     <Link
       to={href}
       className={`
-        block text-base transition-colors
+        block text-sm transition-colors
         ${isActive ? "text-gray-900 dark:text-white font-medium" : "text-gray-600 dark:text-gray-400"}
         hover:text-gray-900 dark:hover:text-white
       `}
