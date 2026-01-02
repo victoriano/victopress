@@ -178,11 +178,19 @@ export default function PhotoPage() {
   // Format photo info (title/description · year)
   const photoInfo = formatPhotoInfo(photo);
 
+  // Photo navigation for sidebar
+  const photoNav = {
+    prevPhotoUrl: prevPhoto ? `/photo/${gallerySlug}/${prevPhoto.filename}` : undefined,
+    nextPhotoUrl: nextPhoto ? `/photo/${gallerySlug}/${nextPhoto.filename}` : undefined,
+    thumbnailsUrl: `/gallery/${gallerySlug}`,
+  };
+
   return (
     <Layout
       navigation={navigation}
       siteName={siteName}
       socialLinks={socialLinks}
+      photoNav={photoNav}
     >
       {/* Photo container - full height */}
       <div className="min-h-screen lg:h-screen flex flex-col">
@@ -204,8 +212,8 @@ export default function PhotoPage() {
             )}
           </div>
 
-          {/* Navigation - right side */}
-          <div className="flex items-center gap-4 text-gray-500">
+          {/* Navigation - right side (mobile only, desktop uses sidebar) */}
+          <div className="flex items-center gap-4 text-gray-500 lg:hidden">
             {/* Prev/Next */}
             <div className="flex items-center gap-1">
               {prevPhoto ? (
@@ -233,8 +241,8 @@ export default function PhotoPage() {
           </div>
         </div>
 
-        {/* Show thumbnails link */}
-        <div className="bg-white px-4 lg:px-6 pb-4">
+        {/* Show thumbnails link (mobile only, desktop uses sidebar) */}
+        <div className="bg-white px-4 lg:px-6 pb-4 lg:hidden">
           <Link
             to={`/gallery/${gallerySlug}`}
             className="text-xs text-gray-400 hover:text-gray-700 transition-colors uppercase tracking-wide"

@@ -13,6 +13,12 @@ export interface NavItem {
   children?: NavItem[];
 }
 
+export interface PhotoNavigation {
+  prevPhotoUrl?: string;
+  nextPhotoUrl?: string;
+  thumbnailsUrl: string;
+}
+
 interface SidebarProps {
   siteName: string;
   navigation: NavItem[];
@@ -22,9 +28,10 @@ interface SidebarProps {
     linkedin?: string;
     facebook?: string;
   };
+  photoNav?: PhotoNavigation;
 }
 
-export function Sidebar({ siteName, navigation, socialLinks }: SidebarProps) {
+export function Sidebar({ siteName, navigation, socialLinks, photoNav }: SidebarProps) {
   const location = useLocation();
 
   return (
@@ -66,9 +73,46 @@ export function Sidebar({ siteName, navigation, socialLinks }: SidebarProps) {
         </nav>
       </div>
 
-      {/* Social Links */}
-      {socialLinks && (
-        <div className="flex gap-4">
+      {/* Bottom section: Photo Nav + Social Links */}
+      <div className="space-y-6">
+        {/* Photo Navigation - only on photo pages */}
+        {photoNav && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              {photoNav.prevPhotoUrl ? (
+                <Link
+                  to={photoNav.prevPhotoUrl}
+                  className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
+                >
+                  PREV
+                </Link>
+              ) : (
+                <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">PREV</span>
+              )}
+              <span className="text-gray-300">/</span>
+              {photoNav.nextPhotoUrl ? (
+                <Link
+                  to={photoNav.nextPhotoUrl}
+                  className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
+                >
+                  NEXT
+                </Link>
+              ) : (
+                <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">NEXT</span>
+              )}
+            </div>
+            <Link
+              to={photoNav.thumbnailsUrl}
+              className="block text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
+            >
+              SHOW THUMBNAILS
+            </Link>
+          </div>
+        )}
+
+        {/* Social Links */}
+        {socialLinks && (
+          <div className="flex gap-4">
           {socialLinks.instagram && (
             <a
               href={socialLinks.instagram}
@@ -103,7 +147,8 @@ export function Sidebar({ siteName, navigation, socialLinks }: SidebarProps) {
             </a>
           )}
         </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 }

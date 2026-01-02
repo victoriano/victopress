@@ -5,7 +5,7 @@
  */
 
 import { Link } from "@remix-run/react";
-import { Sidebar, type NavItem } from "./Sidebar";
+import { Sidebar, type NavItem, type PhotoNavigation } from "./Sidebar";
 import { MobileMenu } from "./MobileMenu";
 
 interface LayoutProps {
@@ -18,6 +18,7 @@ interface LayoutProps {
     linkedin?: string;
     facebook?: string;
   };
+  photoNav?: PhotoNavigation;
 }
 
 export function Layout({
@@ -25,6 +26,7 @@ export function Layout({
   navigation,
   siteName = "VictoPress",
   socialLinks,
+  photoNav,
 }: LayoutProps) {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
@@ -34,6 +36,7 @@ export function Layout({
           siteName={siteName}
           navigation={navigation}
           socialLinks={socialLinks}
+          photoNav={photoNav}
         />
       </div>
 
