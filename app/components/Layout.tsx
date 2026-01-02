@@ -50,7 +50,7 @@ export function Layout({
       </div>
       
       {/* Main Content - offset by sidebar width on desktop, with top padding on mobile */}
-      <main className="lg:ml-56 min-h-screen pt-16 lg:pt-0">
+      <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
         {children}
       </main>
     </div>
