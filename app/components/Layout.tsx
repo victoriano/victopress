@@ -1,11 +1,12 @@
 /**
  * Main Layout Component
  * 
- * Portfolio layout with fixed sidebar and content area
+ * Portfolio layout with fixed sidebar (desktop) and hamburger menu (mobile)
  */
 
 import { Link } from "@remix-run/react";
 import { Sidebar, type NavItem } from "./Sidebar";
+import { MobileMenu } from "./MobileMenu";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -27,14 +28,26 @@ export function Layout({
 }: LayoutProps) {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
-      <Sidebar
-        siteName={siteName}
-        navigation={navigation}
-        socialLinks={socialLinks}
-      />
+      {/* Desktop Sidebar - hidden on mobile */}
+      <div className="hidden lg:block">
+        <Sidebar
+          siteName={siteName}
+          navigation={navigation}
+          socialLinks={socialLinks}
+        />
+      </div>
+
+      {/* Mobile Menu - hidden on desktop */}
+      <div className="lg:hidden">
+        <MobileMenu
+          siteName={siteName}
+          navigation={navigation}
+          socialLinks={socialLinks}
+        />
+      </div>
       
-      {/* Main Content - offset by sidebar width */}
-      <main className="ml-56 min-h-screen">
+      {/* Main Content - offset by sidebar width on desktop, with top padding on mobile */}
+      <main className="lg:ml-56 min-h-screen pt-16 lg:pt-0">
         {children}
       </main>
     </div>
@@ -42,11 +55,11 @@ export function Layout({
 }
 
 /**
- * Photo Grid Component
+ * Photo Grid Component - responsive
  */
 export function PhotoGrid({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1 p-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1 p-1">
       {children}
     </div>
   );

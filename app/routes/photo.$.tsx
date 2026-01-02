@@ -185,9 +185,9 @@ export default function PhotoPage() {
       socialLinks={socialLinks}
     >
       {/* Photo container - full height */}
-      <div className="h-screen flex flex-col">
+      <div className="min-h-screen lg:h-screen flex flex-col">
         {/* Main photo area */}
-        <div className="flex-1 flex items-center justify-center overflow-hidden pt-8">
+        <div className="flex-1 flex items-center justify-center overflow-hidden pt-4 lg:pt-8 px-4 lg:px-0">
           <img
             src={photoUrl}
             alt={photo.title || photo.filename}
@@ -196,7 +196,7 @@ export default function PhotoPage() {
         </div>
 
         {/* Bottom info bar */}
-        <div className="bg-white px-6 py-4 flex items-center justify-between text-sm">
+        <div className="bg-white px-4 lg:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm gap-2 sm:gap-0">
           {/* Photo info - left side */}
           <div>
             {photoInfo && (
@@ -234,7 +234,7 @@ export default function PhotoPage() {
         </div>
 
         {/* Show thumbnails link */}
-        <div className="bg-white px-6 pb-4">
+        <div className="bg-white px-4 lg:px-6 pb-4">
           <Link
             to={`/gallery/${gallerySlug}`}
             className="text-xs text-gray-400 hover:text-gray-700 transition-colors uppercase tracking-wide"
