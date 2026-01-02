@@ -1,12 +1,18 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  content: ["./app/**/{**,.client,.server}/**/*.{js,jsx,ts,tsx}"],
+  // Scan all Remix app files for class names (including responsive variants)
+  content: ["./app/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
       fontFamily: {
+        // Primary font: Montserrat (Google Fonts - publicly available)
+        // Alternative: Google Sans (proprietary - for future CMS config)
+        // TODO: Make font configurable via CMS settings
         sans: [
-          '"Inter"',
+          '"Montserrat"',
+          '"Google Sans"',
+          '"Google Sans Text"',
           "ui-sans-serif",
           "system-ui",
           "sans-serif",
