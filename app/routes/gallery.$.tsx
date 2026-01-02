@@ -47,8 +47,12 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     
     if (childGalleries.length > 0) {
       // Create a virtual gallery with all child photos
+      // Add gallerySlug to each photo for proper linking
       const allPhotos = childGalleries.flatMap((g) =>
-        g.photos.filter((p) => !p.hidden)
+        g.photos.filter((p) => !p.hidden).map((p) => ({
+          ...p,
+          gallerySlug: g.slug,
+        }))
       );
       
       // Get title from the category name
@@ -82,8 +86,14 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
   const navigation = buildNavigation(publicGalleries);
 
-  // Filter out hidden photos (for non-virtual galleries)
-  const visiblePhotos = gallery.photos.filter((p) => !p.hidden);
+  // Filter out hidden photos and add gallerySlug for linking
+  const visiblePhotos = gallery.photos
+    .filter((p) => !p.hidden)
+    .map((p) => ({
+      ...p,
+      // Use existing gallerySlug (for virtual galleries) or current gallery slug
+      gallerySlug: (p as any).gallerySlug || gallery.slug,
+    }));
 
   return json({
     gallery: {
@@ -161,11 +171,12 @@ export default function GalleryPage() {
       socialLinks={socialLinks}
     >
       <PhotoGrid>
-        {gallery.photos.map((photo, index) => (
+        {gallery.photos.map((photo) => (
           <PhotoItem
             key={photo.id}
             src={`/api/local-images/${photo.path}`}
             alt={photo.title || photo.filename}
+            href={`/photo/${(photo as any).gallerySlug}/${photo.filename}`}
             aspectRatio="auto"
           />
         ))}

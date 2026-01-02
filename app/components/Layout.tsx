@@ -4,6 +4,7 @@
  * Portfolio layout with fixed sidebar and content area
  */
 
+import { Link } from "@remix-run/react";
 import { Sidebar, type NavItem } from "./Sidebar";
 
 interface LayoutProps {
@@ -58,11 +59,13 @@ export function PhotoItem({
   src,
   alt,
   aspectRatio = "auto",
+  href,
   onClick,
 }: {
   src: string;
   alt: string;
   aspectRatio?: "auto" | "square" | "portrait" | "landscape";
+  href?: string;
   onClick?: () => void;
 }) {
   const aspectClasses = {
@@ -72,21 +75,32 @@ export function PhotoItem({
     landscape: "aspect-[4/3]",
   };
 
+  const className = `
+    relative overflow-hidden bg-gray-100 dark:bg-gray-900
+    ${aspectClasses[aspectRatio]}
+    group cursor-pointer block
+  `;
+
+  const image = (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+      loading="lazy"
+    />
+  );
+
+  if (href) {
+    return (
+      <Link to={href} className={className}>
+        {image}
+      </Link>
+    );
+  }
+
   return (
-    <button
-      onClick={onClick}
-      className={`
-        relative overflow-hidden bg-gray-100 dark:bg-gray-900
-        ${aspectClasses[aspectRatio]}
-        group cursor-pointer
-      `}
-    >
-      <img
-        src={src}
-        alt={alt}
-        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        loading="lazy"
-      />
+    <button onClick={onClick} className={className}>
+      {image}
     </button>
   );
 }
