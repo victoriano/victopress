@@ -136,6 +136,7 @@ async function scanGalleryFolder(
     password: yamlMetadata?.password,
     order: yamlMetadata?.order,
     hasCustomMetadata: !!yamlMetadata,
+    includeNestedPhotos: yamlMetadata?.includeNestedPhotos,
   };
 
   return gallery;

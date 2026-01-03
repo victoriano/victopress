@@ -38,46 +38,71 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   // Find exact gallery match
   let gallery = publicGalleries.find((g) => g.slug === slug);
   
-  // If no exact match, check if it's a parent category
-  // and aggregate all child galleries' photos
-  if (!gallery) {
-    const childGalleries = publicGalleries.filter(
-      (g) => g.slug.startsWith(slug + "/")
-    );
+  // Find child galleries for this slug
+  const childGalleries = publicGalleries.filter(
+    (g) => g.slug.startsWith(slug + "/")
+  );
+  
+  if (gallery) {
+    // Exact match found - check if we should include nested photos
+    const includeNested = gallery.includeNestedPhotos !== false; // default: true
     
-    if (childGalleries.length > 0) {
-      // Create a virtual gallery with all child photos
-      // Add gallerySlug to each photo for proper linking
-      const allPhotos = childGalleries.flatMap((g) =>
+    if (includeNested && childGalleries.length > 0) {
+      // Get direct photos (with gallerySlug set to current gallery)
+      const directPhotos = gallery.photos
+        .filter((p) => !p.hidden)
+        .map((p) => ({
+          ...p,
+          gallerySlug: gallery!.slug,
+        }));
+      
+      // Get nested photos from child galleries (recursively)
+      const nestedPhotos = childGalleries.flatMap((g) =>
         g.photos.filter((p) => !p.hidden).map((p) => ({
           ...p,
           gallerySlug: g.slug,
         }))
       );
       
-      // Get title from the category name
-      const categoryName = slug.split("/").pop() || slug;
-      const title = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
-      
+      // Combine: direct photos first, then nested
       gallery = {
-        id: slug,
-        slug: slug,
-        title: title,
-        description: `All photos from ${title}`,
-        path: `galleries/${slug}`,
-        cover: allPhotos[0]?.path || "",
-        photos: allPhotos,
-        photoCount: allPhotos.length,
-        date: new Date(),
-        lastModified: new Date(),
-        tags: [],
-        category: undefined,
-        private: false,
-        password: undefined,
-        order: undefined,
-        hasCustomMetadata: false,
+        ...gallery,
+        photos: [...directPhotos, ...nestedPhotos],
+        photoCount: directPhotos.length + nestedPhotos.length,
       };
     }
+  } else if (childGalleries.length > 0) {
+    // No exact match but has children - create virtual gallery
+    // Add gallerySlug to each photo for proper linking
+    const allPhotos = childGalleries.flatMap((g) =>
+      g.photos.filter((p) => !p.hidden).map((p) => ({
+        ...p,
+        gallerySlug: g.slug,
+      }))
+    );
+    
+    // Get title from the category name
+    const categoryName = slug.split("/").pop() || slug;
+    const title = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
+    
+    gallery = {
+      id: slug,
+      slug: slug,
+      title: title,
+      description: `All photos from ${title}`,
+      path: `galleries/${slug}`,
+      cover: allPhotos[0]?.path || "",
+      photos: allPhotos,
+      photoCount: allPhotos.length,
+      date: new Date(),
+      lastModified: new Date(),
+      tags: [],
+      category: undefined,
+      private: false,
+      password: undefined,
+      order: undefined,
+      hasCustomMetadata: false,
+    };
   }
 
   if (!gallery) {

@@ -111,6 +111,9 @@ export interface GalleryMetadata {
   
   /** Sort order in listings */
   order?: number;
+  
+  /** Include photos from nested galleries (default: true) */
+  includeNestedPhotos?: boolean;
 }
 
 export interface Gallery extends GalleryMetadata {

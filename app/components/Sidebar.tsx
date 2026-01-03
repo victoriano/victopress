@@ -98,6 +98,14 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
     });
   };
   
+  // Collapse descendants of a slug but keep the slug itself expanded
+  const collapseDescendants = (slug: string) => {
+    setExpandedItems((prev) => {
+      // Keep the slug itself, remove all that start with slug + "/"
+      return prev.filter(s => s === slug || !s.startsWith(slug + "/"));
+    });
+  };
+  
   // Collapse all and go home
   const collapseAll = () => {
     setExpandedItems([]);
@@ -126,7 +134,8 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
               currentPath={location.pathname}
               expandedItems={expandedItems}
               onToggle={toggleExpanded}
-              onCollapse={collapseAll}
+              onCollapseAll={collapseAll}
+              onCollapseDescendants={collapseDescendants}
               depth={0}
             />
           ))}
@@ -245,14 +254,16 @@ function NavSection({
   currentPath,
   expandedItems,
   onToggle,
-  onCollapse,
+  onCollapseAll,
+  onCollapseDescendants,
   depth,
 }: {
   item: NavItem;
   currentPath: string;
   expandedItems: string[];
   onToggle: (slug: string) => void;
-  onCollapse: () => void;
+  onCollapseAll: () => void;
+  onCollapseDescendants: (slug: string) => void;
   depth: number;
 }) {
   const navigate = useNavigate();
@@ -260,19 +271,28 @@ function NavSection({
   const isExpanded = expandedItems.includes(item.slug);
   const isExactMatch = currentPath === item.path;
   const isInPath = currentPath === item.path || currentPath.startsWith(item.path + "/");
+  
+  // Check if any descendants are expanded
+  const hasExpandedDescendants = expandedItems.some(
+    s => s !== item.slug && s.startsWith(item.slug + "/")
+  );
 
   const handleClick = (e: React.MouseEvent) => {
     if (hasChildren) {
-      if (isExpanded && depth === 0) {
-        // Top-level expanded item clicked - collapse all and go home
+      if (isExpanded && depth === 0 && !hasExpandedDescendants) {
+        // Top-level expanded item with no expanded descendants - collapse all and go home
         e.preventDefault();
-        onCollapse();
+        onCollapseAll();
         navigate("/");
+      } else if (isExpanded && hasExpandedDescendants) {
+        // Already expanded with expanded descendants - collapse descendants only
+        // Navigation still happens via Link
+        onCollapseDescendants(item.slug);
       } else if (!isExpanded) {
-        // Expand this item (navigation happens via Link)
+        // Not expanded - expand this item (navigation happens via Link)
         onToggle(item.slug);
       }
-      // If expanded and not top-level, just navigate (don't collapse)
+      // If expanded at top level with no descendants, go home (handled above)
     }
   };
 
@@ -327,7 +347,8 @@ function NavSection({
               currentPath={currentPath}
               expandedItems={expandedItems}
               onToggle={onToggle}
-              onCollapse={onCollapse}
+              onCollapseAll={onCollapseAll}
+              onCollapseDescendants={onCollapseDescendants}
               depth={depth + 1}
             />
           ))}
