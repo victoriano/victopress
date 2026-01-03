@@ -437,38 +437,85 @@ export default function AdminSetup() {
   const seedToR2 = async () => {
     setSeedingStatus({ isSeeding: true });
     
+    let startIndex = 0;
+    let totalUploaded = 0;
+    let totalSkipped = 0;
+    let totalFailed = 0;
+    let totalFiles = 0;
+    
     try {
-      const response = await fetch("/api/admin/seed", {
-        method: "POST",
-        body: new URLSearchParams({
-          action: "seed",
-          skipExisting: "true",
-        }),
-        credentials: "include",
-      });
-      
-      const result = await response.json() as {
-        success?: boolean;
-        error?: string;
-        message?: string;
-        results?: { uploaded: number; skipped: number; failed: number; total: number };
-      };
-      
-      if (result.success) {
-        setSeedingStatus({
-          isSeeding: false,
-          success: true,
-          message: result.message,
-          progress: result.results,
+      // Process files in batches
+      while (true) {
+        const response = await fetch("/api/admin/seed", {
+          method: "POST",
+          body: new URLSearchParams({
+            action: "seed",
+            skipExisting: "true",
+            startIndex: startIndex.toString(),
+          }),
+          credentials: "include",
         });
-      } else {
-        setSeedingStatus({
-          isSeeding: false,
-          success: false,
-          error: result.error || "Seeding failed",
-          progress: result.results,
-        });
+        
+        const result = await response.json() as {
+          success?: boolean;
+          error?: string;
+          message?: string;
+          results?: { 
+            uploaded: number; 
+            skipped: number; 
+            failed: number; 
+            total: number;
+            processed: number;
+            hasMore: boolean;
+            nextIndex: number;
+          };
+        };
+        
+        if (!result.success) {
+          setSeedingStatus({
+            isSeeding: false,
+            success: false,
+            error: result.error || "Seeding failed",
+            progress: { uploaded: totalUploaded, skipped: totalSkipped, failed: totalFailed, total: totalFiles },
+          });
+          return;
+        }
+        
+        // Accumulate results
+        if (result.results) {
+          totalUploaded += result.results.uploaded;
+          totalSkipped += result.results.skipped;
+          totalFailed += result.results.failed;
+          totalFiles = result.results.total;
+          
+          // Update progress
+          setSeedingStatus({
+            isSeeding: true,
+            progress: { 
+              uploaded: totalUploaded, 
+              skipped: totalSkipped, 
+              failed: totalFailed, 
+              total: totalFiles 
+            },
+          });
+          
+          // Check if there are more files to process
+          if (!result.results.hasMore) {
+            break;
+          }
+          
+          startIndex = result.results.nextIndex;
+        } else {
+          break;
+        }
       }
+      
+      setSeedingStatus({
+        isSeeding: false,
+        success: true,
+        message: `Seeded ${totalUploaded} files to R2 (${totalSkipped} skipped, ${totalFailed} failed)`,
+        progress: { uploaded: totalUploaded, skipped: totalSkipped, failed: totalFailed, total: totalFiles },
+      });
     } catch (error) {
       setSeedingStatus({
         isSeeding: false,

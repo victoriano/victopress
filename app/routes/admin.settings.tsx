@@ -144,38 +144,85 @@ export default function AdminSettings() {
   const seedContent = async () => {
     setSeedingStatus({ isSeeding: true });
     
+    let startIndex = 0;
+    let totalUploaded = 0;
+    let totalSkipped = 0;
+    let totalFailed = 0;
+    let totalFiles = 0;
+    
     try {
-      const response = await fetch("/api/admin/seed", {
-        method: "POST",
-        body: new URLSearchParams({
-          action: "seed",
-          skipExisting: "true",
-        }),
-        credentials: "include",
-      });
-      
-      const result = await response.json() as {
-        success?: boolean;
-        error?: string;
-        message?: string;
-        results?: { uploaded: number; skipped: number; failed: number; total: number };
-      };
-      
-      if (result.success) {
-        setSeedingStatus({
-          isSeeding: false,
-          success: true,
-          message: result.message,
-          progress: result.results,
+      // Process files in batches
+      while (true) {
+        const response = await fetch("/api/admin/seed", {
+          method: "POST",
+          body: new URLSearchParams({
+            action: "seed",
+            skipExisting: "true",
+            startIndex: startIndex.toString(),
+          }),
+          credentials: "include",
         });
-      } else {
-        setSeedingStatus({
-          isSeeding: false,
-          success: false,
-          error: result.error || "Seeding failed",
-          progress: result.results,
-        });
+        
+        const result = await response.json() as {
+          success?: boolean;
+          error?: string;
+          message?: string;
+          results?: { 
+            uploaded: number; 
+            skipped: number; 
+            failed: number; 
+            total: number;
+            processed: number;
+            hasMore: boolean;
+            nextIndex: number;
+          };
+        };
+        
+        if (!result.success) {
+          setSeedingStatus({
+            isSeeding: false,
+            success: false,
+            error: result.error || "Seeding failed",
+            progress: { uploaded: totalUploaded, skipped: totalSkipped, failed: totalFailed, total: totalFiles },
+          });
+          return;
+        }
+        
+        // Accumulate results
+        if (result.results) {
+          totalUploaded += result.results.uploaded;
+          totalSkipped += result.results.skipped;
+          totalFailed += result.results.failed;
+          totalFiles = result.results.total;
+          
+          // Update progress
+          setSeedingStatus({
+            isSeeding: true,
+            progress: { 
+              uploaded: totalUploaded, 
+              skipped: totalSkipped, 
+              failed: totalFailed, 
+              total: totalFiles 
+            },
+          });
+          
+          // Check if there are more files to process
+          if (!result.results.hasMore) {
+            break;
+          }
+          
+          startIndex = result.results.nextIndex;
+        } else {
+          break;
+        }
       }
+      
+      setSeedingStatus({
+        isSeeding: false,
+        success: true,
+        message: `Seeded ${totalUploaded} files to R2 (${totalSkipped} skipped, ${totalFailed} failed)`,
+        progress: { uploaded: totalUploaded, skipped: totalSkipped, failed: totalFailed, total: totalFiles },
+      });
     } catch (error) {
       setSeedingStatus({
         isSeeding: false,
@@ -358,11 +405,25 @@ export default function AdminSettings() {
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                   <div className="flex items-center gap-3">
                     <LoadingSpinner />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-blue-800 dark:text-blue-200 font-medium">Seeding content from GitHub...</p>
-                      <p className="text-blue-600 dark:text-blue-400 text-sm mt-1">
-                        This may take a few minutes (~220 MB of images).
-                      </p>
+                      {seedingStatus.progress && seedingStatus.progress.total > 0 ? (
+                        <>
+                          <p className="text-blue-600 dark:text-blue-400 text-sm mt-1">
+                            Processing {seedingStatus.progress.uploaded + seedingStatus.progress.skipped + seedingStatus.progress.failed} / {seedingStatus.progress.total} files
+                          </p>
+                          <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2 mt-2">
+                            <div 
+                              className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${Math.round(((seedingStatus.progress.uploaded + seedingStatus.progress.skipped + seedingStatus.progress.failed) / seedingStatus.progress.total) * 100)}%` }}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-blue-600 dark:text-blue-400 text-sm mt-1">
+                          Starting... (~220 MB of images)
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

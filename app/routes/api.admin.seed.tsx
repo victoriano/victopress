@@ -125,25 +125,36 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
   
   // Seed action - fetch from GitHub and upload to R2
+  // Supports batching to avoid timeout - processes BATCH_SIZE files per request
   if (action === "seed") {
     const skipExisting = formData.get("skipExisting") !== "false";
+    const startIndex = parseInt(formData.get("startIndex") as string || "0", 10);
+    const BATCH_SIZE = 20; // Process 20 files per request to avoid timeout
+    
+    const totalFiles = contentManifest.files.length;
+    const endIndex = Math.min(startIndex + BATCH_SIZE, totalFiles);
+    const filesToProcess = contentManifest.files.slice(startIndex, endIndex);
     
     const results = {
-      total: contentManifest.files.length,
+      total: totalFiles,
+      processed: startIndex,
       uploaded: 0,
       skipped: 0,
       failed: 0,
       errors: [] as string[],
+      hasMore: endIndex < totalFiles,
+      nextIndex: endIndex,
     };
     
     try {
-      for (const file of contentManifest.files) {
+      for (const file of filesToProcess) {
         try {
           // Check if file exists (if skipping)
           if (skipExisting) {
             const existing = await bucket.head(file.path);
             if (existing) {
               results.skipped++;
+              results.processed++;
               continue;
             }
           }
@@ -154,6 +165,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
           
           if (!response.ok) {
             results.failed++;
+            results.processed++;
             results.errors.push(`Failed to fetch ${file.path}: ${response.status}`);
             continue;
           }
@@ -174,8 +186,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
           });
           
           results.uploaded++;
+          results.processed++;
         } catch (fileError) {
           results.failed++;
+          results.processed++;
           results.errors.push(`Error processing ${file.path}: ${fileError instanceof Error ? fileError.message : "Unknown"}`);
         }
       }
@@ -183,7 +197,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return json({
         success: true,
         results,
-        message: `Seeded ${results.uploaded} files to R2 (${results.skipped} skipped, ${results.failed} failed)`,
+        message: results.hasMore 
+          ? `Processed ${results.processed}/${totalFiles} files...`
+          : `Seeded ${results.uploaded} files to R2 (${results.skipped} skipped, ${results.failed} failed)`,
       });
     } catch (error) {
       return json({
