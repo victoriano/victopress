@@ -6,7 +6,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "prebuild": "bun run scripts/generate-sample-content.ts",
+    "prebuild": "bun run scripts/generate-sample-content.ts && bun run scripts/generate-content-manifest.ts",
     "build": "remix vite:build",
     "dev": "remix vite:dev",
     "start": "wrangler pages dev ./build/client",
@@ -14,7 +14,8 @@
     "preview": "wrangler pages dev ./build/client",
     "deploy": "wrangler pages deploy ./build/client",
     "cf-typegen": "wrangler types",
-    "generate-content": "bun run scripts/generate-sample-content.ts"
+    "generate-content": "bun run scripts/generate-sample-content.ts",
+    "generate-manifest": "bun run scripts/generate-content-manifest.ts"
   },
   "dependencies": {
     "@remix-run/cloudflare": "^2.15.2",

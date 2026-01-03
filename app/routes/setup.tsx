@@ -213,78 +213,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
   }
   
-  // ==================== Seed Content ====================
-  if (action === "seed-content") {
-    const env = context.cloudflare?.env as Env | undefined;
-    const bucket = env?.CONTENT_BUCKET;
-    const simulateSuccess = formData.get("simulate") === "true";
-    
-    // In development, allow simulating successful seeding
-    if (isDev && simulateSuccess) {
-      return json({ 
-        success: true, 
-        message: "✅ Simulated seeding complete! 5 sample galleries would be created. (Development mode)",
-        simulated: true,
-      });
-    }
-    
-    if (!bucket) {
-      return json({ 
-        success: false, 
-        error: "R2 bucket not configured. The binding will be active after redeployment.",
-        hint: isDev ? "💡 In development, use 'Simulate Success' to test the UI flow." : undefined,
-      });
-    }
-    
-    try {
-      // Import bundled content and seed to R2
-      const { BundledStorageAdapter } = await import("~/lib/content-engine/storage/bundled-adapter");
-      const bundled = new BundledStorageAdapter();
-      const files = bundled.getAllContent();
-      
-      let seeded = 0;
-      for (const file of files) {
-        if (!file.isDirectory && file.content) {
-          const ext = file.path.split(".").pop()?.toLowerCase();
-          const contentTypes: Record<string, string> = {
-            yaml: "text/yaml",
-            yml: "text/yaml",
-            md: "text/markdown",
-            json: "application/json",
-            jpg: "image/jpeg",
-            jpeg: "image/jpeg",
-            png: "image/png",
-            gif: "image/gif",
-            webp: "image/webp",
-          };
-          
-          let data: ArrayBuffer | string;
-          if (["jpg", "jpeg", "png", "gif", "webp", "avif"].includes(ext || "")) {
-            const binary = atob(file.content);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-              bytes[i] = binary.charCodeAt(i);
-            }
-            data = bytes.buffer;
-          } else {
-            data = file.content;
-          }
-          
-          await bucket.put(file.path, data, {
-            httpMetadata: contentTypes[ext || ""] ? { contentType: contentTypes[ext || ""] } : undefined,
-          });
-          seeded++;
-        }
-      }
-      
-      return json({ success: true, message: `Seeded ${seeded} files to R2` });
-    } catch (error) {
-      return json({ 
-        success: false, 
-        error: `Seeding failed: ${error instanceof Error ? error.message : "Unknown error"}` 
-      });
-    }
-  }
+  // ==================== Seed Content (handled by /api/admin.seed) ====================
+  // Note: Seeding is now handled by the dedicated /api/admin.seed endpoint
+  // which fetches content from the public GitHub repo and uploads to R2
   
   // ==================== Generate & Set Credentials ====================
   if (action === "generate-credentials") {
@@ -403,7 +334,24 @@ export default function AdminSetup() {
   const [deploymentTriggered, setDeploymentTriggered] = useState(false);
   
   const isLoading = fetcher.state !== "idle";
-  const result = fetcher.data;
+  // Type the result as a flexible object that can contain various action responses
+  const result = fetcher.data as {
+    success?: boolean;
+    error?: string;
+    message?: string;
+    accounts?: CloudflareAccount[];
+    permissions?: { r2: boolean; pages: boolean; accountRead: boolean };
+    hasPagesPermission?: boolean;
+    projects?: Array<{ name: string; subdomain: string; domains: string[] }>;
+    bucketName?: string;
+    buckets?: Array<{ name: string; creationDate: string }>;
+    deploymentId?: string;
+    generatedPassword?: string;
+    generatedUsername?: string;
+    credentialsSetAutomatically?: boolean;
+    alreadyExists?: boolean;
+    devPassword?: string;
+  } | undefined;
   
   // Handle API responses
   useEffect(() => {
@@ -478,8 +426,56 @@ export default function AdminSetup() {
     }, { method: "POST" });
   };
   
-  const seedToR2 = (simulate = false) => {
-    fetcher.submit({ action: "seed-content", simulate: simulate ? "true" : "false" }, { method: "POST" });
+  const [seedingStatus, setSeedingStatus] = useState<{
+    isSeeding: boolean;
+    progress?: { uploaded: number; skipped: number; failed: number; total: number };
+    error?: string;
+    success?: boolean;
+    message?: string;
+  }>({ isSeeding: false });
+  
+  const seedToR2 = async () => {
+    setSeedingStatus({ isSeeding: true });
+    
+    try {
+      const response = await fetch("/api/admin.seed", {
+        method: "POST",
+        body: new URLSearchParams({
+          action: "seed",
+          skipExisting: "true",
+        }),
+        credentials: "include",
+      });
+      
+      const result = await response.json() as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+        results?: { uploaded: number; skipped: number; failed: number; total: number };
+      };
+      
+      if (result.success) {
+        setSeedingStatus({
+          isSeeding: false,
+          success: true,
+          message: result.message,
+          progress: result.results,
+        });
+      } else {
+        setSeedingStatus({
+          isSeeding: false,
+          success: false,
+          error: result.error || "Seeding failed",
+          progress: result.results,
+        });
+      }
+    } catch (error) {
+      setSeedingStatus({
+        isSeeding: false,
+        success: false,
+        error: error instanceof Error ? error.message : "Network error",
+      });
+    }
   };
   
   const generateCredentials = () => {
@@ -575,11 +571,8 @@ export default function AdminSetup() {
             <SeedStep
               seedContent={seedContent}
               setSeedContent={setSeedContent}
-              isDev={data.isDev}
-              isLoading={isLoading}
-              result={result}
-              onSeed={() => seedToR2(false)}
-              onSimulate={() => seedToR2(true)}
+              seedingStatus={seedingStatus}
+              onSeed={seedToR2}
               onNext={() => setStep("credentials")}
               onBack={() => setStep("bucket")}
               isR2Configured={data.storageConfigured || bindingCreated}
@@ -677,7 +670,7 @@ function TokenStep({
   selectedAccountId: string;
   setSelectedAccountId: (id: string) => void;
   isLoading: boolean;
-  result: { success: boolean; message?: string; error?: string; permissions?: VerificationResult["permissions"] } | undefined;
+  result: { success?: boolean; message?: string; error?: string; permissions?: VerificationResult["permissions"] } | undefined;
   onVerify: () => void;
   onNext: () => void;
   onBack: () => void;
@@ -874,7 +867,7 @@ function BucketStep({
   hasPagesPermission: boolean;
   deploymentTriggered: boolean;
   isLoading: boolean;
-  result: { success: boolean; message?: string; error?: string; alreadyExists?: boolean; deploymentId?: string } | undefined;
+  result: { success?: boolean; message?: string; error?: string; alreadyExists?: boolean; deploymentId?: string; accounts?: CloudflareAccount[] } | undefined;
   onCreateBucket: () => void;
   onBindR2: () => void;
   onTriggerDeployment: () => void;
@@ -1164,11 +1157,8 @@ function BucketStep({
 function SeedStep({
   seedContent,
   setSeedContent,
-  isDev,
-  isLoading,
-  result,
+  seedingStatus,
   onSeed,
-  onSimulate,
   onNext,
   onBack,
   isR2Configured,
@@ -1176,22 +1166,27 @@ function SeedStep({
 }: {
   seedContent: boolean;
   setSeedContent: (value: boolean) => void;
-  isDev: boolean;
-  isLoading: boolean;
-  result: { success: boolean; message?: string; error?: string; simulated?: boolean; hint?: string } | undefined;
+  seedingStatus: {
+    isSeeding: boolean;
+    progress?: { uploaded: number; skipped: number; failed: number; total: number };
+    error?: string;
+    success?: boolean;
+    message?: string;
+  };
   onSeed: () => void;
-  onSimulate: () => void;
   onNext: () => void;
   onBack: () => void;
   isR2Configured: boolean;
   needsRedeploy: boolean;
 }) {
+  const { isSeeding, progress, error, success, message } = seedingStatus;
+  
   return (
     <div>
       <h2 className="text-xl font-bold text-white mb-6">Initial Content</h2>
       
       <p className="text-gray-300 mb-6">
-        Would you like to start with sample galleries or an empty storage?
+        Would you like to start with sample galleries from the VictoPress repository?
       </p>
       
       {/* Options */}
@@ -1201,19 +1196,20 @@ function SeedStep({
             seedContent 
               ? "bg-blue-900/30 border-blue-600" 
               : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
-          }`}
+          } ${isSeeding ? "opacity-50 pointer-events-none" : ""}`}
         >
           <div className="flex items-center gap-3">
             <input
               type="radio"
               checked={seedContent}
               onChange={() => setSeedContent(true)}
+              disabled={isSeeding}
               className="w-4 h-4 text-blue-600"
             />
             <div>
-              <span className="text-white font-medium">Copy sample galleries to R2</span>
+              <span className="text-white font-medium">Copy sample galleries from GitHub</span>
               <p className="text-gray-400 text-sm">
-                Start with demo content to explore all features
+                Download ~250 photos from the public repo to your R2 bucket
               </p>
             </div>
           </div>
@@ -1224,13 +1220,14 @@ function SeedStep({
             !seedContent 
               ? "bg-blue-900/30 border-blue-600" 
               : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
-          }`}
+          } ${isSeeding ? "opacity-50 pointer-events-none" : ""}`}
         >
           <div className="flex items-center gap-3">
             <input
               type="radio"
               checked={!seedContent}
               onChange={() => setSeedContent(false)}
+              disabled={isSeeding}
               className="w-4 h-4 text-blue-600"
             />
             <div>
@@ -1244,43 +1241,65 @@ function SeedStep({
       </div>
 
       {/* Redeploy Notice */}
-      {needsRedeploy && seedContent && (
+      {needsRedeploy && seedContent && !success && (
         <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 mb-6">
           <p className="text-yellow-400 text-sm">
-            ⚠️ Content seeding requires the R2 binding to be active. You can seed content after redeploying,
-            or skip this step for now and seed later from Settings.
+            ⚠️ Content seeding requires the R2 binding to be active. Please redeploy your site first,
+            or skip this step and seed content later from Settings.
           </p>
         </div>
       )}
 
-      {/* Result */}
-      {result && (
-        <div className={`mb-6 p-4 rounded-lg ${
-          result.success 
-            ? result.simulated 
-              ? "bg-purple-900/30 border border-purple-700"
-              : "bg-green-900/30 border border-green-700" 
-            : "bg-red-900/30 border border-red-700"
-        }`}>
-          <p className={result.success ? (result.simulated ? "text-purple-400" : "text-green-400") : "text-red-400"}>
-            {result.message || result.error}
+      {/* Seeding Progress */}
+      {isSeeding && (
+        <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full" />
+            <span className="text-blue-400 font-medium">Seeding content from GitHub...</span>
+          </div>
+          <p className="text-blue-300/70 text-sm">
+            This may take a few minutes for the first time (~250 files, ~220 MB).
           </p>
-          {result.hint && (
-            <p className="text-yellow-400 text-sm mt-2">{result.hint}</p>
+        </div>
+      )}
+
+      {/* Success Result */}
+      {success && message && (
+        <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-2 text-green-400 mb-2">
+            <span className="text-lg">✅</span>
+            <span className="font-medium">Content seeded successfully!</span>
+          </div>
+          <p className="text-green-300/70 text-sm">{message}</p>
+          {progress && (
+            <div className="mt-3 grid grid-cols-3 gap-4 text-center">
+              <div className="bg-green-900/30 rounded-lg p-2">
+                <div className="text-green-400 font-bold">{progress.uploaded}</div>
+                <div className="text-green-300/60 text-xs">Uploaded</div>
+              </div>
+              <div className="bg-gray-800/50 rounded-lg p-2">
+                <div className="text-gray-400 font-bold">{progress.skipped}</div>
+                <div className="text-gray-400/60 text-xs">Skipped</div>
+              </div>
+              {progress.failed > 0 && (
+                <div className="bg-red-900/30 rounded-lg p-2">
+                  <div className="text-red-400 font-bold">{progress.failed}</div>
+                  <div className="text-red-300/60 text-xs">Failed</div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
 
-      {/* Development Mode Notice */}
-      {isDev && seedContent && !isR2Configured && (
-        <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-2 text-purple-400 mb-2">
-            <span className="text-lg">🧪</span>
-            <span className="font-medium">Development Mode</span>
+      {/* Error Result */}
+      {error && !success && (
+        <div className="bg-red-900/30 border border-red-700 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-2 text-red-400 mb-2">
+            <span className="text-lg">❌</span>
+            <span className="font-medium">Seeding failed</span>
           </div>
-          <p className="text-purple-300/70 text-sm">
-            You can simulate seeding to test the complete setup flow.
-          </p>
+          <p className="text-red-300/70 text-sm">{error}</p>
         </div>
       )}
 
@@ -1288,36 +1307,35 @@ function SeedStep({
       <div className="flex justify-between">
         <button
           onClick={onBack}
-          className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+          disabled={isSeeding}
+          className="px-4 py-2 text-gray-400 hover:text-white disabled:opacity-50 transition-colors"
         >
           ← Back
         </button>
         <div className="flex gap-3">
-          {seedContent && isR2Configured && !needsRedeploy && (
+          {seedContent && isR2Configured && !needsRedeploy && !success && (
             <button
               onClick={onSeed}
-              disabled={isLoading}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-white rounded-lg transition-colors"
+              disabled={isSeeding}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
             >
-              {isLoading ? "Seeding..." : "Seed Now"}
-            </button>
-          )}
-          
-          {isDev && seedContent && (!isR2Configured || needsRedeploy) && (
-            <button
-              onClick={onSimulate}
-              disabled={isLoading}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white rounded-lg transition-colors"
-            >
-              {isLoading ? "Simulating..." : "🧪 Simulate Seed"}
+              {isSeeding ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  Seeding...
+                </>
+              ) : (
+                <>📥 Seed Now</>
+              )}
             </button>
           )}
           
           <button
             onClick={onNext}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            disabled={isSeeding}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
           >
-            Continue →
+            {seedContent && !success && isR2Configured && !needsRedeploy ? "Skip →" : "Continue →"}
           </button>
         </div>
       </div>
@@ -1333,7 +1351,7 @@ function CredentialsStep({
   onBack,
 }: {
   isLoading: boolean;
-  result: { success: boolean; message?: string; error?: string; generatedPassword?: string; generatedUsername?: string; credentialsSetAutomatically?: boolean } | undefined;
+  result: { success?: boolean; message?: string; error?: string; generatedPassword?: string; generatedUsername?: string; credentialsSetAutomatically?: boolean } | undefined;
   onGenerate: () => void;
   onNext: () => void;
   onBack: () => void;

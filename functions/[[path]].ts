@@ -5,6 +5,7 @@ import * as build from "../build/server";
 
 export const onRequest = createPagesFunctionHandler({
   build,
+  // @ts-expect-error - custom context mapping for Cloudflare Pages
   getLoadContext: (args) => {
     // Access env from the Pages Function context
     // Try args.context.env first, then args.env as fallback
@@ -15,6 +16,7 @@ export const onRequest = createPagesFunctionHandler({
         env,
         cf: (args.context as any)?.cf,
         ctx: args.context,
+        caches: (args as any).caches || caches,
       },
     };
   },
