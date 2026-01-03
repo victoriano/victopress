@@ -195,13 +195,46 @@ export default function PhotoPage() {
     >
       {/* Photo container - full height */}
       <div className="min-h-screen lg:h-screen flex flex-col">
-        {/* Main photo area */}
-        <div className="flex-1 flex items-center justify-center overflow-hidden pt-0 lg:pt-8 px-4 lg:px-0">
+        {/* Main photo area with clickable zones */}
+        <div className="flex-1 flex items-center justify-center overflow-hidden pt-0 lg:pt-8 px-4 lg:px-0 relative">
+          {/* Photo */}
           <img
             src={photoUrl}
             alt={photo.title || photo.filename}
-            className="max-h-full max-w-full object-contain"
+            className="max-h-full max-w-full object-contain pointer-events-none select-none"
           />
+          
+          {/* Clickable overlay zones (desktop only) */}
+          <div className="absolute inset-0 hidden lg:flex">
+            {/* Left zone - Previous */}
+            {prevPhoto ? (
+              <Link
+                to={`/photo/${gallerySlug}/${prevPhoto.filename}`}
+                className="w-1/3 h-full cursor-prev"
+                aria-label="Previous photo"
+              />
+            ) : (
+              <div className="w-1/3 h-full" />
+            )}
+            
+            {/* Center zone - Thumbnails */}
+            <Link
+              to={`/gallery/${gallerySlug}`}
+              className="w-1/3 h-full cursor-thumbnails"
+              aria-label="Show thumbnails"
+            />
+            
+            {/* Right zone - Next */}
+            {nextPhoto ? (
+              <Link
+                to={`/photo/${gallerySlug}/${nextPhoto.filename}`}
+                className="w-1/3 h-full cursor-next"
+                aria-label="Next photo"
+              />
+            ) : (
+              <div className="w-1/3 h-full" />
+            )}
+          </div>
         </div>
 
         {/* Bottom info bar (mobile only) */}
