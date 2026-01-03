@@ -163,7 +163,7 @@ export default function PhotoPage() {
         navigate(`/photo/${gallerySlug}/${prevPhoto.filename}`);
       } else if (e.key === "ArrowRight" && nextPhoto) {
         navigate(`/photo/${gallerySlug}/${nextPhoto.filename}`);
-      } else if (e.key === "Escape") {
+      } else if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Escape") {
         navigate(`/gallery/${gallerySlug}`);
       }
     },
