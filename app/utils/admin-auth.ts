@@ -71,7 +71,7 @@ export function requireAuth(realm = "VictoPress Admin"): Response {
 }
 
 /**
- * Check admin authentication and throw 401 if not authenticated
+ * Check admin authentication and throw redirect if not authenticated
  * Use this in admin route loaders
  */
 export function checkAdminAuth(
@@ -97,9 +97,32 @@ export function checkAdminAuth(
     });
   }
   
-  if (!isAuthenticated(request, credentials)) {
-    throw requireAuth();
+  // Check for cookie-based auth first
+  const cookieHeader = request.headers.get("Cookie");
+  if (cookieHeader?.includes("admin_auth=")) {
+    const match = cookieHeader.match(/admin_auth=([^;]+)/);
+    if (match) {
+      const token = match[1];
+      const expectedToken = btoa(`${credentials.username}:${credentials.password}`);
+      if (token === expectedToken) {
+        return; // Authenticated via cookie
+      }
+    }
   }
+  
+  // Check for Basic Auth header (for API access)
+  if (isAuthenticated(request, credentials)) {
+    return; // Authenticated via Basic Auth
+  }
+  
+  // Not authenticated - redirect to login page
+  const loginUrl = new URL("/admin/login", url.origin);
+  loginUrl.searchParams.set("redirectTo", url.pathname);
+  
+  throw new Response(null, {
+    status: 302,
+    headers: { Location: loginUrl.toString() },
+  });
 }
 
 /**
