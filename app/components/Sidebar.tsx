@@ -18,6 +18,7 @@ export interface PhotoNavigation {
   prevPhotoUrl?: string;
   nextPhotoUrl?: string;
   thumbnailsUrl: string;
+  photoInfo?: string;
 }
 
 interface SidebarProps {
@@ -55,7 +56,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
   };
 
   return (
-    <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 flex-col justify-between px-10 py-12 bg-white dark:bg-gray-950 border-r border-gray-100 dark:border-gray-900 z-50">
+    <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 flex-col justify-between px-10 py-12 bg-white dark:bg-gray-950 z-50">
       {/* Site Name */}
       <div>
         <Link to="/" className="block mb-12">
@@ -92,85 +93,92 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
               Contact
             </StaticNavLink>
           </div>
+
+          {/* Social Links - below Contact */}
+          {socialLinks && (
+            <div className="flex gap-4 pt-4">
+              {socialLinks.instagram && (
+                <a
+                  href={socialLinks.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                  aria-label="Instagram"
+                >
+                  <InstagramIcon />
+                </a>
+              )}
+              {socialLinks.twitter && (
+                <a
+                  href={socialLinks.twitter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                  aria-label="Twitter"
+                >
+                  <TwitterIcon />
+                </a>
+              )}
+              {socialLinks.linkedin && (
+                <a
+                  href={socialLinks.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                  aria-label="LinkedIn"
+                >
+                  <LinkedInIcon />
+                </a>
+              )}
+            </div>
+          )}
         </nav>
       </div>
 
-      {/* Bottom section: Photo Nav + Social Links */}
-      <div className="space-y-6">
-        {/* Photo Navigation - only on photo pages */}
-        {photoNav && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              {photoNav.prevPhotoUrl ? (
-                <Link
-                  to={photoNav.prevPhotoUrl}
-                  className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
-                >
-                  PREV
-                </Link>
-              ) : (
-                <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">PREV</span>
-              )}
-              <span className="text-gray-300">/</span>
-              {photoNav.nextPhotoUrl ? (
-                <Link
-                  to={photoNav.nextPhotoUrl}
-                  className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
-                >
-                  NEXT
-                </Link>
-              ) : (
-                <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">NEXT</span>
-              )}
-            </div>
-            <Link
-              to={photoNav.thumbnailsUrl}
-              className="block text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
-            >
-              SHOW THUMBNAILS
-            </Link>
+      {/* Bottom section: Photo Info + Nav */}
+      {photoNav && (
+        <div className="space-y-3">
+          {/* Photo Info (title/description) */}
+          {photoNav.photoInfo && (
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              {photoNav.photoInfo}
+            </p>
+          )}
+          
+          {/* PREV / NEXT */}
+          <div className="flex items-center gap-2">
+            {photoNav.prevPhotoUrl ? (
+              <Link
+                to={photoNav.prevPhotoUrl}
+                className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
+              >
+                PREV
+              </Link>
+            ) : (
+              <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">PREV</span>
+            )}
+            <span className="text-gray-300">/</span>
+            {photoNav.nextPhotoUrl ? (
+              <Link
+                to={photoNav.nextPhotoUrl}
+                className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
+              >
+                NEXT
+              </Link>
+            ) : (
+              <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">NEXT</span>
+            )}
           </div>
-        )}
-
-        {/* Social Links */}
-        {socialLinks && (
-          <div className="flex gap-5">
-          {socialLinks.instagram && (
-            <a
-              href={socialLinks.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-              aria-label="Instagram"
-            >
-              <InstagramIcon />
-            </a>
-          )}
-          {socialLinks.twitter && (
-            <a
-              href={socialLinks.twitter}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-              aria-label="Twitter"
-            >
-              <TwitterIcon />
-            </a>
-          )}
-          {socialLinks.linkedin && (
-            <a
-              href={socialLinks.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-              aria-label="LinkedIn"
-            >
-              <LinkedInIcon />
-            </a>
-          )}
+          
+          {/* Show Thumbnails */}
+          <Link
+            to={photoNav.thumbnailsUrl}
+            className="block text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
+          >
+            SHOW THUMBNAILS
+          </Link>
         </div>
-        )}
-      </div>
+      )}
     </aside>
   );
 }

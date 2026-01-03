@@ -183,6 +183,7 @@ export default function PhotoPage() {
     prevPhotoUrl: prevPhoto ? `/photo/${gallerySlug}/${prevPhoto.filename}` : undefined,
     nextPhotoUrl: nextPhoto ? `/photo/${gallerySlug}/${nextPhoto.filename}` : undefined,
     thumbnailsUrl: `/gallery/${gallerySlug}`,
+    photoInfo: photoInfo || undefined,
   };
 
   return (
@@ -203,8 +204,8 @@ export default function PhotoPage() {
           />
         </div>
 
-        {/* Bottom info bar */}
-        <div className="bg-white px-4 lg:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm gap-2 sm:gap-0">
+        {/* Bottom info bar (mobile only) */}
+        <div className="bg-white px-4 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm gap-2 sm:gap-0 lg:hidden">
           {/* Photo info - left side */}
           <div>
             {photoInfo && (
@@ -212,8 +213,8 @@ export default function PhotoPage() {
             )}
           </div>
 
-          {/* Navigation - right side (mobile only, desktop uses sidebar) */}
-          <div className="flex items-center gap-4 text-gray-500 lg:hidden">
+          {/* Navigation - right side */}
+          <div className="flex items-center gap-4 text-gray-500">
             {/* Prev/Next */}
             <div className="flex items-center gap-1">
               {prevPhoto ? (
@@ -242,7 +243,7 @@ export default function PhotoPage() {
         </div>
 
         {/* Show thumbnails link (mobile only, desktop uses sidebar) */}
-        <div className="bg-white px-4 lg:px-6 pb-4 lg:hidden">
+        <div className="bg-white px-4 pb-4 lg:hidden">
           <Link
             to={`/gallery/${gallerySlug}`}
             className="text-xs text-gray-400 hover:text-gray-700 transition-colors uppercase tracking-wide"
