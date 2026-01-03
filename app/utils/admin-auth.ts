@@ -90,14 +90,27 @@ export function checkAdminAuth(
   const credentials = getAdminCredentials(env);
   
   if (!credentials) {
-    throw new Response("Admin panel is not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD environment variables.", {
-      status: 503,
-    });
+    // No credentials configured - redirect to setup wizard
+    // The setup page doesn't require auth
+    if (!url.pathname.startsWith("/admin/setup")) {
+      throw new Response(null, {
+        status: 302,
+        headers: { Location: "/admin/setup" },
+      });
+    }
+    return; // Allow access to setup without auth
   }
   
   if (!isAuthenticated(request, credentials)) {
     throw requireAuth();
   }
+}
+
+/**
+ * Check if admin credentials are configured
+ */
+export function isAdminConfigured(env: unknown): boolean {
+  return getAdminCredentials(env) !== null;
 }
 
 /**
