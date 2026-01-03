@@ -150,25 +150,42 @@ function AdminNavLink({
 function MobileMenu({ username }: { username?: string }) {
   // Simple mobile menu with dropdown
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1">
       <ThemeToggle />
       <Link
         to="/admin/galleries"
         className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+        title="Galleries"
       >
         <GalleryIcon />
       </Link>
       <Link
         to="/admin/blog"
         className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+        title="Blog"
       >
         <BlogIcon />
       </Link>
       <Link
+        to="/admin/pages"
+        className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+        title="Pages"
+      >
+        <PageIcon />
+      </Link>
+      <Link
         to="/admin/upload"
         className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+        title="Upload"
       >
         <UploadIcon />
+      </Link>
+      <Link
+        to="/admin/settings"
+        className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+        title="Settings"
+      >
+        <SettingsIcon />
       </Link>
       <a
         href="/admin/logout"
