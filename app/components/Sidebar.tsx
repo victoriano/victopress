@@ -39,20 +39,15 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
-  // Toggle expand/collapse with max 2 items expanded
+  // Toggle expand/collapse - accordion behavior (only one at a time)
   const toggleExpanded = (slug: string) => {
     setExpandedItems((prev) => {
       if (prev.includes(slug)) {
         // Close if already open
-        return prev.filter((s) => s !== slug);
+        return [];
       } else {
-        // Open, but limit to max 2
-        const newExpanded = [...prev, slug];
-        if (newExpanded.length > 2) {
-          // Remove the oldest one
-          return newExpanded.slice(1);
-        }
-        return newExpanded;
+        // Open this one, close all others (accordion)
+        return [slug];
       }
     });
   };

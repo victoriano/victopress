@@ -34,9 +34,10 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
     };
   }, [isOpen]);
 
+  // Toggle expand/collapse - accordion behavior (only one at a time)
   const toggleExpanded = (slug: string) => {
     setExpandedItems((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+      prev.includes(slug) ? [] : [slug]
     );
   };
 
