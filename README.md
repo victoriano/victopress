@@ -26,11 +26,17 @@ content/
 
 1. **Go to [Cloudflare Pages](https://dash.cloudflare.com/?to=/:account/pages/new/provider/github)** and click "Connect to Git"
 2. **Select this repository** (`victoriano/victopress` or your fork)
-3. **Build settings are auto-detected** from `wrangler.toml`:
-   - Build command: `bun run build`
-   - Build output: `build/client`
-4. **Click Deploy** and visit your site at `your-project.pages.dev`
-5. **Complete the setup wizard** at `/admin/setup` to configure R2 storage
+3. **Configure build settings:**
+
+   | Setting | Value |
+   |---------|-------|
+   | Framework preset | **Remix** |
+   | Build command | `bun run build` |
+   | Build output directory | `build/client` |
+
+4. **Click "Save and Deploy"** and wait for the build to complete
+5. **Visit your site** at `your-project.pages.dev`
+6. **Complete the setup wizard** at `/admin/setup` to configure R2 storage
 
 The setup wizard will guide you through:
 - Creating an API token with the right permissions
