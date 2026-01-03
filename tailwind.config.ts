@@ -6,10 +6,11 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        // Primary font: Montserrat (Google Fonts - publicly available)
-        // Alternative: Google Sans (proprietary - for future CMS config)
+        // Primary font: Proxima Nova (local files)
+        // Alternatives: Montserrat, Google Sans (for future CMS config)
         // TODO: Make font configurable via CMS settings
         sans: [
+          '"Proxima Nova"',
           '"Montserrat"',
           '"Google Sans"',
           '"Google Sans Text"',

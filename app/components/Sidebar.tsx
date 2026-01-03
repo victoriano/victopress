@@ -60,7 +60,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
       {/* Site Name */}
       <div>
         <Link to="/" className="block mb-12">
-          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-[27px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white">
             {siteName.split(" ").map((word, i) => (
               <span key={i} className="block">
                 {word}
@@ -140,7 +140,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
         <div className="space-y-3">
           {/* Photo Info (title/description) */}
           {photoNav.photoInfo && (
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white">
               {photoNav.photoInfo}
             </p>
           )}
@@ -210,8 +210,8 @@ function NavSection({
         <button
           onClick={onToggle}
           className={`
-            block text-base font-semibold transition-colors text-left w-full
-            ${isActive ? "text-gray-900 dark:text-white" : "text-gray-800 dark:text-gray-300"}
+            block text-[15px] font-bold transition-colors text-left w-full
+            ${isActive ? "text-gray-900 dark:text-white" : "text-gray-900 dark:text-gray-100"}
             hover:text-gray-900 dark:hover:text-white
           `}
         >
@@ -264,7 +264,7 @@ function NavLink({
       to={href}
       className={`
         block transition-colors
-        ${isChild ? "text-sm text-gray-500 dark:text-gray-400 font-normal" : "text-base font-semibold text-gray-800 dark:text-gray-300"}
+        ${isChild ? "text-[15px] text-gray-500 dark:text-gray-400 font-medium" : "text-[15px] font-bold text-gray-900 dark:text-gray-100"}
         ${isActive ? "text-gray-900 dark:text-white" : ""}
         hover:text-gray-900 dark:hover:text-white
       `}
@@ -289,9 +289,9 @@ function StaticNavLink({
     <Link
       to={href}
       className={`
-        block text-sm transition-colors
-        ${isActive ? "text-gray-900 dark:text-white font-medium" : "text-gray-600 dark:text-gray-400"}
-        hover:text-gray-900 dark:hover:text-white
+        block text-xs transition-colors
+        ${isActive ? "text-gray-900 dark:text-white" : "text-gray-900 dark:text-gray-400"}
+        hover:text-gray-600 dark:hover:text-white
       `}
     >
       {children}

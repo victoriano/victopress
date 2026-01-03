@@ -18,9 +18,9 @@ export const links: LinksFunction = () => [
   },
   {
     rel: "stylesheet",
-    // Primary: Google Sans (proprietary), Fallback: Montserrat (Google Fonts)
+    // Fallback fonts from Google Fonts (Proxima Nova is loaded locally via CSS)
     // TODO: Make font configurable via CMS settings
-    href: "https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Text:wght@400;500;700&family=Montserrat:wght@400;500;600;700&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap",
   },
 ];
 
