@@ -9,13 +9,18 @@ import type { ExifData } from "./types";
 
 // We'll use exifr for EXIF extraction
 // Import dynamically to handle edge runtime
-let exifr: typeof import("exifr") | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let exifrParse: ((input: ArrayBuffer, options?: Record<string, unknown>) => Promise<Record<string, unknown>>) | null = null;
 
-async function getExifr() {
-  if (!exifr) {
-    exifr = await import("exifr");
+async function getExifrParse() {
+  if (!exifrParse) {
+    const exifrModule = await import("exifr");
+    // Handle ESM default export - the parse function is on exifrModule.default
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = (exifrModule as any).default || exifrModule;
+    exifrParse = mod.parse;
   }
-  return exifr;
+  return exifrParse;
 }
 
 /**
@@ -23,7 +28,11 @@ async function getExifr() {
  */
 export async function extractExif(buffer: ArrayBuffer): Promise<ExifData | null> {
   try {
-    const { parse } = await getExifr();
+    const parse = await getExifrParse();
+    if (!parse) {
+      console.warn("EXIF parser not available");
+      return null;
+    }
     
     const data = await parse(buffer, {
       // Basic EXIF tags

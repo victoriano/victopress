@@ -48,7 +48,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   // Try to load home.yaml config
   let homeConfig: HomeConfig | null = null;
   try {
-    const homeYamlContent = await storage.readFile("home.yaml");
+    const homeYamlContent = await storage.getText("home.yaml");
     if (homeYamlContent) {
       homeConfig = yaml.load(homeYamlContent) as HomeConfig;
     }

@@ -189,6 +189,50 @@ export interface BlogPost extends PostFrontmatter {
 }
 
 // =============================================================================
+// Page Types (Simple static pages like About, Contact)
+// =============================================================================
+
+export interface PageFrontmatter {
+  title?: string;
+  description?: string;
+  /** Custom CSS file to include */
+  css?: string;
+  /** Custom layout template */
+  layout?: string;
+  /** Hide from navigation */
+  hidden?: boolean;
+}
+
+export interface Page extends PageFrontmatter {
+  /** Unique identifier (folder name) */
+  id: string;
+  
+  /** URL-friendly slug */
+  slug: string;
+  
+  /** Display title */
+  title: string;
+  
+  /** Folder/file path */
+  path: string;
+  
+  /** Raw markdown/HTML content */
+  content: string;
+  
+  /** Rendered HTML content */
+  html?: string;
+  
+  /** Custom CSS content (if css file exists) */
+  customCss?: string;
+  
+  /** Whether frontmatter was present */
+  hasFrontmatter: boolean;
+  
+  /** Whether content is HTML (not markdown) */
+  isHtml: boolean;
+}
+
+// =============================================================================
 // Tag Types
 // =============================================================================
 

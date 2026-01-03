@@ -21,6 +21,8 @@ export type {
   GalleryMetadata,
   BlogPost,
   PostFrontmatter,
+  Page,
+  PageFrontmatter,
   Tag,
   ContentIndex,
   FileInfo,
@@ -37,6 +39,7 @@ export {
 // Scanners
 export { scanGalleries } from "./gallery-scanner";
 export { scanBlog, filterPublishedPosts } from "./blog-scanner";
+export { scanPages, filterVisiblePages, getPageBySlug } from "./page-scanner";
 
 // Tag system
 export {
