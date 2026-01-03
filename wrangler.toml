@@ -3,6 +3,13 @@ name = "victopress"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Build configuration for Cloudflare Pages
+[build]
+command = "bun run build"
+
+# Build output directory for Pages
+pages_build_output_dir = "./build/client"
+
 # R2 Bucket binding
 [[r2_buckets]]
 binding = "CONTENT_BUCKET"
@@ -24,6 +31,3 @@ IMAGE_PROVIDER = "cloudflare"  # Options: cloudflare, sharp, none
 # Admin Authentication (set these as secrets in production!)
 # ADMIN_USERNAME = ""  # Use `wrangler secret put ADMIN_USERNAME`
 # ADMIN_PASSWORD = ""  # Use `wrangler secret put ADMIN_PASSWORD`
-
-# Build output directory for Pages
-pages_build_output_dir = "./build/client"

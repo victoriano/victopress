@@ -2,8 +2,6 @@
 
 A **files-first photo gallery CMS** for photographers. Drag folders, get galleries.
 
-[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/victoriano/victopress)
-
 ## ⚡ Key Principle: Zero-Config
 
 The system works **only with folders and images**. YAML/config files are **optional** to add metadata, custom order, etc.
@@ -24,18 +22,21 @@ content/
     └── another-post.md
 ```
 
-## 🚀 One-Click Deploy
+## 🚀 Deploy to Cloudflare Pages
 
-1. **Click the "Deploy to Cloudflare" button** above
-2. **Connect your GitHub** and deploy
-3. **Visit your site** at `your-project.pages.dev`
-4. **Complete the setup wizard** to configure R2 storage
+1. **Go to [Cloudflare Pages](https://dash.cloudflare.com/?to=/:account/pages/new/provider/github)** and click "Connect to Git"
+2. **Select this repository** (`victoriano/victopress` or your fork)
+3. **Build settings are auto-detected** from `wrangler.toml`:
+   - Build command: `bun run build`
+   - Build output: `build/client`
+4. **Click Deploy** and visit your site at `your-project.pages.dev`
+5. **Complete the setup wizard** at `/admin/setup` to configure R2 storage
 
 The setup wizard will guide you through:
 - Creating an API token with the right permissions
 - Setting up an R2 bucket for your photos
+- Binding the bucket to your Pages project
 - Seeding initial content (optional)
-- Creating admin credentials
 
 ## 💻 Local Development
 
