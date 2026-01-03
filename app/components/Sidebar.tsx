@@ -58,11 +58,11 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
   };
 
   return (
-    <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 flex-col justify-between px-10 py-12 bg-white dark:bg-gray-950 z-50">
+    <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 flex-col justify-between px-12 py-12 bg-white dark:bg-gray-950 z-50">
       {/* Site Name */}
       <div>
         <Link to="/" className="block mb-12">
-          <h1 className="text-[27px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-[27px] font-bold leading-tight tracking-tight text-black dark:text-white">
             {siteName.split(" ").map((word, i) => (
               <span key={i} className="block">
                 {word}
@@ -142,7 +142,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
         <div className="space-y-3">
           {/* Photo Info (title/description) */}
           {photoNav.photoInfo && (
-            <p className="text-[15px] font-bold text-gray-900 dark:text-white">
+            <p className="text-[15px] font-bold text-black dark:text-white">
               {photoNav.photoInfo}
             </p>
           )}
@@ -159,7 +159,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
             {photoNav.prevPhotoUrl ? (
               <Link
                 to={photoNav.prevPhotoUrl}
-                className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
+                className="text-gray-500 hover:text-black dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
               >
                 PREV
               </Link>
@@ -170,7 +170,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
             {photoNav.nextPhotoUrl ? (
               <Link
                 to={photoNav.nextPhotoUrl}
-                className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
+                className="text-gray-500 hover:text-black dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
               >
                 NEXT
               </Link>
@@ -219,9 +219,9 @@ function NavSection({
         <button
           onClick={onToggle}
           className={`
-            block text-[15px] font-bold transition-colors text-left w-full
-            ${isActive ? "text-gray-900 dark:text-white" : "text-gray-900 dark:text-gray-100"}
-            hover:text-gray-900 dark:hover:text-white
+            block text-[15px] font-medium leading-[24px] transition-colors text-left w-full
+            ${isActive ? "text-black dark:text-white" : "text-black dark:text-gray-100"}
+            hover:text-black dark:hover:text-white
           `}
         >
           {item.title}
@@ -273,9 +273,9 @@ function NavLink({
       to={href}
       className={`
         block transition-colors
-        ${isChild ? "text-[15px] text-gray-500 dark:text-gray-400 font-medium" : "text-[15px] font-bold text-gray-900 dark:text-gray-100"}
-        ${isActive ? "text-gray-900 dark:text-white" : ""}
-        hover:text-gray-900 dark:hover:text-white
+        ${isChild ? "text-[15px] text-gray-500 dark:text-gray-400 font-medium leading-[24px]" : "text-[15px] font-medium leading-[24px] text-black dark:text-gray-100"}
+        ${isActive ? "text-black dark:text-white" : ""}
+        hover:text-black dark:hover:text-white
       `}
     >
       {children}
@@ -299,8 +299,8 @@ function StaticNavLink({
       to={href}
       className={`
         block text-xs transition-colors
-        ${isActive ? "text-gray-900 dark:text-white" : "text-gray-900 dark:text-gray-400"}
-        hover:text-gray-600 dark:hover:text-white
+        ${isActive ? "text-black dark:text-white" : "text-black dark:text-gray-400"}
+        hover:text-black dark:hover:text-white
       `}
     >
       {children}

@@ -123,21 +123,22 @@ export default function StaticPage() {
         <style dangerouslySetInnerHTML={{ __html: page.customCss }} />
       )}
 
-      <article className="max-w-3xl px-8 py-12">
-        {/* Content */}
-        {page.isHtml ? (
-          // Render HTML directly
+      {page.isHtml ? (
+        // HTML pages control their own layout
+        <article className="w-full py-8">
           <div 
             className="page-content"
             dangerouslySetInnerHTML={{ __html: page.content }} 
           />
-        ) : (
-          // Render Markdown
+        </article>
+      ) : (
+        // Markdown pages get constrained width
+        <article className="max-w-3xl px-8 py-12">
           <div className="prose prose-gray dark:prose-invert max-w-none">
             <MarkdownContent content={page.content} />
           </div>
-        )}
-      </article>
+        </article>
+      )}
     </Layout>
   );
 }

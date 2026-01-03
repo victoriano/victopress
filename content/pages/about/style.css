@@ -1,0 +1,128 @@
+.about-page {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Hero Image */
+.hero-image {
+  width: 100%;
+  max-width: 958px;
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+  aspect-ratio: 2.8 / 1;
+  overflow: hidden;
+}
+
+.hero-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 50%;
+  display: block;
+}
+
+/* Headline */
+.headline {
+  font-size: 1.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+  margin: 0 0 2rem 0;
+  color: #1a1a1a;
+  max-width: 850px;
+}
+
+/* Dividers */
+.divider {
+  border: none;
+  border-top: 1px solid #e5e5e5;
+  margin: 2.5rem 0;
+  max-width: 850px;
+}
+
+/* Three Column Section (FAQ) */
+.three-column-section {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1.5fr;
+  gap: 2rem;
+  max-width: 850px;
+}
+
+/* Two Column Section (BIO) */
+.two-column-section {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  gap: 2rem;
+  max-width: 850px;
+}
+
+/* Section Title */
+.section-title h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+/* Section Content */
+.section-content h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+  color: #1a1a1a;
+}
+
+.section-content p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0 0 0.75rem 0;
+  color: #4a4a4a;
+}
+
+.section-content p:last-child {
+  margin-bottom: 0;
+}
+
+.section-content a {
+  color: #1a1a1a;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.section-content a:hover {
+  color: #666;
+}
+
+.section-content strong {
+  font-weight: 600;
+}
+
+/* Bio Content */
+.bio-content h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .headline {
+    font-size: 1.35rem;
+  }
+
+  .three-column-section {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .two-column-section {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .section-title h2 {
+    margin-bottom: 0.5rem;
+  }
+}
