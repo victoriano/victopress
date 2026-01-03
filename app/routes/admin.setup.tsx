@@ -182,6 +182,36 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
   }
   
+  // ==================== Trigger Deployment ====================
+  if (action === "trigger-deployment") {
+    const token = formData.get("token") as string;
+    const accountId = formData.get("accountId") as string;
+    const projectName = formData.get("projectName") as string;
+    
+    if (!token || !accountId || !projectName) {
+      return json({ success: false, error: "Missing required parameters" });
+    }
+    
+    try {
+      const api = createCloudflareAPI(token);
+      const deployment = await api.triggerDeployment(accountId, projectName);
+      
+      return json({ 
+        success: true, 
+        message: `Deployment triggered! Your site will be updated shortly.`,
+        deploymentUrl: deployment.url,
+        deploymentId: deployment.id,
+      });
+    } catch (error) {
+      const message = error instanceof CloudflareAPIError 
+        ? error.message 
+        : error instanceof Error 
+          ? error.message 
+          : "Unknown error";
+      return json({ success: false, error: message });
+    }
+  }
+  
   // ==================== Seed Content ====================
   if (action === "seed-content") {
     const env = context.cloudflare?.env as Env | undefined;
@@ -350,6 +380,7 @@ export default function AdminSetup() {
   const [bucketCreated, setBucketCreated] = useState(false);
   const [bindingCreated, setBindingCreated] = useState(false);
   const [hasPagesPermission, setHasPagesPermission] = useState(true);
+  const [deploymentTriggered, setDeploymentTriggered] = useState(false);
   
   const isLoading = fetcher.state !== "idle";
   const result = fetcher.data;
@@ -385,6 +416,9 @@ export default function AdminSetup() {
         setBucketName(result.bucketName);
         setBucketCreated(true);
       }
+      if (result.deploymentId) {
+        setDeploymentTriggered(true);
+      }
     }
   }, [result, data.hostname]);
   
@@ -411,6 +445,15 @@ export default function AdminSetup() {
       token,
       accountId: selectedAccountId,
       bucketName,
+      projectName: selectedProject,
+    }, { method: "POST" });
+  };
+  
+  const triggerDeployment = () => {
+    fetcher.submit({
+      action: "trigger-deployment",
+      token,
+      accountId: selectedAccountId,
       projectName: selectedProject,
     }, { method: "POST" });
   };
@@ -491,10 +534,12 @@ export default function AdminSetup() {
               bindingCreated={bindingCreated}
               setBindingCreated={setBindingCreated}
               hasPagesPermission={hasPagesPermission}
+              deploymentTriggered={deploymentTriggered}
               isLoading={isLoading}
               result={result}
               onCreateBucket={createBucket}
               onBindR2={bindR2}
+              onTriggerDeployment={triggerDeployment}
               onListProjects={listProjects}
               onNext={() => setStep("seed")}
               onBack={() => setStep("token")}
@@ -782,10 +827,12 @@ function BucketStep({
   bindingCreated,
   setBindingCreated,
   hasPagesPermission,
+  deploymentTriggered,
   isLoading,
   result,
   onCreateBucket,
   onBindR2,
+  onTriggerDeployment,
   onListProjects,
   onNext,
   onBack,
@@ -799,10 +846,12 @@ function BucketStep({
   bindingCreated: boolean;
   setBindingCreated: (created: boolean) => void;
   hasPagesPermission: boolean;
+  deploymentTriggered: boolean;
   isLoading: boolean;
-  result: { success: boolean; message?: string; error?: string; alreadyExists?: boolean } | undefined;
+  result: { success: boolean; message?: string; error?: string; alreadyExists?: boolean; deploymentId?: string } | undefined;
   onCreateBucket: () => void;
   onBindR2: () => void;
+  onTriggerDeployment: () => void;
   onListProjects: () => void;
   onNext: () => void;
   onBack: () => void;
@@ -950,15 +999,38 @@ function BucketStep({
       )}
       
       {/* Redeploy Notice */}
-      {(bindingCreated || (bucketCreated && !hasPagesPermission)) && (
+      {(bindingCreated || (bucketCreated && !hasPagesPermission)) && !deploymentTriggered && (
         <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 mb-6">
-          <p className="text-yellow-400 font-medium mb-2">⚠️ Redeploy Required</p>
-          <p className="text-yellow-300/70 text-sm">
-            {hasPagesPermission 
-              ? "The R2 binding has been configured. You'll need to trigger a new deployment for the changes to take effect."
-              : "After adding the R2 binding in the Cloudflare Dashboard, trigger a new deployment."
-            }
-            {" "}This will happen automatically on your next push, or you can trigger it manually from the Cloudflare Dashboard.
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-yellow-400 font-medium mb-1">⚠️ Redeploy Required</p>
+              <p className="text-yellow-300/70 text-sm">
+                {hasPagesPermission 
+                  ? "The R2 binding has been configured. Trigger a deployment to apply changes."
+                  : "After adding the R2 binding in the Cloudflare Dashboard, trigger a new deployment."
+                }
+              </p>
+            </div>
+            {hasPagesPermission && (
+              <button
+                onClick={onTriggerDeployment}
+                disabled={isLoading}
+                className="ml-4 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+              >
+                {isLoading ? "Deploying..." : "🚀 Trigger Redeploy"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Deployment Success */}
+      {deploymentTriggered && (
+        <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 mb-6">
+          <p className="text-green-400 font-medium mb-1">✅ Deployment Triggered!</p>
+          <p className="text-green-300/70 text-sm">
+            Your site is being redeployed. This usually takes 1-2 minutes. 
+            You can continue with the setup or wait for the deployment to complete.
           </p>
         </div>
       )}
