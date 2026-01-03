@@ -5,6 +5,12 @@ import * as build from "../build/server";
 
 export const onRequest = createPagesFunctionHandler({
   build,
-  getLoadContext: ({ context }) => ({ cloudflare: context }),
+  getLoadContext: ({ context }) => ({
+    cloudflare: {
+      env: context.env,
+      cf: context.cf,
+      ctx: context,
+    },
+  }),
   mode: process.env.NODE_ENV,
 });
