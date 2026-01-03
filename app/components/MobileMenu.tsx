@@ -4,7 +4,7 @@
  * Full-screen mobile menu with hamburger toggle
  */
 
-import { Link, useLocation } from "@remix-run/react";
+import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useEffect, useState, useMemo } from "react";
 import type { NavItem } from "./Sidebar";
 
@@ -121,6 +121,7 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
                 currentPath={location.pathname}
                 isExpanded={expandedItems.includes(item.slug)}
                 onToggle={() => toggleExpanded(item.slug)}
+                onCollapse={() => setExpandedItems([])}
                 onNavigate={() => setIsOpen(false)}
               />
             ))}
@@ -193,28 +194,42 @@ function MobileNavSection({
   currentPath,
   isExpanded,
   onToggle,
+  onCollapse,
   onNavigate,
 }: {
   item: NavItem;
   currentPath: string;
   isExpanded: boolean;
   onToggle: () => void;
+  onCollapse: () => void;
   onNavigate: () => void;
 }) {
+  const navigate = useNavigate();
   const hasChildren = item.children && item.children.length > 0;
+
+  const handleParentClick = (e: React.MouseEvent) => {
+    if (hasChildren && isExpanded) {
+      // Already expanded - collapse and go to home
+      e.preventDefault();
+      onCollapse();
+      navigate("/");
+      onNavigate();
+    } else if (hasChildren) {
+      // Has children but not expanded - expand (navigation happens via Link)
+      onToggle();
+      onNavigate();
+    } else {
+      // No children - just navigate
+      onNavigate();
+    }
+  };
 
   return (
     <div className="border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-center justify-between py-4">
         <Link
           to={item.path}
-          onClick={() => {
-            // Expand when navigating to parent gallery
-            if (hasChildren && !isExpanded) {
-              onToggle();
-            }
-            onNavigate();
-          }}
+          onClick={handleParentClick}
           className="text-xl font-semibold text-gray-900 dark:text-white"
         >
           {item.title}

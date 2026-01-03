@@ -4,7 +4,7 @@
  * Fixed sidebar with hierarchical navigation like victoriano.me
  */
 
-import { Link, useLocation } from "@remix-run/react";
+import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useState, useEffect, useMemo } from "react";
 
 export interface NavItem {
@@ -107,6 +107,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
               currentPath={location.pathname}
               isExpanded={expandedItems.includes(item.slug)}
               onToggle={() => toggleExpanded(item.slug)}
+              onCollapse={() => setExpandedItems([])}
             />
           ))}
 
@@ -224,12 +225,15 @@ function NavSection({
   currentPath,
   isExpanded,
   onToggle,
+  onCollapse,
 }: {
   item: NavItem;
   currentPath: string;
   isExpanded: boolean;
   onToggle: () => void;
+  onCollapse: () => void;
 }) {
+  const navigate = useNavigate();
   const hasChildren = item.children && item.children.length > 0;
   const isActive =
     currentPath === item.path ||
@@ -242,18 +246,25 @@ function NavSection({
   // Check if we're exactly on this parent path (not a child)
   const isExactMatch = currentPath === item.path;
 
+  const handleParentClick = (e: React.MouseEvent) => {
+    if (isExpanded) {
+      // Already expanded - collapse and go to home
+      e.preventDefault();
+      onCollapse();
+      navigate("/");
+    } else {
+      // Not expanded - expand (navigation happens via Link)
+      onToggle();
+    }
+  };
+
   return (
     <div className="space-y-1">
       {hasChildren ? (
-        // Parent with children - navigates AND expands
+        // Parent with children - navigates AND expands/collapses
         <Link
           to={item.path}
-          onClick={(e) => {
-            // Always expand when clicking (navigation will happen via Link)
-            if (!isExpanded) {
-              onToggle();
-            }
-          }}
+          onClick={handleParentClick}
           className={`
             block text-[15px] font-medium leading-[24px] transition-colors text-left w-full
             ${isExpanded && !isExactMatch ? "text-gray-400" : "text-black dark:text-white"}
