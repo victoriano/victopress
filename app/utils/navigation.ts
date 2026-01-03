@@ -3,16 +3,41 @@ import type { NavItem } from "~/components/Sidebar";
 interface GalleryLike {
   slug: string;
   title: string;
+  order?: number;
+}
+
+interface ParentMetadata {
+  slug: string;
+  title?: string;
+  order?: number;
+}
+
+interface NavItemWithOrder extends NavItem {
+  order?: number;
 }
 
 /**
  * Build navigation structure from galleries.
  * Supports multiple levels of nesting.
  * Creates virtual parent items for deeply nested galleries.
+ * Respects the order field for sorting.
+ * 
+ * @param galleries - List of galleries with images
+ * @param parentMetadata - Optional metadata for parent folders without images
  */
-export function buildNavigation(galleries: GalleryLike[]): NavItem[] {
-  const navMap = new Map<string, NavItem>();
-  const rootItems: NavItem[] = [];
+export function buildNavigation(
+  galleries: GalleryLike[], 
+  parentMetadata?: ParentMetadata[]
+): NavItem[] {
+  // Create a map of parent metadata for quick lookup
+  const parentMap = new Map<string, ParentMetadata>();
+  if (parentMetadata) {
+    for (const meta of parentMetadata) {
+      parentMap.set(meta.slug, meta);
+    }
+  }
+  const navMap = new Map<string, NavItemWithOrder>();
+  const rootItems: NavItemWithOrder[] = [];
 
   // Sort galleries by slug to ensure parents are processed before children
   const sortedGalleries = [...galleries].sort((a, b) => 
@@ -29,13 +54,17 @@ export function buildNavigation(galleries: GalleryLike[]): NavItem[] {
       if (!navMap.has(parentSlug)) {
         // Create virtual parent item
         const parentName = parts[i - 1];
-        const parentTitle = parentName.charAt(0).toUpperCase() + parentName.slice(1);
+        const defaultTitle = parentName.charAt(0).toUpperCase() + parentName.slice(1);
         
-        const parentItem: NavItem = {
-          title: parentTitle,
+        // Check if we have metadata for this parent
+        const meta = parentMap.get(parentSlug);
+        
+        const parentItem: NavItemWithOrder = {
+          title: meta?.title || defaultTitle,
           slug: parentSlug,
           path: `/gallery/${parentSlug}`,
           children: [],
+          order: meta?.order ?? 999, // Use metadata order or default high
         };
         
         navMap.set(parentSlug, parentItem);
@@ -54,12 +83,22 @@ export function buildNavigation(galleries: GalleryLike[]): NavItem[] {
       }
     }
     
+    // Check if this gallery already exists as virtual parent
+    const existingItem = navMap.get(gallery.slug);
+    if (existingItem) {
+      // Update the virtual parent with real gallery data
+      existingItem.title = gallery.title;
+      existingItem.order = gallery.order;
+      continue;
+    }
+    
     // Create the nav item for this gallery
-    const item: NavItem = {
+    const item: NavItemWithOrder = {
       title: gallery.title,
       slug: gallery.slug,
       path: `/gallery/${gallery.slug}`,
       children: [],
+      order: gallery.order,
     };
     
     // Store in navMap so children can find it
@@ -79,6 +118,22 @@ export function buildNavigation(galleries: GalleryLike[]): NavItem[] {
       }
     }
   }
+
+  // Sort function by order
+  const sortByOrder = (a: NavItemWithOrder, b: NavItemWithOrder) => 
+    (a.order ?? 999) - (b.order ?? 999);
+
+  // Sort root items and all children recursively
+  const sortChildren = (items: NavItemWithOrder[]) => {
+    items.sort(sortByOrder);
+    for (const item of items) {
+      if (item.children && item.children.length > 0) {
+        sortChildren(item.children as NavItemWithOrder[]);
+      }
+    }
+  };
+
+  sortChildren(rootItems);
 
   return rootItems;
 }

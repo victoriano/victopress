@@ -333,3 +333,68 @@ function collectTagsFromPhotos(photos: Photo[]): string[] {
   
   return Array.from(tagSet);
 }
+
+/**
+ * Parent folder metadata (for folders without images)
+ */
+export interface ParentGalleryMetadata {
+  slug: string;
+  title?: string;
+  order?: number;
+}
+
+/**
+ * Scan for parent folder metadata (folders with gallery.yaml but no images)
+ * This is used for navigation ordering of parent categories
+ */
+export async function scanParentMetadata(
+  storage: StorageAdapter
+): Promise<ParentGalleryMetadata[]> {
+  const parents: ParentGalleryMetadata[] = [];
+  await scanParentMetadataRecursive(storage, GALLERIES_PATH, "", parents);
+  return parents;
+}
+
+async function scanParentMetadataRecursive(
+  storage: StorageAdapter,
+  path: string,
+  currentSlug: string,
+  results: ParentGalleryMetadata[]
+): Promise<void> {
+  const items = await storage.list(path);
+  const directories = items.filter((f) => f.isDirectory);
+  const imageFiles = items.filter((f) => !f.isDirectory && isImageFile(f.name));
+  
+  // If this folder has no images but has a gallery.yaml, it's a parent category
+  if (imageFiles.length === 0 && path !== GALLERIES_PATH && currentSlug) {
+    const yamlContent = await storage.getText(`${path}/gallery.yaml`);
+    if (yamlContent) {
+      try {
+        const data = parseYaml(yamlContent) as GalleryMetadata;
+        
+        results.push({
+          slug: currentSlug,
+          title: data.title,
+          order: data.order,
+        });
+      } catch {
+        // Invalid YAML, skip
+      }
+    }
+  }
+  
+  // Recursively scan subdirectories
+  for (const dir of directories) {
+    const folderName = dir.name;
+    const childSlug = currentSlug 
+      ? `${currentSlug}/${toSlug(folderName)}` 
+      : toSlug(folderName);
+    
+    await scanParentMetadataRecursive(
+      storage, 
+      `${path}/${folderName}`, 
+      childSlug,
+      results
+    );
+  }
+}

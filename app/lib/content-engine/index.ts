@@ -37,7 +37,8 @@ export {
 } from "./indexer";
 
 // Scanners
-export { scanGalleries } from "./gallery-scanner";
+export { scanGalleries, scanParentMetadata } from "./gallery-scanner";
+export type { ParentGalleryMetadata } from "./gallery-scanner";
 export { scanBlog, filterPublishedPosts } from "./blog-scanner";
 export { scanPages, filterVisiblePages, getPageBySlug } from "./page-scanner";
 

@@ -8,7 +8,7 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { getPostBySlug, scanGalleries, getStorage } from "~/lib/content-engine";
+import { getPostBySlug, scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { buildNavigation } from "~/utils/navigation";
 
@@ -30,9 +30,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
   const storage = getStorage(context);
 
-  const [post, allGalleries] = await Promise.all([
+  const [post, allGalleries, parentMetadata] = await Promise.all([
     getPostBySlug(storage, slug),
     scanGalleries(storage),
+    scanParentMetadata(storage),
   ]);
 
   if (!post || post.draft) {
@@ -44,7 +45,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     .filter((g) => !g.private)
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
-  const navigation = buildNavigation(publicGalleries);
+  const navigation = buildNavigation(publicGalleries, parentMetadata);
 
   return json({
     post,

@@ -8,7 +8,7 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { scanGalleries, getStorage } from "~/lib/content-engine";
+import { scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { buildNavigation } from "~/utils/navigation";
 import { useEffect, useCallback } from "react";
@@ -39,7 +39,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   }
 
   const storage = getStorage(context);
-  const allGalleries = await scanGalleries(storage);
+  const [allGalleries, parentMetadata] = await Promise.all([
+    scanGalleries(storage),
+    scanParentMetadata(storage),
+  ]);
 
   // Find the gallery
   const gallery = allGalleries.find((g) => g.slug === gallerySlug);
@@ -69,7 +72,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     .filter((g) => !g.private)
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
-  const navigation = buildNavigation(publicGalleries);
+  const navigation = buildNavigation(publicGalleries, parentMetadata);
 
   return json({
     photo,

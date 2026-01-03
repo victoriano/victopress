@@ -7,7 +7,7 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { scanGalleries, getStorage } from "~/lib/content-engine";
+import { scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
 import { buildNavigation } from "~/utils/navigation";
 
@@ -28,7 +28,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   }
 
   const storage = getStorage(context);
-  const allGalleries = await scanGalleries(storage);
+  const [allGalleries, parentMetadata] = await Promise.all([
+    scanGalleries(storage),
+    scanParentMetadata(storage),
+  ]);
   
   // Filter galleries for navigation
   const publicGalleries = allGalleries
@@ -109,7 +112,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     throw new Response("Not Found", { status: 404 });
   }
 
-  const navigation = buildNavigation(publicGalleries);
+  const navigation = buildNavigation(publicGalleries, parentMetadata);
 
   // Filter out hidden photos and add gallerySlug for linking
   const visiblePhotos = gallery.photos

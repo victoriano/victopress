@@ -8,7 +8,7 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { scanGalleries, getStorage } from "~/lib/content-engine";
+import { scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { buildNavigation } from "~/utils/navigation";
 import { useEffect, useCallback } from "react";
@@ -35,15 +35,18 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   const index = parseInt(params.index || "0", 10);
   
   const storage = getStorage(context);
-  const allGalleries = await scanGalleries(storage);
+  const [allGalleries, parentMetadata] = await Promise.all([
+    scanGalleries(storage),
+    scanParentMetadata(storage),
+  ]);
   
   // Filter public galleries and sort by order
   const galleries = allGalleries
     .filter((g) => !g.private)
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
-  // Build navigation
-  const navigation = buildNavigation(galleries);
+  // Build navigation with parent metadata
+  const navigation = buildNavigation(galleries, parentMetadata);
   
   // Try to load home.yaml config
   let homeConfig: HomeConfig | null = null;
