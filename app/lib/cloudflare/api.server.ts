@@ -275,6 +275,46 @@ export class CloudflareAPI {
   }
 
   /**
+   * Set environment variables for a Pages project
+   * This sets both production and preview environment variables
+   */
+  async setEnvironmentVariables(
+    accountId: string,
+    projectName: string,
+    variables: Record<string, string>
+  ): Promise<PagesProject> {
+    // Convert simple key-value pairs to Cloudflare's env_vars format
+    const envVars: Record<string, { type: string; value: string }> = {};
+    for (const [key, value] of Object.entries(variables)) {
+      envVars[key] = { type: "secret_text", value };
+    }
+
+    return this.updatePagesProject(accountId, projectName, {
+      production: {
+        env_vars: envVars,
+      },
+      preview: {
+        env_vars: envVars,
+      },
+    });
+  }
+
+  /**
+   * Set admin credentials as environment variables
+   */
+  async setAdminCredentials(
+    accountId: string,
+    projectName: string,
+    username: string,
+    password: string
+  ): Promise<PagesProject> {
+    return this.setEnvironmentVariables(accountId, projectName, {
+      ADMIN_USERNAME: username,
+      ADMIN_PASSWORD: password,
+    });
+  }
+
+  /**
    * Find a Pages project by domain or subdomain
    */
   async findProjectByDomain(

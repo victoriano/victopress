@@ -7,8 +7,8 @@
 
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
-import { json } from "@remix-run/cloudflare";
-import { scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
+import { json, redirect } from "@remix-run/cloudflare";
+import { scanGalleries, scanParentMetadata, getStorage, needsSetup } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
 import { buildNavigation } from "~/utils/navigation";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
@@ -34,6 +34,11 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
+  // Check if setup is needed (production + not configured)
+  if (needsSetup(context)) {
+    return redirect("/setup");
+  }
+  
   const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
   const [allGalleries, parentMetadata] = await Promise.all([

@@ -94,7 +94,7 @@ export interface PagesProject {
 }
 
 export interface PagesDeploymentConfig {
-  env_vars?: Record<string, { value: string } | { type: "secret_text" }>;
+  env_vars?: Record<string, { value: string } | { type: "secret_text"; value: string }>;
   kv_namespaces?: Record<string, { namespace_id: string }>;
   durable_object_namespaces?: Record<string, { namespace_id: string }>;
   r2_buckets?: Record<string, { name: string }>;

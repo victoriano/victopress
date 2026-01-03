@@ -64,6 +64,9 @@ export {
   getStorageMode, 
   isDemoMode, 
   isR2Configured,
+  isSiteConfigured,
+  isDevelopment,
+  needsSetup,
 } from "./storage";
 export type { StorageMode } from "./storage";
 

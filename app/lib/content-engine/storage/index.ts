@@ -116,6 +116,40 @@ export function isR2Configured(context: {
   return !!context.cloudflare?.env?.CONTENT_BUCKET;
 }
 
+/**
+ * Check if the site is fully configured (R2 + admin credentials)
+ * This is used to determine if the user should be redirected to /setup
+ */
+export function isSiteConfigured(context: {
+  cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket; ADMIN_PASSWORD?: string } };
+}): boolean {
+  const hasR2 = !!context.cloudflare?.env?.CONTENT_BUCKET;
+  const hasPassword = !!context.cloudflare?.env?.ADMIN_PASSWORD;
+  return hasR2 && hasPassword;
+}
+
+/**
+ * Check if we're in development mode
+ */
+export function isDevelopment(): boolean {
+  return process.env.NODE_ENV === "development";
+}
+
+/**
+ * Check if setup is needed (production and not configured)
+ */
+export function needsSetup(context: {
+  cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket; ADMIN_PASSWORD?: string } };
+}): boolean {
+  // Never need setup in development
+  if (isDevelopment()) {
+    return false;
+  }
+  
+  // In production, check if configured
+  return !isSiteConfigured(context);
+}
+
 export { R2StorageAdapter } from "./r2-adapter";
 export { LocalStorageAdapter } from "./local-adapter";
 export { BundledStorageAdapter } from "./bundled-adapter";
