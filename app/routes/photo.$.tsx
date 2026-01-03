@@ -153,7 +153,7 @@ export default function PhotoPage() {
       {/* Photo container - full height */}
       <div className="min-h-screen lg:h-screen flex flex-col">
         {/* Main photo area with clickable zones */}
-        <div className="flex-1 flex items-center justify-center overflow-hidden pt-0 lg:pt-8 px-4 lg:px-0 relative">
+        <div className="flex-1 flex items-center justify-center overflow-hidden pt-0 lg:pt-8 pb-4 lg:pb-8 px-4 lg:px-8 relative">
           {/* Photo */}
           <img
             src={photoUrl}
