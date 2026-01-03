@@ -7,6 +7,7 @@
 import { Link } from "@remix-run/react";
 import { Sidebar, type NavItem, type PhotoNavigation } from "./Sidebar";
 import { MobileMenu } from "./MobileMenu";
+import { OptimizedImage } from "./OptimizedImage";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -77,12 +78,15 @@ export function PhotoItem({
   aspectRatio = "auto",
   href,
   onClick,
+  priority = false,
 }: {
   src: string;
   alt: string;
   aspectRatio?: "auto" | "square" | "portrait" | "landscape";
   href?: string;
   onClick?: () => void;
+  /** Priority loading for above-the-fold images */
+  priority?: boolean;
 }) {
   const aspectClasses = {
     auto: "",
@@ -97,12 +101,17 @@ export function PhotoItem({
     group cursor-pointer block
   `;
 
+  // Responsive sizes for grid layout
+  const sizes = "(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw";
+
   const image = (
-    <img
+    <OptimizedImage
       src={src}
       alt={alt}
-      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-      loading="lazy"
+      className="w-full h-full transition-transform duration-500 group-hover:scale-105"
+      sizes={sizes}
+      loading={priority ? "eager" : "lazy"}
+      priority={priority}
     />
   );
 

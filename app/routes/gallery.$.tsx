@@ -9,24 +9,56 @@ import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
+import { PasswordProtectedGallery } from "~/components/PasswordProtectedGallery";
 import { buildNavigation } from "~/utils/navigation";
+import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
+import { isGalleryAuthenticated } from "~/utils/gallery-auth";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.gallery) {
     return [{ title: "Gallery Not Found - VictoPress" }];
   }
-  return [
-    { title: `${data.gallery.title} - VictoPress` },
-    { name: "description", content: data.gallery.description || `Photo gallery: ${data.gallery.title}` },
-  ];
+
+  // For protected galleries, show generic title
+  if (data.isProtected && !data.isAuthenticated) {
+    return [
+      { title: `${data.gallery.title} - Protected - ${data.siteName}` },
+      { name: "description", content: "This gallery is password protected." },
+      { name: "robots", content: "noindex" },
+    ];
+  }
+
+  // Type guard - at this point, gallery has full properties
+  const gallery = data.gallery as {
+    title: string;
+    description?: string;
+    photoCount: number;
+    tags?: string[];
+  };
+
+  const description =
+    gallery.description ||
+    `Photo gallery: ${gallery.title} (${gallery.photoCount} photos)`;
+
+  return generateMetaTags({
+    title: `${gallery.title} - ${data.siteName}`,
+    description,
+    url: data.canonicalUrl,
+    image: data.ogImage || undefined,
+    imageAlt: gallery.title,
+    type: "website",
+    siteName: data.siteName,
+    keywords: gallery.tags,
+  });
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const slug = params["*"];
   if (!slug) {
     throw new Response("Not Found", { status: 404 });
   }
 
+  const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
   const [allGalleries, parentMetadata] = await Promise.all([
     scanGalleries(storage),
@@ -114,6 +146,18 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
   const navigation = buildNavigation(publicGalleries, parentMetadata);
 
+  const siteName = "Victoriano Izquierdo";
+  const canonicalUrl = `${baseUrl}/gallery/${gallery.slug}`;
+  const ogImage = buildImageUrl(baseUrl, gallery.cover);
+
+  // Check if gallery is password protected
+  const isProtected = !!gallery.password;
+  let isAuthenticated = false;
+
+  if (isProtected) {
+    isAuthenticated = await isGalleryAuthenticated(request, gallery.slug);
+  }
+
   // Filter out hidden photos and add gallerySlug for linking
   const visiblePhotos = gallery.photos
     .filter((p) => !p.hidden)
@@ -123,13 +167,21 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       gallerySlug: (p as any).gallerySlug || gallery.slug,
     }));
 
+  // If protected and not authenticated, don't expose photos
+  const exposedPhotos = isProtected && !isAuthenticated ? [] : visiblePhotos;
+  const exposedOgImage = isProtected && !isAuthenticated ? null : ogImage;
+
   return json({
+    isProtected,
+    isAuthenticated,
     gallery: {
       ...gallery,
-      photos: visiblePhotos,
+      photos: exposedPhotos,
     },
     navigation,
-    siteName: "Victoriano Izquierdo",
+    siteName,
+    canonicalUrl,
+    ogImage: exposedOgImage,
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",
@@ -140,7 +192,19 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 }
 
 export default function GalleryPage() {
-  const { gallery, navigation, siteName, socialLinks } = useLoaderData<typeof loader>();
+  const { gallery, navigation, siteName, socialLinks, isProtected, isAuthenticated } =
+    useLoaderData<typeof loader>();
+
+  // Show password form for protected galleries
+  if (isProtected && !isAuthenticated) {
+    return (
+      <PasswordProtectedGallery
+        gallerySlug={gallery.slug}
+        galleryTitle={gallery.title}
+        redirectTo={`/gallery/${gallery.slug}`}
+      />
+    );
+  }
 
   return (
     <Layout
@@ -149,13 +213,14 @@ export default function GalleryPage() {
       socialLinks={socialLinks}
     >
       <PhotoGrid>
-        {gallery.photos.map((photo) => (
+        {gallery.photos.map((photo, index) => (
           <PhotoItem
             key={photo.id}
             src={`/api/local-images/${photo.path}`}
             alt={photo.title || photo.filename}
             href={`/photo/${(photo as any).gallerySlug}/${photo.filename}`}
             aspectRatio="auto"
+            priority={index < 8} // First 8 images are above the fold
           />
         ))}
       </PhotoGrid>

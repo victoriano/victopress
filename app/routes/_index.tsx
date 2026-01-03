@@ -11,6 +11,7 @@ import { json } from "@remix-run/cloudflare";
 import { scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
 import { buildNavigation } from "~/utils/navigation";
+import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import yaml from "js-yaml";
 
 interface HomeConfig {
@@ -20,14 +21,20 @@ interface HomeConfig {
   }>;
 }
 
-export const meta: MetaFunction = () => {
-  return [
-    { title: "VictoPress - Photo Portfolio" },
-    { name: "description", content: "A files-first photo gallery CMS" },
-  ];
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
+  return generateMetaTags({
+    title: data?.siteName || "VictoPress - Photo Portfolio",
+    description: data?.siteDescription || "A curated photography portfolio",
+    url: data?.canonicalUrl,
+    image: data?.ogImage,
+    imageAlt: data?.siteName || "VictoPress",
+    type: "website",
+    siteName: data?.siteName || "VictoPress",
+  });
 };
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
   const [allGalleries, parentMetadata] = await Promise.all([
     scanGalleries(storage),
@@ -97,10 +104,21 @@ export async function loader({ context }: LoaderFunctionArgs) {
     });
   }
 
+  const siteName = "Victoriano Izquierdo"; // TODO: Make configurable
+  const siteDescription = "Photography portfolio showcasing travel, street, and portrait photography";
+  const canonicalUrl = baseUrl;
+  // Use first photo as OG image if available
+  const ogImage = homePhotos.length > 0 
+    ? buildImageUrl(baseUrl, homePhotos[0].path) 
+    : undefined;
+
   return json({
     navigation,
     photos: homePhotos,
-    siteName: "Victoriano Izquierdo", // TODO: Make configurable
+    siteName,
+    siteDescription,
+    canonicalUrl,
+    ogImage,
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",

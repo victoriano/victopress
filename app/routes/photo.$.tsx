@@ -11,19 +11,33 @@ import { json } from "@remix-run/cloudflare";
 import { scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { buildNavigation } from "~/utils/navigation";
+import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { useEffect, useCallback } from "react";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.photo) {
     return [{ title: "Photo Not Found - VictoPress" }];
   }
-  return [
-    { title: `${data.photo.title || data.photo.filename} - ${data.gallery.title}` },
-    { name: "description", content: data.gallery.description },
-  ];
+
+  const photoTitle = data.photo.title || data.photo.filename;
+  const description =
+    data.photo.description ||
+    data.photo.exif?.imageDescription ||
+    `Photo from ${data.gallery.title}`;
+
+  return generateMetaTags({
+    title: `${photoTitle} - ${data.gallery.title}`,
+    description,
+    url: data.canonicalUrl,
+    image: data.ogImage,
+    imageAlt: photoTitle,
+    type: "website",
+    siteName: data.siteName,
+    keywords: data.photo.tags,
+  });
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const path = params["*"];
   if (!path) {
     throw new Response("Not Found", { status: 404 });
@@ -38,6 +52,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     throw new Response("Not Found", { status: 404 });
   }
 
+  const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
   const [allGalleries, parentMetadata] = await Promise.all([
     scanGalleries(storage),
@@ -74,6 +89,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
   const navigation = buildNavigation(publicGalleries, parentMetadata);
 
+  const siteName = "Victoriano Izquierdo";
+  const canonicalUrl = `${baseUrl}/photo/${gallerySlug}/${photoFilename}`;
+  const ogImage = buildImageUrl(baseUrl, photo.path);
+
   return json({
     photo,
     photoUrl,
@@ -84,7 +103,9 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     currentIndex: photoIndex,
     totalPhotos: photos.length,
     navigation,
-    siteName: "Victoriano Izquierdo",
+    siteName,
+    canonicalUrl,
+    ogImage,
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",

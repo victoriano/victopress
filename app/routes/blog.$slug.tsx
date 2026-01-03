@@ -11,23 +11,34 @@ import { json } from "@remix-run/cloudflare";
 import { getPostBySlug, scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { buildNavigation } from "~/utils/navigation";
+import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.post) {
     return [{ title: "Post Not Found - VictoPress" }];
   }
-  return [
-    { title: `${data.post.title} - VictoPress` },
-    { name: "description", content: data.post.excerpt || data.post.description },
-  ];
+
+  return generateMetaTags({
+    title: `${data.post.title} - ${data.siteName}`,
+    description: data.post.excerpt || data.post.description,
+    url: data.canonicalUrl,
+    image: data.ogImage,
+    imageAlt: data.post.title,
+    type: "article",
+    siteName: data.siteName,
+    author: data.post.author,
+    publishedTime: data.post.date,
+    keywords: data.post.tags,
+  });
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const { slug } = params;
   if (!slug) {
     throw new Response("Not Found", { status: 404 });
   }
 
+  const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
 
   const [post, allGalleries, parentMetadata] = await Promise.all([
@@ -47,10 +58,16 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
   const navigation = buildNavigation(publicGalleries, parentMetadata);
 
+  const siteName = "Victoriano Izquierdo";
+  const canonicalUrl = `${baseUrl}/blog/${post.slug}`;
+  const ogImage = buildImageUrl(baseUrl, post.cover);
+
   return json({
     post,
     navigation,
-    siteName: "Victoriano Izquierdo",
+    siteName,
+    canonicalUrl,
+    ogImage,
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",
