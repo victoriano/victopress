@@ -265,36 +265,13 @@ export default function PhotoPage() {
         </div>
 
         {/* Bottom actions (mobile only) */}
-        <div className="bg-white dark:bg-gray-950 px-4 pb-4 flex items-center justify-between lg:hidden">
+        <div className="bg-white dark:bg-gray-950 px-4 pb-4 flex items-center justify-center lg:hidden">
           <Link
             to={`/gallery/${gallerySlug}`}
             className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
           >
             SHOW THUMBNAILS
           </Link>
-          
-          {/* Download button */}
-          <a
-            href={photoUrl}
-            download={photo.filename}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
-          >
-            <DownloadIcon />
-            DOWNLOAD
-          </a>
-        </div>
-
-        {/* Download button (desktop - fixed bottom right) */}
-        <div className="hidden lg:block fixed bottom-6 right-6 z-50">
-          <a
-            href={photoUrl}
-            download={photo.filename}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium shadow-lg"
-            title="Download original"
-          >
-            <DownloadIcon />
-            Download
-          </a>
         </div>
       </div>
     </Layout>
@@ -324,23 +301,3 @@ function getPhotoYear(photo: {
   return undefined;
 }
 
-/**
- * Download icon component
- */
-function DownloadIcon() {
-  return (
-    <svg
-      className="w-4 h-4"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-      />
-    </svg>
-  );
-}

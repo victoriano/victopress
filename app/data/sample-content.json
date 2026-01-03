@@ -1,41 +1,2288 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-01-03T00:00:00.000Z",
+  "generatedAt": "2026-01-03T18:49:18.429Z",
   "files": [
-    {
-      "path": "galleries",
-      "content": "",
-      "size": 0,
-      "lastModified": "2026-01-03T00:00:00.000Z",
-      "isDirectory": true
-    },
-    {
-      "path": "galleries/gallery.yaml",
-      "content": "title: Photo Galleries\ndescription: Welcome to VictoPress demo galleries",
-      "size": 62,
-      "lastModified": "2026-01-03T00:00:00.000Z",
-      "isDirectory": false
-    },
-    {
-      "path": "home.yaml",
-      "content": "title: VictoPress Demo\nsubtitle: A files-first photo gallery CMS\ndescription: This is a demo site running in read-only mode. Configure R2 storage to enable full CMS functionality.\nfeaturedGalleries:\n  - humans\n  - geographies\n  - spaces",
-      "size": 200,
-      "lastModified": "2026-01-03T00:00:00.000Z",
-      "isDirectory": false
-    },
     {
       "path": "blog",
       "content": "",
       "size": 0,
-      "lastModified": "2026-01-03T00:00:00.000Z",
+      "lastModified": "2026-01-02T14:24:53.438Z",
+      "isDirectory": true
+    },
+    {
+      "path": "blog/iphone-camera-test",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-02T14:29:15.613Z",
+      "isDirectory": true
+    },
+    {
+      "path": "blog/iphone-camera-test/index.md",
+      "content": "---\ntitle: Testing the camera of the new iPhone 13 Pro\ndate: 2021-10-03\ndescription: A walk through Granada with Apple ProRAW\ntags:\n  - photography\n  - iphone\n  - granada\ncover: blog/iphone-camera-test/cover.jpg\n---\n\nI went for a walk in **Granada**, Spain, with the new iPhone 13 Pro, released last week, and shot all the pictures using the [Apple ProRAW](https://support.apple.com/en-us/HT211965) format to see how far digital photography is now compared to DSLR cameras. I also used the [VSCO app](https://vsco.co/) for adjusting the color, brightness, and other parameters.\n\n![Sunset over Granada](blog/iphone-camera-test/sunset.jpg)\n\nThe results were impressive. The computational photography that Apple has developed over the years really shows in low-light situations. The dynamic range captured in the sunset shot above would have been impossible just a few years ago without professional equipment.\n\n## ProRAW vs Standard HEIC\n\nThe ProRAW format gives you much more flexibility in post-processing:\n\n- **12-bit color depth** instead of 8-bit\n- **More shadow detail** to recover in editing\n- **Better highlight handling** in high-contrast scenes\n- **No compression artifacts** in gradients\n\nThe file sizes are larger (around 25MB per photo), but the quality improvement is worth it if you plan to edit your photos.\n\n## My Favorite Settings\n\nFor street photography, I found these settings work best:\n\n1. Use the **1x lens** for most shots\n2. Enable **ProRAW** in camera settings\n3. Keep **exposure compensation** at -0.3 to preserve highlights\n4. Use **gridlines** to help with composition\n\n## Conclusion\n\nThe iPhone 13 Pro is a legitimate photography tool. While it won't replace a full-frame mirrorless camera for professional work, it's more than capable for travel photography, street photography, and everyday captures.\n\nThe best camera is the one you have with you, and the iPhone is always in your pocket.\n",
+      "size": 1919,
+      "lastModified": "2026-01-03T09:19:59.791Z",
+      "isDirectory": false
+    },
+    {
+      "path": "blog/iphone-camera-test/cover.jpg",
+      "content": "",
+      "size": 104041,
+      "lastModified": "2026-01-02T14:24:53.865Z",
+      "isDirectory": false
+    },
+    {
+      "path": "blog/iphone-camera-test/sunset.jpg",
+      "content": "",
+      "size": 50996,
+      "lastModified": "2026-01-02T14:29:15.625Z",
+      "isDirectory": false
+    },
+    {
+      "path": "blog/getting-started",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-02T13:55:21.571Z",
+      "isDirectory": true
+    },
+    {
+      "path": "blog/getting-started/index.md",
+      "content": "---\ntitle: \"Getting Started with VictoPress\"\ndate: 2026-01-02\ndescription: \"Learn how to set up your photo gallery CMS in minutes\"\ntags:\n  - tutorial\n  - getting-started\nauthor: \"VictoPress\"\n---\n\n# Welcome to VictoPress! 🎉\n\nVictoPress is a **files-first photo gallery CMS**. That means you don't need a complicated admin panel to manage your content - just organize your files and folders, and VictoPress does the rest.\n\n## Quick Start\n\n### 1. Add a Gallery\n\nCreate a folder in `content/galleries/` with your images:\n\n```\ncontent/galleries/my-trip/\n├── photo1.jpg\n├── photo2.jpg\n└── photo3.jpg\n```\n\nThat's it! VictoPress will automatically:\n- Create a gallery called \"My Trip\"\n- Use the first image as the cover\n- Extract EXIF data from your photos\n\n### 2. Customize with YAML (Optional)\n\nWant more control? Add a `gallery.yaml` file:\n\n```yaml\ntitle: \"My Amazing Trip\"\ndescription: \"Photos from my adventure\"\ncover: \"photo2.jpg\"\ntags:\n  - travel\n  - adventure\n```\n\n### 3. Add Blog Posts\n\nCreate markdown files in `content/blog/`:\n\n```\ncontent/blog/my-post/\n├── index.md\n└── cover.jpg\n```\n\n## Configuration\n\n### Local Development\n\nIn development, VictoPress reads from your local `content/` folder. No cloud setup needed!\n\n### Production (Cloudflare R2)\n\nFor production, configure your R2 bucket in `wrangler.toml`:\n\n```toml\n[[r2_buckets]]\nbinding = \"CONTENT_BUCKET\"\nbucket_name = \"your-bucket-name\"\n```\n\nThen upload your content to R2 and deploy to Cloudflare Pages.\n\n## Next Steps\n\n- Add some photos to `content/galleries/`\n- Check the [ARCHITECTURE.md](https://www.notion.so/1dd18ac214874a9da121897a495adc1d) for technical details\n- Join our community!\n\nHappy publishing! 📸\n",
+      "size": 1712,
+      "lastModified": "2026-01-02T13:55:21.572Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:10:08.538Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/spaces",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:10:14.472Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/spaces/urban",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:10.675Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/spaces/urban/IMG_7546.jpg",
+      "content": "",
+      "size": 750654,
+      "lastModified": "2026-01-03T13:09:10.638Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/IMG_8213-n.jpg",
+      "content": "",
+      "size": 1023998,
+      "lastModified": "2026-01-03T13:09:10.642Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/DSC_7362.jpg",
+      "content": "",
+      "size": 1101815,
+      "lastModified": "2026-01-03T13:09:10.648Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/IMG_7137.jpg",
+      "content": "",
+      "size": 587301,
+      "lastModified": "2026-01-03T13:09:10.651Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/gallery.yaml",
+      "content": "title: \"Urban\"\ndescription: \"City architecture and urban environments\"\norder: 2\n",
+      "size": 80,
+      "lastModified": "2026-01-03T13:09:10.651Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/P1080439.jpg",
+      "content": "",
+      "size": 1026431,
+      "lastModified": "2026-01-03T13:09:10.653Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/IMG_9723.jpg",
+      "content": "",
+      "size": 1340600,
+      "lastModified": "2026-01-03T13:09:10.659Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/P1080752.jpg",
+      "content": "",
+      "size": 864591,
+      "lastModified": "2026-01-03T13:09:10.663Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/IMG_9248.jpg",
+      "content": "",
+      "size": 871078,
+      "lastModified": "2026-01-03T13:09:10.666Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/DSC_7354.jpg",
+      "content": "",
+      "size": 598404,
+      "lastModified": "2026-01-03T13:09:10.669Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/IMG_9162.jpg",
+      "content": "",
+      "size": 783268,
+      "lastModified": "2026-01-03T13:09:10.671Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/IMG_4874.jpg",
+      "content": "",
+      "size": 1288321,
+      "lastModified": "2026-01-03T13:09:10.675Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/urban/DSC_7356.jpg",
+      "content": "",
+      "size": 481248,
+      "lastModified": "2026-01-03T13:09:10.676Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:10.716Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/spaces/landscapes/IMG_1132_1.jpg",
+      "content": "",
+      "size": 191593,
+      "lastModified": "2026-01-03T13:09:10.680Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/3085166040_1443c902dc_o47239.jpg",
+      "content": "",
+      "size": 707741,
+      "lastModified": "2026-01-03T13:09:10.682Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/IMG_0158.jpg",
+      "content": "",
+      "size": 601620,
+      "lastModified": "2026-01-03T13:09:10.684Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/from_flickr_468.jpg",
+      "content": "",
+      "size": 478833,
+      "lastModified": "2026-01-03T13:09:10.687Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/IMG_3294.jpg",
+      "content": "",
+      "size": 467135,
+      "lastModified": "2026-01-03T13:09:10.689Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/19409301593_5a63cba3e1_o.jpg",
+      "content": "",
+      "size": 699725,
+      "lastModified": "2026-01-03T13:09:10.691Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/IMG_7136.jpg",
+      "content": "",
+      "size": 1457083,
+      "lastModified": "2026-01-03T13:09:10.697Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/IMG_9254b.jpg",
+      "content": "",
+      "size": 1074726,
+      "lastModified": "2026-01-03T13:09:10.699Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/gallery.yaml",
+      "content": "title: \"Landscapes\"\ndescription: \"Natural landscapes and scenic views\"\norder: 1\n",
+      "size": 80,
+      "lastModified": "2026-01-03T13:09:10.700Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/IMG_0927.jpg",
+      "content": "",
+      "size": 507641,
+      "lastModified": "2026-01-03T13:09:10.703Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/18504739244_c6aafb82f5_o.jpg",
+      "content": "",
+      "size": 616699,
+      "lastModified": "2026-01-03T13:09:10.705Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/DSC01919.jpg",
+      "content": "",
+      "size": 1358742,
+      "lastModified": "2026-01-03T13:09:10.711Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/from_flickr_272.jpg",
+      "content": "",
+      "size": 491584,
+      "lastModified": "2026-01-03T13:09:10.713Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/IMG_3114.jpg",
+      "content": "",
+      "size": 583846,
+      "lastModified": "2026-01-03T13:09:10.716Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/landscapes/3165649731_23f437dfbf_o47157.jpg",
+      "content": "",
+      "size": 819728,
+      "lastModified": "2026-01-03T13:09:10.718Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/gallery.yaml",
+      "content": "title: \"Spaces\"\ndescription: \"Places and environments - landscapes, urban scenes, and travel photography\"\norder: 2\n",
+      "size": 115,
+      "lastModified": "2026-01-03T13:09:10.719Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:10.759Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/spaces/travelling/IMG_4728.jpg",
+      "content": "",
+      "size": 419350,
+      "lastModified": "2026-01-03T13:09:10.721Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/P1070385.jpg",
+      "content": "",
+      "size": 595948,
+      "lastModified": "2026-01-03T13:09:10.723Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/P1080728.jpg",
+      "content": "",
+      "size": 1165503,
+      "lastModified": "2026-01-03T13:09:10.727Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/gallery.yaml",
+      "content": "title: \"Travelling\"\ndescription: \"Moments captured while traveling\"\norder: 3\n",
+      "size": 77,
+      "lastModified": "2026-01-03T13:09:10.728Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/IMG_5690.jpg",
+      "content": "",
+      "size": 1037051,
+      "lastModified": "2026-01-03T13:09:10.734Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/P1340850.jpg",
+      "content": "",
+      "size": 949909,
+      "lastModified": "2026-01-03T13:09:10.736Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/P1060643.jpg",
+      "content": "",
+      "size": 411204,
+      "lastModified": "2026-01-03T13:09:10.738Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/P1280106.jpg",
+      "content": "",
+      "size": 635322,
+      "lastModified": "2026-01-03T13:09:10.743Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/P1060215.jpg",
+      "content": "",
+      "size": 877962,
+      "lastModified": "2026-01-03T13:09:10.750Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/P1050538.jpg",
+      "content": "",
+      "size": 606755,
+      "lastModified": "2026-01-03T13:09:10.753Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/IMG_9759.jpg",
+      "content": "",
+      "size": 1065783,
+      "lastModified": "2026-01-03T13:09:10.758Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/spaces/travelling/IMG_0353.jpg",
+      "content": "",
+      "size": 749803,
+      "lastModified": "2026-01-03T13:09:10.764Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:10:14.525Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/humans/gallery.yaml",
+      "content": "title: \"Humans\"\ndescription: \"People and their stories - portraits, social moments, and rituals\"\norder: 1\n",
+      "size": 106,
+      "lastModified": "2026-01-03T13:09:10.766Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/social",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:10.801Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/humans/social/IMG_3726.jpg",
+      "content": "",
+      "size": 802286,
+      "lastModified": "2026-01-03T13:09:10.767Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/social/P1400684.jpg",
+      "content": "",
+      "size": 1991854,
+      "lastModified": "2026-01-03T13:09:10.773Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/social/2806871438_1afdd3d2e0_o.jpg",
+      "content": "",
+      "size": 988044,
+      "lastModified": "2026-01-03T13:09:10.780Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/social/gallery.yaml",
+      "content": "title: \"Social\"\ndescription: \"People in social contexts and everyday life\"\norder: 2\n",
+      "size": 84,
+      "lastModified": "2026-01-03T13:09:10.781Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/social/509764483_583a2a5ff6_o.jpg",
+      "content": "",
+      "size": 748256,
+      "lastModified": "2026-01-03T13:09:10.788Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/social/P1080693x.jpg",
+      "content": "",
+      "size": 745233,
+      "lastModified": "2026-01-03T13:09:10.791Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/social/teach-your-children-well_514560957_o.jpg",
+      "content": "",
+      "size": 675310,
+      "lastModified": "2026-01-03T13:09:10.795Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/social/semana9_1.jpg",
+      "content": "",
+      "size": 1028517,
+      "lastModified": "2026-01-03T13:09:10.801Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/social/IMG_1263.jpg",
+      "content": "",
+      "size": 777847,
+      "lastModified": "2026-01-03T13:09:10.804Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:10.862Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/humans/portraits/15505968846_d7c3349d99_o.jpg",
+      "content": "",
+      "size": 1058016,
+      "lastModified": "2026-01-03T13:09:10.817Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/IMG_6429best.jpg",
+      "content": "",
+      "size": 918907,
+      "lastModified": "2026-01-03T13:09:10.820Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/5796836744_b55eec5320_o.jpg",
+      "content": "",
+      "size": 927459,
+      "lastModified": "2026-01-03T13:09:10.824Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/IMG_3206bw.jpg",
+      "content": "",
+      "size": 397305,
+      "lastModified": "2026-01-03T13:09:10.826Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/IMG_0950.jpg",
+      "content": "",
+      "size": 800632,
+      "lastModified": "2026-01-03T13:09:10.829Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/IMG_0063.jpg",
+      "content": "",
+      "size": 706254,
+      "lastModified": "2026-01-03T13:09:10.834Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/IMG_2927.jpg",
+      "content": "",
+      "size": 801416,
+      "lastModified": "2026-01-03T13:09:10.837Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/3215823253_114ed9db90_o.jpg",
+      "content": "",
+      "size": 895690,
+      "lastModified": "2026-01-03T13:09:10.844Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/gallery.yaml",
+      "content": "title: \"Portraits\"\ndescription: \"Individual portraits and character studies\"\norder: 1\n",
+      "size": 86,
+      "lastModified": "2026-01-03T14:35:42.548Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/16829268284_d477cb6f9a_o.jpg",
+      "content": "",
+      "size": 336793,
+      "lastModified": "2026-01-03T13:09:10.850Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/3114435714_b964373dc8_o.jpg",
+      "content": "",
+      "size": 973709,
+      "lastModified": "2026-01-03T13:09:10.853Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/3173097205_9ae953b973_o.jpg",
+      "content": "",
+      "size": 648165,
+      "lastModified": "2026-01-03T13:09:10.856Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/22706019080_dfec053d8c_o.jpg",
+      "content": "",
+      "size": 705163,
+      "lastModified": "2026-01-03T13:09:10.862Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/portraits/10727835586_84f0a6b20f_o.jpg",
+      "content": "",
+      "size": 830732,
+      "lastModified": "2026-01-03T13:09:10.867Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/rituals",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:10.903Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/humans/rituals/6E4A764B-4E49-4E47-8B56-ADD0BAD0F2B6_b.jpg",
+      "content": "",
+      "size": 634120,
+      "lastModified": "2026-01-03T13:09:10.873Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/rituals/IMG_0843.jpg",
+      "content": "",
+      "size": 970039,
+      "lastModified": "2026-01-03T13:09:10.878Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/rituals/gallery.yaml",
+      "content": "title: \"Rituals\"\ndescription: \"Cultural ceremonies, traditions, and rituals\"\norder: 3\n",
+      "size": 86,
+      "lastModified": "2026-01-03T13:09:10.879Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/rituals/3696195186_21c5dc914e_o.jpg",
+      "content": "",
+      "size": 1025711,
+      "lastModified": "2026-01-03T13:09:10.883Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/rituals/251533163_72039e0971_o.jpg",
+      "content": "",
+      "size": 584707,
+      "lastModified": "2026-01-03T13:09:10.885Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/rituals/IMG_0983_1.jpg",
+      "content": "",
+      "size": 945185,
+      "lastModified": "2026-01-03T13:09:10.891Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/rituals/IMG_7821.jpg",
+      "content": "",
+      "size": 1312120,
+      "lastModified": "2026-01-03T13:09:10.896Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/rituals/IMG_9013.jpg",
+      "content": "",
+      "size": 1189578,
+      "lastModified": "2026-01-03T13:09:10.902Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/humans/rituals/-_3772601311_o.jpg",
+      "content": "",
+      "size": 493399,
+      "lastModified": "2026-01-03T13:09:10.904Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:10:15.358Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/gallery.yaml",
+      "content": "title: \"Geographies\"\ndescription: \"Photography from around the world organized by location\"\norder: 3\n",
+      "size": 101,
+      "lastModified": "2026-01-03T13:09:10.905Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:10:14.615Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/america/usa",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:10:14.582Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/america/usa/gallery.yaml",
+      "content": "title: \"USA\"\ndescription: \"Photography from the United States\"\norder: 1\n",
+      "size": 72,
+      "lastModified": "2026-01-03T13:09:10.906Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/boston",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:10.922Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/america/usa/boston/gallery.yaml",
+      "content": "title: \"Boston\"\ndescription: \"Photography from Boston\"\norder: 3\n",
+      "size": 64,
+      "lastModified": "2026-01-03T13:09:10.907Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/boston/P1400187.jpg",
+      "content": "",
+      "size": 1315601,
+      "lastModified": "2026-01-03T13:09:10.914Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/boston/P1390528.jpg",
+      "content": "",
+      "size": 1241567,
+      "lastModified": "2026-01-03T13:09:10.921Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/boston/P1400259.jpg",
+      "content": "",
+      "size": 872400,
+      "lastModified": "2026-01-03T13:09:10.924Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:52:30.582Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/IMG_5378.jpg",
+      "content": "",
+      "size": 941218,
+      "lastModified": "2026-01-03T13:09:10.930Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/P1380958.jpg",
+      "content": "",
+      "size": 1002736,
+      "lastModified": "2026-01-03T13:09:10.933Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/gallery.yaml",
+      "content": "title: \"New York\"\ndescription: \"Photography from New York City\"\norder: 1\n",
+      "size": 73,
+      "lastModified": "2026-01-03T13:09:10.934Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/photos.yaml",
+      "content": "# Photo metadata for New York gallery\n# This file allows you to customize individual photo properties\n\n- filename: 3298505856_7c770576bd_o46954.jpg\n  title: \"Newyorker Cowboy\"\n  description: \"A solitary figure leans into the city, half in shadow, half in light. Dressed in denim and boots, he feels out of place and completely at home at the same time\"\n",
+      "size": 353,
+      "lastModified": "2026-01-03T14:03:53.573Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/P1390330.jpg",
+      "content": "",
+      "size": 1273400,
+      "lastModified": "2026-01-03T13:09:10.942Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/3298505856_7c770576bd_o46954.jpg",
+      "content": "",
+      "size": 906213,
+      "lastModified": "2026-01-03T13:09:10.947Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/P1390427_1.jpg",
+      "content": "",
+      "size": 507665,
+      "lastModified": "2026-01-03T13:09:10.951Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/P1390077.jpg",
+      "content": "",
+      "size": 1342004,
+      "lastModified": "2026-01-03T13:09:10.957Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/IMG_5406-best.jpg",
+      "content": "",
+      "size": 927446,
+      "lastModified": "2026-01-03T13:09:10.964Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/P1380846.jpg",
+      "content": "",
+      "size": 804241,
+      "lastModified": "2026-01-03T13:09:10.967Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/P1390067.jpg",
+      "content": "",
+      "size": 1373663,
+      "lastModified": "2026-01-03T13:09:10.978Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/P1390213.jpg",
+      "content": "",
+      "size": 1087116,
+      "lastModified": "2026-01-03T13:09:10.985Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/3310100314_f5f71518dc_o46941.jpg",
+      "content": "",
+      "size": 834793,
+      "lastModified": "2026-01-03T13:09:10.996Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/new york/P1390465_1.jpg",
+      "content": "",
+      "size": 344705,
+      "lastModified": "2026-01-03T13:09:11.002Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/san francisco",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.067Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/america/usa/san francisco/8DF2EAF0-A256-48B0-ADD6-53CFE7C17320.JPG",
+      "content": "",
+      "size": 1453810,
+      "lastModified": "2026-01-03T13:09:11.013Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/san francisco/9F3A0062-27D5-4154-BA8C-92065CD14AE6.JPG",
+      "content": "",
+      "size": 1740235,
+      "lastModified": "2026-01-03T13:09:11.022Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/san francisco/34EFA1DB-DCB8-4812-9F14-7328CA348763.JPG",
+      "content": "",
+      "size": 1159376,
+      "lastModified": "2026-01-03T13:09:11.030Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/san francisco/57F737A6-6035-47BE-A4B7-BB8D1712B9C0.JPG",
+      "content": "",
+      "size": 877722,
+      "lastModified": "2026-01-03T13:09:11.050Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/san francisco/69D139CE-131E-446E-BE96-68513ACFD3FE.JPG",
+      "content": "",
+      "size": 1192375,
+      "lastModified": "2026-01-03T13:09:11.059Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/san francisco/gallery.yaml",
+      "content": "title: \"San Francisco\"\ndescription: \"Photography from San Francisco\"\norder: 2\n",
+      "size": 78,
+      "lastModified": "2026-01-03T13:09:11.061Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/san francisco/0628268C-A35A-4027-8C9F-6D115177CFF2_2.JPG",
+      "content": "",
+      "size": 1565179,
+      "lastModified": "2026-01-03T13:09:11.067Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/usa/san francisco/751A9070-D754-44C9-AE82-1169B9735452.JPG",
+      "content": "",
+      "size": 1669926,
+      "lastModified": "2026-01-03T13:09:11.078Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/gallery.yaml",
+      "content": "title: \"America\"\ndescription: \"Photography from the Americas\"\norder: 2\n",
+      "size": 71,
+      "lastModified": "2026-01-03T13:09:11.081Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/america/mexico",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.081Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/australia",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.159Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/australia/10667795196_8b62cd046b_o.jpg",
+      "content": "",
+      "size": 968975,
+      "lastModified": "2026-01-03T13:09:11.086Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/IMG_3590_1.jpg",
+      "content": "",
+      "size": 958055,
+      "lastModified": "2026-01-03T13:09:11.090Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/IMG_2660.jpg",
+      "content": "",
+      "size": 1208784,
+      "lastModified": "2026-01-03T13:09:11.107Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/gallery.yaml",
+      "content": "title: \"Australia\"\ndescription: \"Photography from Australia\"\norder: 4\n",
+      "size": 70,
+      "lastModified": "2026-01-03T13:09:11.110Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/IMG_2756_1.jpg",
+      "content": "",
+      "size": 1059660,
+      "lastModified": "2026-01-03T13:09:11.115Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/IMG_3530b.jpg",
+      "content": "",
+      "size": 724783,
+      "lastModified": "2026-01-03T13:09:11.124Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/IMG_3599_1.jpg",
+      "content": "",
+      "size": 751382,
+      "lastModified": "2026-01-03T13:09:11.131Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/10727829134_6301465173_o.jpg",
+      "content": "",
+      "size": 1267605,
+      "lastModified": "2026-01-03T13:09:11.138Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/10745160113_637e531e19_o.jpg",
+      "content": "",
+      "size": 1148615,
+      "lastModified": "2026-01-03T13:09:11.147Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/IMG_3601_1.jpg",
+      "content": "",
+      "size": 821687,
+      "lastModified": "2026-01-03T13:09:11.150Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/10728035883_1de0565060_o.jpg",
+      "content": "",
+      "size": 1123924,
+      "lastModified": "2026-01-03T13:09:11.157Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/australia/10667678515_c9b8cd4f30_o.jpg",
+      "content": "",
+      "size": 800093,
+      "lastModified": "2026-01-03T13:09:11.163Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:10:14.773Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/asia/singapour",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.163Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/asia/gallery.yaml",
+      "content": "title: \"Asia\"\ndescription: \"Photography from Asian countries\"\norder: 3\n",
+      "size": 71,
+      "lastModified": "2026-01-03T13:09:11.164Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.476Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC00117.jpg",
+      "content": "",
+      "size": 843736,
+      "lastModified": "2026-01-03T13:09:11.167Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09709.jpg",
+      "content": "",
+      "size": 741978,
+      "lastModified": "2026-01-03T13:09:11.172Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09523.jpg",
+      "content": "",
+      "size": 1129485,
+      "lastModified": "2026-01-03T13:09:11.179Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09522.jpg",
+      "content": "",
+      "size": 704682,
+      "lastModified": "2026-01-03T13:09:11.183Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09708.jpg",
+      "content": "",
+      "size": 1007007,
+      "lastModified": "2026-01-03T13:09:11.188Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09356_1.jpg",
+      "content": "",
+      "size": 972157,
+      "lastModified": "2026-01-03T13:09:11.195Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09096.jpg",
+      "content": "",
+      "size": 931869,
+      "lastModified": "2026-01-03T13:09:11.200Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC00272.jpg",
+      "content": "",
+      "size": 1243892,
+      "lastModified": "2026-01-03T13:09:11.206Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC08798_2.jpg",
+      "content": "",
+      "size": 809898,
+      "lastModified": "2026-01-03T13:09:11.212Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09493.jpg",
+      "content": "",
+      "size": 484532,
+      "lastModified": "2026-01-03T13:09:11.214Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09095.jpg",
+      "content": "",
+      "size": 991259,
+      "lastModified": "2026-01-03T13:09:11.219Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09533.jpg",
+      "content": "",
+      "size": 999939,
+      "lastModified": "2026-01-03T13:09:11.227Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09025small.jpg",
+      "content": "",
+      "size": 570287,
+      "lastModified": "2026-01-03T13:09:11.230Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09373_1.jpg",
+      "content": "",
+      "size": 1186773,
+      "lastModified": "2026-01-03T13:09:11.236Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09541.jpg",
+      "content": "",
+      "size": 883000,
+      "lastModified": "2026-01-03T13:09:11.240Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09641b.jpg",
+      "content": "",
+      "size": 1484590,
+      "lastModified": "2026-01-03T13:09:11.249Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09186.jpg",
+      "content": "",
+      "size": 1753525,
+      "lastModified": "2026-01-03T13:09:11.255Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC00149.jpg",
+      "content": "",
+      "size": 1107225,
+      "lastModified": "2026-01-03T13:09:11.264Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09345.jpg",
+      "content": "",
+      "size": 1104936,
+      "lastModified": "2026-01-03T13:09:11.268Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09621.jpg",
+      "content": "",
+      "size": 952591,
+      "lastModified": "2026-01-03T13:09:11.271Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/gallery.yaml",
+      "content": "title: \"Japan\"\ndescription: \"Photography from Japan\"\norder: 1\n",
+      "size": 62,
+      "lastModified": "2026-01-03T13:09:11.272Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09189_1.jpg",
+      "content": "",
+      "size": 1028936,
+      "lastModified": "2026-01-03T13:09:11.279Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC08738.jpg",
+      "content": "",
+      "size": 847718,
+      "lastModified": "2026-01-03T13:09:11.282Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09426.jpg",
+      "content": "",
+      "size": 1426123,
+      "lastModified": "2026-01-03T13:09:11.290Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09022.jpg",
+      "content": "",
+      "size": 876022,
+      "lastModified": "2026-01-03T13:09:11.296Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09644_1.jpg",
+      "content": "",
+      "size": 1306534,
+      "lastModified": "2026-01-03T13:09:11.302Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09108_2.jpg",
+      "content": "",
+      "size": 878808,
+      "lastModified": "2026-01-03T13:09:11.306Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09380.jpg",
+      "content": "",
+      "size": 980697,
+      "lastModified": "2026-01-03T13:09:11.324Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09169.jpg",
+      "content": "",
+      "size": 793947,
+      "lastModified": "2026-01-03T13:09:11.338Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09182.jpg",
+      "content": "",
+      "size": 877576,
+      "lastModified": "2026-01-03T13:09:11.348Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09579.jpg",
+      "content": "",
+      "size": 857363,
+      "lastModified": "2026-01-03T13:09:11.353Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC00003_1.jpg",
+      "content": "",
+      "size": 574134,
+      "lastModified": "2026-01-03T13:09:11.354Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09164.jpg",
+      "content": "",
+      "size": 820470,
+      "lastModified": "2026-01-03T13:09:11.359Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09602.jpg",
+      "content": "",
+      "size": 1543506,
+      "lastModified": "2026-01-03T13:09:11.365Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09173.jpg",
+      "content": "",
+      "size": 744180,
+      "lastModified": "2026-01-03T13:09:11.370Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09371.jpg",
+      "content": "",
+      "size": 1141558,
+      "lastModified": "2026-01-03T13:09:11.380Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09759.jpg",
+      "content": "",
+      "size": 749894,
+      "lastModified": "2026-01-03T13:09:11.387Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09359_1.jpg",
+      "content": "",
+      "size": 1079561,
+      "lastModified": "2026-01-03T13:09:11.394Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC00224.jpg",
+      "content": "",
+      "size": 1291166,
+      "lastModified": "2026-01-03T13:09:11.401Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC00185.jpg",
+      "content": "",
+      "size": 1559858,
+      "lastModified": "2026-01-03T13:09:11.406Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09348.jpg",
+      "content": "",
+      "size": 1113700,
+      "lastModified": "2026-01-03T13:09:11.410Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09174.jpg",
+      "content": "",
+      "size": 1202652,
+      "lastModified": "2026-01-03T13:09:11.415Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09564.jpg",
+      "content": "",
+      "size": 951964,
+      "lastModified": "2026-01-03T13:09:11.419Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09202.jpg",
+      "content": "",
+      "size": 950631,
+      "lastModified": "2026-01-03T13:09:11.422Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/IMG_3956.jpg",
+      "content": "",
+      "size": 1134170,
+      "lastModified": "2026-01-03T13:09:11.430Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09106.jpg",
+      "content": "",
+      "size": 875679,
+      "lastModified": "2026-01-03T13:09:11.434Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09072.jpg",
+      "content": "",
+      "size": 1068827,
+      "lastModified": "2026-01-03T13:09:11.439Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC08807.jpg",
+      "content": "",
+      "size": 1172989,
+      "lastModified": "2026-01-03T13:09:11.444Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09517.jpg",
+      "content": "",
+      "size": 940061,
+      "lastModified": "2026-01-03T13:09:11.449Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09306.jpg",
+      "content": "",
+      "size": 908132,
+      "lastModified": "2026-01-03T13:09:11.453Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC08792_1.jpg",
+      "content": "",
+      "size": 618032,
+      "lastModified": "2026-01-03T13:09:11.455Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC00285.jpg",
+      "content": "",
+      "size": 1198147,
+      "lastModified": "2026-01-03T13:09:11.462Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC00291.jpg",
+      "content": "",
+      "size": 1550211,
+      "lastModified": "2026-01-03T13:09:11.469Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC08815.jpg",
+      "content": "",
+      "size": 1114839,
+      "lastModified": "2026-01-03T13:09:11.474Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/japan/DSC09261_1.jpg",
+      "content": "",
+      "size": 999691,
+      "lastModified": "2026-01-03T13:09:11.482Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.582Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/asia/china/20190817-DSC01497.jpg",
+      "content": "",
+      "size": 617065,
+      "lastModified": "2026-01-03T13:09:11.490Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC00713.jpg",
+      "content": "",
+      "size": 1462804,
+      "lastModified": "2026-01-03T13:09:11.496Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/20190817-DSC01537.jpg",
+      "content": "",
+      "size": 538017,
+      "lastModified": "2026-01-03T13:09:11.499Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/20190817-DSC01533-3.jpg",
+      "content": "",
+      "size": 1441592,
+      "lastModified": "2026-01-03T13:09:11.505Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC01151.jpg",
+      "content": "",
+      "size": 1732388,
+      "lastModified": "2026-01-03T13:09:11.512Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC00852.jpg",
+      "content": "",
+      "size": 906828,
+      "lastModified": "2026-01-03T13:09:11.518Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC00675.jpg",
+      "content": "",
+      "size": 1078551,
+      "lastModified": "2026-01-03T13:09:11.522Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/20190817-DSC01594.jpg",
+      "content": "",
+      "size": 965525,
+      "lastModified": "2026-01-03T13:09:11.527Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/gallery.yaml",
+      "content": "title: \"China\"\ndescription: \"Photography from China\"\norder: 2\n",
+      "size": 62,
+      "lastModified": "2026-01-03T13:09:11.528Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/20190817-DSC01420.jpg",
+      "content": "",
+      "size": 263284,
+      "lastModified": "2026-01-03T13:09:11.529Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/20190817-DSC01544.jpg",
+      "content": "",
+      "size": 1199478,
+      "lastModified": "2026-01-03T13:09:11.538Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC00825.jpg",
+      "content": "",
+      "size": 1248802,
+      "lastModified": "2026-01-03T13:09:11.546Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC01114.jpg",
+      "content": "",
+      "size": 618612,
+      "lastModified": "2026-01-03T13:09:11.548Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/20190817-DSC01402.jpg",
+      "content": "",
+      "size": 876154,
+      "lastModified": "2026-01-03T13:09:11.553Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC01573best.jpg",
+      "content": "",
+      "size": 735021,
+      "lastModified": "2026-01-03T13:09:11.556Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC00569.jpg",
+      "content": "",
+      "size": 1105899,
+      "lastModified": "2026-01-03T13:09:11.564Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC00555.jpg",
+      "content": "",
+      "size": 679638,
+      "lastModified": "2026-01-03T13:09:11.569Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC00637.jpg",
+      "content": "",
+      "size": 497155,
+      "lastModified": "2026-01-03T13:09:11.572Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC00848.jpg",
+      "content": "",
+      "size": 744527,
+      "lastModified": "2026-01-03T13:09:11.575Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/DSC01198.jpg",
+      "content": "",
+      "size": 544359,
+      "lastModified": "2026-01-03T13:09:11.581Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/china/20190817-DSC01395-2.jpg",
+      "content": "",
+      "size": 690043,
+      "lastModified": "2026-01-03T13:09:11.585Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.636Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1323.jpg",
+      "content": "",
+      "size": 672251,
+      "lastModified": "2026-01-03T13:09:11.588Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_5974.jpg",
+      "content": "",
+      "size": 984526,
+      "lastModified": "2026-01-03T13:09:11.591Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1326.jpg",
+      "content": "",
+      "size": 706631,
+      "lastModified": "2026-01-03T13:09:11.594Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_6177.jpg",
+      "content": "",
+      "size": 794937,
+      "lastModified": "2026-01-03T13:09:11.598Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/gallery.yaml",
+      "content": "title: \"Dubai\"\ndescription: \"Photography from Dubai\"\norder: 3\n",
+      "size": 62,
+      "lastModified": "2026-01-03T13:09:11.599Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1558_1.jpg",
+      "content": "",
+      "size": 1017143,
+      "lastModified": "2026-01-03T13:09:11.603Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1971.jpg",
+      "content": "",
+      "size": 998458,
+      "lastModified": "2026-01-03T13:09:11.606Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1608_1b.jpg",
+      "content": "",
+      "size": 681238,
+      "lastModified": "2026-01-03T13:09:11.609Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1997.jpg",
+      "content": "",
+      "size": 927124,
+      "lastModified": "2026-01-03T13:09:11.613Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_6551.jpg",
+      "content": "",
+      "size": 986264,
+      "lastModified": "2026-01-03T13:09:11.617Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1777.jpg",
+      "content": "",
+      "size": 1550485,
+      "lastModified": "2026-01-03T13:09:11.622Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1748.jpg",
+      "content": "",
+      "size": 662635,
+      "lastModified": "2026-01-03T13:09:11.623Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1263.jpg",
+      "content": "",
+      "size": 491485,
+      "lastModified": "2026-01-03T13:09:11.626Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/12560122625_1335f2a734_o.jpg",
+      "content": "",
+      "size": 1097851,
+      "lastModified": "2026-01-03T13:09:11.631Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1856.jpg",
+      "content": "",
+      "size": 760482,
+      "lastModified": "2026-01-03T13:09:11.635Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/dubai/IMG_1660.jpg",
+      "content": "",
+      "size": 1074109,
+      "lastModified": "2026-01-03T13:09:11.638Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/asia/thailand",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.639Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:10:15.324Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe/poland",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.639Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe/spain",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:10:15.243Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe/spain/canary islands",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.647Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe/spain/canary islands/DSC04174.jpg",
+      "content": "",
+      "size": 417285,
+      "lastModified": "2026-01-03T13:09:11.640Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/canary islands/DSC04139.jpg",
+      "content": "",
+      "size": 1093830,
+      "lastModified": "2026-01-03T13:09:11.646Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/canary islands/gallery.yaml",
+      "content": "title: \"Canary Islands\"\ndescription: \"Photography from the Canary Islands\"\norder: 4\n",
+      "size": 84,
+      "lastModified": "2026-01-03T13:09:11.647Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/canary islands/DSC04071_1.jpg",
+      "content": "",
+      "size": 727669,
+      "lastModified": "2026-01-03T13:09:11.649Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.680Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC03499_2.jpg",
+      "content": "",
+      "size": 584528,
+      "lastModified": "2026-01-03T13:09:11.652Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC03119.jpg",
+      "content": "",
+      "size": 772426,
+      "lastModified": "2026-01-03T13:09:11.653Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC02777.jpg",
+      "content": "",
+      "size": 600895,
+      "lastModified": "2026-01-03T13:09:11.655Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC02944.jpg",
+      "content": "",
+      "size": 610332,
+      "lastModified": "2026-01-03T13:09:11.657Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC03581_1.jpg",
+      "content": "",
+      "size": 706080,
+      "lastModified": "2026-01-03T13:09:11.659Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/gallery.yaml",
+      "content": "title: \"North of Spain\"\ndescription: \"Photography from northern Spain\"\norder: 3\n",
+      "size": 80,
+      "lastModified": "2026-01-03T13:09:11.660Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC02946.jpg",
+      "content": "",
+      "size": 691857,
+      "lastModified": "2026-01-03T13:09:11.662Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC02941.jpg",
+      "content": "",
+      "size": 541968,
+      "lastModified": "2026-01-03T13:09:11.665Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC03015_1.jpg",
+      "content": "",
+      "size": 486671,
+      "lastModified": "2026-01-03T13:09:11.667Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC02607.jpg",
+      "content": "",
+      "size": 733503,
+      "lastModified": "2026-01-03T13:09:11.671Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC02771_1.jpg",
+      "content": "",
+      "size": 885981,
+      "lastModified": "2026-01-03T13:09:11.675Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC03063.jpg",
+      "content": "",
+      "size": 734268,
+      "lastModified": "2026-01-03T13:09:11.680Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/north of spain/DSC02874.jpg",
+      "content": "",
+      "size": 356648,
+      "lastModified": "2026-01-03T13:09:11.682Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/gallery.yaml",
+      "content": "title: \"Spain\"\ndescription: \"Photography from Spain\"\norder: 1\n",
+      "size": 62,
+      "lastModified": "2026-01-03T13:09:11.682Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.780Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_1685.jpg",
+      "content": "",
+      "size": 971960,
+      "lastModified": "2026-01-03T13:09:11.685Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_4701.jpg",
+      "content": "",
+      "size": 1617893,
+      "lastModified": "2026-01-03T13:09:11.691Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_9787.jpg",
+      "content": "",
+      "size": 970564,
+      "lastModified": "2026-01-03T13:09:11.695Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_6703.jpg",
+      "content": "",
+      "size": 452705,
+      "lastModified": "2026-01-03T13:09:11.697Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/P1290120.jpg",
+      "content": "",
+      "size": 871716,
+      "lastModified": "2026-01-03T13:09:11.701Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/gallery.yaml",
+      "content": "title: \"Madrid\"\ndescription: \"Photography from Madrid, Spain\"\norder: 1\n",
+      "size": 71,
+      "lastModified": "2026-01-03T13:09:11.703Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/img.jpg",
+      "content": "",
+      "size": 962780,
+      "lastModified": "2026-01-03T13:09:11.716Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/3108CE4A-2F3E-4A65-AC22-67B3FC276E13.JPG",
+      "content": "",
+      "size": 1146196,
+      "lastModified": "2026-01-03T13:09:11.727Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_7466.jpg",
+      "content": "",
+      "size": 582366,
+      "lastModified": "2026-01-03T13:09:11.730Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_6750.jpg",
+      "content": "",
+      "size": 1239747,
+      "lastModified": "2026-01-03T13:09:11.733Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_5415.jpg",
+      "content": "",
+      "size": 816508,
+      "lastModified": "2026-01-03T13:09:11.737Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_7821.jpg",
+      "content": "",
+      "size": 1216247,
+      "lastModified": "2026-01-03T13:09:11.747Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_7612.jpg",
+      "content": "",
+      "size": 603057,
+      "lastModified": "2026-01-03T13:09:11.751Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_2595.jpg",
+      "content": "",
+      "size": 705298,
+      "lastModified": "2026-01-03T13:09:11.753Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_7833.jpg",
+      "content": "",
+      "size": 1078261,
+      "lastModified": "2026-01-03T13:09:11.760Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_7588.jpg",
+      "content": "",
+      "size": 973910,
+      "lastModified": "2026-01-03T13:09:11.764Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_4691.jpg",
+      "content": "",
+      "size": 695787,
+      "lastModified": "2026-01-03T13:09:11.767Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/P1080695.jpg",
+      "content": "",
+      "size": 1425787,
+      "lastModified": "2026-01-03T13:09:11.771Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_7830.jpg",
+      "content": "",
+      "size": 1149391,
+      "lastModified": "2026-01-03T13:09:11.779Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/madrid/IMG_4647.jpg",
+      "content": "",
+      "size": 845406,
+      "lastModified": "2026-01-03T13:09:11.783Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:10:15.224Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/gallery.yaml",
+      "content": "title: \"South of Spain\"\ndescription: \"Photography from Andalucía and southern Spain\"\norder: 2\n",
+      "size": 95,
+      "lastModified": "2026-01-03T13:09:11.784Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.863Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_6302.jpg",
+      "content": "",
+      "size": 883020,
+      "lastModified": "2026-01-03T13:09:11.787Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_8329.jpg",
+      "content": "",
+      "size": 838853,
+      "lastModified": "2026-01-03T13:09:11.788Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_5627.jpg",
+      "content": "",
+      "size": 871452,
+      "lastModified": "2026-01-03T13:09:11.793Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_0314.jpg",
+      "content": "",
+      "size": 1206722,
+      "lastModified": "2026-01-03T13:09:11.797Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/gallery.yaml",
+      "content": "title: \"Granada\"\ndescription: \"Photography from Granada, including the Alhambra\"\norder: 1\n",
+      "size": 90,
+      "lastModified": "2026-01-03T13:09:11.798Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/P1280427_1.jpg",
+      "content": "",
+      "size": 912989,
+      "lastModified": "2026-01-03T13:09:11.802Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/31502363611_faae72190e_o.jpg",
+      "content": "",
+      "size": 1110922,
+      "lastModified": "2026-01-03T13:09:11.807Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_0309_best.jpg",
+      "content": "",
+      "size": 1272936,
+      "lastModified": "2026-01-03T13:09:11.812Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_7303.jpg",
+      "content": "",
+      "size": 876541,
+      "lastModified": "2026-01-03T13:09:11.816Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/alhambra_pano.jpg",
+      "content": "",
+      "size": 1005233,
+      "lastModified": "2026-01-03T13:09:11.819Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/P1280672.jpg",
+      "content": "",
+      "size": 1194111,
+      "lastModified": "2026-01-03T13:09:11.825Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_6322.jpg",
+      "content": "",
+      "size": 879197,
+      "lastModified": "2026-01-03T13:09:11.831Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_9210.jpg",
+      "content": "",
+      "size": 670546,
+      "lastModified": "2026-01-03T13:09:11.836Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_4851_2.jpg",
+      "content": "",
+      "size": 1076783,
+      "lastModified": "2026-01-03T13:09:11.839Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_7204.jpg",
+      "content": "",
+      "size": 952683,
+      "lastModified": "2026-01-03T13:09:11.844Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_0146_1.jpg",
+      "content": "",
+      "size": 878718,
+      "lastModified": "2026-01-03T13:09:11.847Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_9176.jpg",
+      "content": "",
+      "size": 992847,
+      "lastModified": "2026-01-03T13:09:11.852Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_9218-best.jpg",
+      "content": "",
+      "size": 851238,
+      "lastModified": "2026-01-03T13:09:11.855Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/P1400670.jpg",
+      "content": "",
+      "size": 1310423,
+      "lastModified": "2026-01-03T13:09:11.863Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/P1400668_1.jpg",
+      "content": "",
+      "size": 1206394,
+      "lastModified": "2026-01-03T13:09:11.871Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/gallery.yaml",
+      "content": "title: \"Europe\"\ndescription: \"Photography from European countries\"\norder: 1\n",
+      "size": 76,
+      "lastModified": "2026-01-03T13:09:11.873Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.896Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom/6952736470_de209f8fc7_o.jpg",
+      "content": "",
+      "size": 516540,
+      "lastModified": "2026-01-03T13:09:11.875Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom/gallery.yaml",
+      "content": "title: \"United Kingdom\"\ndescription: \"Photography from the UK\"\norder: 2\n",
+      "size": 72,
+      "lastModified": "2026-01-03T13:09:11.876Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom/3342367588_b22bb3bc6a_o.jpg",
+      "content": "",
+      "size": 827606,
+      "lastModified": "2026-01-03T13:09:11.879Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom/P1470006b.jpg",
+      "content": "",
+      "size": 975987,
+      "lastModified": "2026-01-03T13:09:11.883Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom/3260508998_a5191c3b60_o.jpg",
+      "content": "",
+      "size": 611590,
+      "lastModified": "2026-01-03T13:09:11.884Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom/3104173507_74b2ab0db7_o47230.jpg",
+      "content": "",
+      "size": 458588,
+      "lastModified": "2026-01-03T13:09:11.886Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom/3108033418_f706559f76_o47226.jpg",
+      "content": "",
+      "size": 581519,
+      "lastModified": "2026-01-03T13:09:11.889Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom/P1460555.jpg",
+      "content": "",
+      "size": 1217652,
+      "lastModified": "2026-01-03T13:09:11.896Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom/P1470021.jpg",
+      "content": "",
+      "size": 506345,
+      "lastModified": "2026-01-03T13:09:11.899Z",
+      "isDirectory": false
+    },
+    {
+      "path": "galleries/geographies/europe/germany",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.899Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/geographies/europe/italy",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T13:09:11.900Z",
       "isDirectory": true
     },
     {
       "path": "pages",
       "content": "",
       "size": 0,
-      "lastModified": "2026-01-03T00:00:00.000Z",
+      "lastModified": "2026-01-03T09:21:08.143Z",
       "isDirectory": true
+    },
+    {
+      "path": "pages/contact",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T09:21:20.204Z",
+      "isDirectory": true
+    },
+    {
+      "path": "pages/contact/index.md",
+      "content": "---\ntitle: Contact\ndescription: Get in touch with Victoriano Izquierdo\n---\n\n# Contact\n\nI'd love to hear from you! Whether you have a question, want to collaborate, or just want to say hello, feel free to reach out.\n\n## Email\n\nThe best way to reach me is via email:\n\n📧 **hello@victoriano.me**\n\n## Social Media\n\nYou can also find me on:\n\n- [Instagram](https://instagram.com/victoriano) — Daily photos and stories\n- [Twitter](https://twitter.com/victoriano) — Thoughts and updates\n- [LinkedIn](https://linkedin.com/in/victoriano) — Professional network\n\n## Collaboration\n\nI'm open to:\n\n- **Photo projects** — Commercial and editorial work\n- **Workshops** — Teaching photography techniques\n- **Exhibitions** — Displaying my work in galleries and events\n\n## Response Time\n\nI typically respond to emails within **24-48 hours**. For urgent matters, please mention it in the subject line.\n\n---\n\n*Looking forward to connecting with you!*\n",
+      "size": 944,
+      "lastModified": "2026-01-03T10:36:39.297Z",
+      "isDirectory": false
+    },
+    {
+      "path": "pages/about",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T10:11:17.460Z",
+      "isDirectory": true
+    },
+    {
+      "path": "pages/about/index.html",
+      "content": "<div class=\"about-page\">\n  <!-- Hero Image -->\n  <div class=\"hero-image\">\n    <img src=\"/api/local-images/pages/about/hero.jpg\" alt=\"Victoriano running in the desert\" />\n  </div>\n\n  <!-- Headline -->\n  <h1 class=\"headline\">\n    1990. Born and raised in Granada, Spain. Based in Madrid. Computer Scientist. Graphext co-founder and CEO.\n  </h1>\n\n  <hr class=\"divider\" />\n\n  <!-- FAQ Section -->\n  <div class=\"three-column-section\">\n    <div class=\"section-title\">\n      <h2>FAQ</h2>\n    </div>\n    \n    <div class=\"section-content\">\n      <h3>Assignments</h3>\n      <p>\n        I am fully dedicated to <a href=\"https://graphext.com\" target=\"_blank\" rel=\"noopener\">Graphext</a>, a startup I co-founded 4 years go. We try to find hidden insights in all kind of complex datasets. But if you still think you have an interesting assignment for me, <a href=\"/contact\">please write</a>!\n      </p>\n    </div>\n    \n    <div class=\"section-content\">\n      <h3>Signed prints</h3>\n      <p>Limited series of the photos are available for purchasing.</p>\n      <p>Digital licenses for commercial use are available <a href=\"/contact\">under request</a>.</p>\n      <p>I also share <strong>free of rights</strong> some of <a href=\"https://unsplash.com/@victoriano\" target=\"_blank\" rel=\"noopener\">my photos in Unsplash</a>.</p>\n    </div>\n  </div>\n\n  <hr class=\"divider\" />\n\n  <!-- BIO Section -->\n  <div class=\"two-column-section\">\n    <div class=\"section-title\">\n      <h2>BIO</h2>\n    </div>\n    \n    <div class=\"section-content bio-content\">\n      <h3>What I have done with my life so far?</h3>\n      <p>\n        From 0 to 17 I grew up in Granada. After graduating from High School I spent a year in NY. Then I decided to move back to Spain and study Computer Science in Madrid. I lived as an exchange student in Melbourne - Australia - and Rome - Italy -, as an undergrad.\n      </p>\n      <p>\n        I have collaborated with media outlets as a freelance and worked with agencies like Getty Images, The Wideangle or Bilderberg.\n      </p>\n      <p>\n        In 2015 I started Graphext with my old-friend, Miguel, and we moved back the company to Madrid, where I am now based.\n      </p>\n    </div>\n  </div>\n\n  <hr class=\"divider\" />\n</div>\n",
+      "size": 2225,
+      "lastModified": "2026-01-03T10:22:26.574Z",
+      "isDirectory": false
+    },
+    {
+      "path": "pages/about/hero.jpg",
+      "content": "",
+      "size": 155624,
+      "lastModified": "2026-01-03T10:10:50.656Z",
+      "isDirectory": false
+    },
+    {
+      "path": "pages/about/style.css",
+      "content": ".about-page {\n  max-width: 100%;\n  margin: 0;\n  padding: 0;\n}\n\n/* Hero Image */\n.hero-image {\n  width: 100%;\n  max-width: 958px;\n  margin-top: 1.5rem;\n  margin-bottom: 2rem;\n  aspect-ratio: 2.8 / 1;\n  overflow: hidden;\n}\n\n.hero-image img {\n  width: 100%;\n  height: 100%;\n  object-fit: cover;\n  object-position: center 50%;\n  display: block;\n}\n\n/* Headline */\n.headline {\n  font-size: 1.75rem;\n  font-weight: 500;\n  line-height: 1.3;\n  margin: 0 0 2rem 0;\n  color: #1a1a1a;\n  max-width: 850px;\n}\n\n/* Dark mode */\n.dark .headline {\n  color: #f3f4f6;\n}\n\n/* Dividers */\n.divider {\n  border: none;\n  border-top: 1px solid #e5e5e5;\n  margin: 2.5rem 0;\n  max-width: 850px;\n}\n\n.dark .divider {\n  border-top-color: #374151;\n}\n\n/* Three Column Section (FAQ) */\n.three-column-section {\n  display: grid;\n  grid-template-columns: 1fr 1.5fr 1.5fr;\n  gap: 2rem;\n  max-width: 850px;\n}\n\n/* Two Column Section (BIO) */\n.two-column-section {\n  display: grid;\n  grid-template-columns: 1fr 3fr;\n  gap: 2rem;\n  max-width: 850px;\n}\n\n/* Section Title */\n.section-title h2 {\n  font-size: 1rem;\n  font-weight: 600;\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n  margin: 0;\n  color: #1a1a1a;\n}\n\n.dark .section-title h2 {\n  color: #f3f4f6;\n}\n\n/* Section Content */\n.section-content h3 {\n  font-size: 0.95rem;\n  font-weight: 600;\n  margin: 0 0 0.75rem 0;\n  color: #1a1a1a;\n}\n\n.dark .section-content h3 {\n  color: #f3f4f6;\n}\n\n.section-content p {\n  font-size: 0.9rem;\n  line-height: 1.6;\n  margin: 0 0 0.75rem 0;\n  color: #4a4a4a;\n}\n\n.dark .section-content p {\n  color: #9ca3af;\n}\n\n.section-content p:last-child {\n  margin-bottom: 0;\n}\n\n.section-content a {\n  color: #1a1a1a;\n  text-decoration: underline;\n  text-underline-offset: 2px;\n}\n\n.dark .section-content a {\n  color: #60a5fa;\n}\n\n.section-content a:hover {\n  color: #666;\n}\n\n.dark .section-content a:hover {\n  color: #93c5fd;\n}\n\n.section-content strong {\n  font-weight: 600;\n}\n\n/* Bio Content */\n.bio-content h3 {\n  font-size: 0.95rem;\n  font-weight: 600;\n  margin-bottom: 1rem;\n}\n\n/* Responsive */\n@media (max-width: 768px) {\n  .headline {\n    font-size: 1.35rem;\n  }\n\n  .three-column-section {\n    grid-template-columns: 1fr;\n    gap: 1.5rem;\n  }\n\n  .two-column-section {\n    grid-template-columns: 1fr;\n    gap: 1.5rem;\n  }\n\n  .section-title h2 {\n    margin-bottom: 0.5rem;\n  }\n}\n",
+      "size": 2320,
+      "lastModified": "2026-01-03T14:36:33.650Z",
+      "isDirectory": false
+    },
+    {
+      "path": "home.yaml",
+      "content": "# Home Page Photo Selection\n# \n# Configure which photos appear on the home page.\n# If this file is empty or missing, defaults to 4 photos per gallery.\n#\n# Format:\n# photos:\n#   - gallery: humans        # gallery slug\n#     filename: photo1.jpg   # photo filename\n#   - gallery: spaces/tokyo\n#     filename: subway.jpg\n#\n# Leave 'photos' empty or remove this file to use default selection\n\n# Uncomment and customize to handpick photos:\n# photos:\n#   - gallery: humans\n#     filename: example.jpg\n",
+      "size": 495,
+      "lastModified": "2026-01-03T10:36:39.084Z",
+      "isDirectory": false
     }
   ]
 }
