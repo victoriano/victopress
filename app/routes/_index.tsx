@@ -128,6 +128,7 @@ export default function Index() {
             src={`/api/local-images/${photo.path}`}
             alt={photo.title || photo.filename}
             aspectRatio="auto"
+            href={`/photo/${photo.gallerySlug}/${photo.filename}`}
           />
         ))}
       </PhotoGrid>
