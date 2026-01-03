@@ -18,7 +18,11 @@ export interface PhotoNavigation {
   prevPhotoUrl?: string;
   nextPhotoUrl?: string;
   thumbnailsUrl: string;
+  /** @deprecated Use title, description, year instead */
   photoInfo?: string;
+  title?: string;
+  description?: string;
+  year?: number;
   currentIndex?: number;
   totalPhotos?: number;
 }
@@ -208,11 +212,37 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
       {/* Bottom section: Photo Info + Nav */}
       {photoNav && (
         <div className="space-y-3">
-          {/* Photo Info (title/description) */}
-          {photoNav.photoInfo && (
-            <p className="text-[15px] font-bold text-black dark:text-white">
-              {photoNav.photoInfo}
-            </p>
+          {/* Photo Info - Title, Description, Year with distinct styling */}
+          {(photoNav.title || photoNav.description || photoNav.year || photoNav.photoInfo) && (
+            <div className="space-y-1">
+              {/* Title - Bold, larger */}
+              {photoNav.title && (
+                <h2 className="text-[15px] font-bold text-black dark:text-white leading-tight">
+                  {photoNav.title}
+                </h2>
+              )}
+              
+              {/* Description - Regular weight, gray */}
+              {photoNav.description && (
+                <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-snug">
+                  {photoNav.description}
+                </p>
+              )}
+              
+              {/* Year - Small, lighter gray */}
+              {photoNav.year && (
+                <p className="text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">
+                  {photoNav.year}
+                </p>
+              )}
+              
+              {/* Fallback for legacy photoInfo string */}
+              {!photoNav.title && !photoNav.description && !photoNav.year && photoNav.photoInfo && (
+                <p className="text-[15px] font-bold text-black dark:text-white">
+                  {photoNav.photoInfo}
+                </p>
+              )}
+            </div>
           )}
           
           {/* Photo counter */}
