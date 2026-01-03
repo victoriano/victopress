@@ -85,15 +85,26 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
     });
   }, [activePathSlugs]);
 
-  // Toggle expand/collapse for a specific item
+  // Toggle expand/collapse for a specific item (accordion behavior at root level)
   const toggleExpanded = (slug: string) => {
     setExpandedItems((prev) => {
       if (prev.includes(slug)) {
         // Close this item and all its descendants
         return prev.filter(s => !s.startsWith(slug));
       } else {
-        // Open this item
-        return [...prev, slug];
+        // Open this item - close siblings at root level (accordion)
+        const isRootLevel = !slug.includes("/");
+        if (isRootLevel) {
+          // Close all other root-level items and their descendants
+          const rootSlugs = navigation.map(n => n.slug);
+          const filtered = prev.filter(s => {
+            const sRoot = s.split("/")[0];
+            return !rootSlugs.includes(sRoot) || sRoot === slug.split("/")[0];
+          });
+          return [...filtered, slug];
+        } else {
+          return [...prev, slug];
+        }
       }
     });
   };
