@@ -577,6 +577,9 @@ export default function AdminSetup() {
           {step === "complete" && (
             <CompleteStep 
               needsRedeploy={bucketCreated && !data.storageConfigured}
+              deploymentTriggered={deploymentTriggered}
+              isLoading={isLoading}
+              onTriggerDeployment={triggerDeployment}
               onFinish={() => navigate("/admin")} 
             />
           )}
@@ -1397,7 +1400,82 @@ wrangler secret put ADMIN_PASSWORD`}
   );
 }
 
-function CompleteStep({ needsRedeploy, onFinish }: { needsRedeploy: boolean; onFinish: () => void }) {
+function CompleteStep({ 
+  needsRedeploy, 
+  deploymentTriggered,
+  isLoading,
+  onTriggerDeployment,
+  onFinish 
+}: { 
+  needsRedeploy: boolean;
+  deploymentTriggered: boolean;
+  isLoading: boolean;
+  onTriggerDeployment: () => void;
+  onFinish: () => void;
+}) {
+  // Auto-refresh countdown after deployment is triggered
+  const [countdown, setCountdown] = useState(90);
+  
+  useEffect(() => {
+    if (deploymentTriggered) {
+      const interval = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            window.location.reload();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [deploymentTriggered]);
+
+  // Show deployment in progress screen
+  if (deploymentTriggered) {
+    return (
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-full mb-6">
+          <svg className="w-10 h-10 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-4">🚀 Deploying Your Site!</h2>
+        <p className="text-blue-300 mb-6">
+          Your site is being redeployed with the new R2 configuration.
+          <br />
+          This usually takes <strong>1-2 minutes</strong>.
+        </p>
+        
+        <div className="bg-gray-900/50 rounded-lg p-4 mb-6 text-left max-w-md mx-auto">
+          <p className="text-gray-300 text-sm font-medium mb-2">What happens next:</p>
+          <ol className="text-gray-400 text-sm space-y-1 list-decimal list-inside">
+            <li>This page will become unavailable shortly</li>
+            <li>Wait for the deployment to complete</li>
+            <li>Page will auto-refresh and redirect to admin</li>
+          </ol>
+        </div>
+        
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 text-sm">Auto-refresh in</span>
+            <span className="px-3 py-1 bg-gray-800 rounded text-blue-400 font-mono">
+              {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
+            </span>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-blue-400 hover:text-blue-300 text-sm underline"
+          >
+            Refresh now
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="text-center">
       <div className="text-6xl mb-6">🚀</div>
@@ -1408,12 +1486,18 @@ function CompleteStep({ needsRedeploy, onFinish }: { needsRedeploy: boolean; onF
           <p className="text-gray-300">
             Your R2 bucket has been created and configured!
           </p>
-          <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 text-left">
+          <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4">
             <p className="text-yellow-200 font-medium mb-2">⚠️ One More Step</p>
-            <p className="text-yellow-300/80 text-sm">
-              Trigger a new deployment to activate the R2 binding. This happens automatically on your next push,
-              or you can trigger it manually from the Cloudflare Dashboard.
+            <p className="text-yellow-300/80 text-sm mb-4">
+              Trigger a deployment to activate the R2 binding. Your site will be unavailable for ~1-2 minutes.
             </p>
+            <button
+              onClick={onTriggerDeployment}
+              disabled={isLoading}
+              className="px-6 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+            >
+              {isLoading ? "Deploying..." : "🚀 Trigger Redeploy Now"}
+            </button>
           </div>
         </div>
       ) : (
