@@ -4,7 +4,7 @@
  * Layout for the CMS admin panel with sidebar and header.
  */
 
-import { Link, NavLink, useLocation } from "@remix-run/react";
+import { Link, NavLink, Form } from "@remix-run/react";
 import { ThemeToggle } from "./ThemeToggle";
 import { DemoModeBanner, DemoModeIndicator } from "./DemoModeBanner";
 
@@ -67,7 +67,16 @@ export function AdminLayout({ children, username, isDemoMode = false }: AdminLay
               <UserIcon />
               <span>{username || "Admin"}</span>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <a
+                href="/admin/logout"
+                className="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+                title="Sign out"
+              >
+                <LogoutIcon />
+              </a>
+            </div>
           </div>
         </div>
       </aside>
@@ -161,6 +170,13 @@ function MobileMenu({ username }: { username?: string }) {
       >
         <UploadIcon />
       </Link>
+      <a
+        href="/admin/logout"
+        className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+        title="Sign out"
+      >
+        <LogoutIcon />
+      </a>
     </div>
   );
 }
@@ -211,6 +227,14 @@ function UserIcon() {
   return (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
     </svg>
   );
 }

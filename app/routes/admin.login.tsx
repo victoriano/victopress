@@ -22,14 +22,17 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   
   // Check if already authenticated via cookie
   const cookieHeader = request.headers.get("Cookie");
-  if (cookieHeader?.includes("admin_auth=")) {
-    // Verify the cookie
+  if (cookieHeader) {
     const match = cookieHeader.match(/admin_auth=([^;]+)/);
     if (match) {
       const token = match[1];
-      const expectedToken = btoa(`${credentials.username}:${credentials.password}`);
-      if (token === expectedToken) {
-        return redirect("/admin");
+      try {
+        const expectedToken = btoa(`${credentials.username}:${credentials.password}`);
+        if (token === expectedToken) {
+          return redirect("/admin");
+        }
+      } catch {
+        // Invalid token format
       }
     }
   }
@@ -54,9 +57,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
     // Create a simple auth token (in production, use proper session management)
     const token = btoa(`${username}:${password}`);
     
+    // Use Path=/ so cookie works for all admin routes
     return redirect(redirectTo, {
       headers: {
-        "Set-Cookie": `admin_auth=${token}; Path=/admin; HttpOnly; SameSite=Lax; Max-Age=86400`,
+        "Set-Cookie": `admin_auth=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
       },
     });
   }
