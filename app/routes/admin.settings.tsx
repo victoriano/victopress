@@ -128,8 +128,61 @@ export default function AdminSettings() {
   const isTestingStorage = fetcher.state !== "idle";
   const testResult = fetcher.data?.testResult;
 
+  // Seeding state
+  const [seedingStatus, setSeedingStatus] = useState<{
+    isSeeding: boolean;
+    progress?: { uploaded: number; skipped: number; failed: number; total: number };
+    error?: string;
+    success?: boolean;
+    message?: string;
+  }>({ isSeeding: false });
+
   const runStorageTest = () => {
     fetcher.submit({}, { method: "POST" });
+  };
+
+  const seedContent = async () => {
+    setSeedingStatus({ isSeeding: true });
+    
+    try {
+      const response = await fetch("/api/admin.seed", {
+        method: "POST",
+        body: new URLSearchParams({
+          action: "seed",
+          skipExisting: "true",
+        }),
+        credentials: "include",
+      });
+      
+      const result = await response.json() as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+        results?: { uploaded: number; skipped: number; failed: number; total: number };
+      };
+      
+      if (result.success) {
+        setSeedingStatus({
+          isSeeding: false,
+          success: true,
+          message: result.message,
+          progress: result.results,
+        });
+      } else {
+        setSeedingStatus({
+          isSeeding: false,
+          success: false,
+          error: result.error || "Seeding failed",
+          progress: result.results,
+        });
+      }
+    } catch (error) {
+      setSeedingStatus({
+        isSeeding: false,
+        success: false,
+        error: error instanceof Error ? error.message : "Network error",
+      });
+    }
   };
 
   return (
@@ -287,6 +340,103 @@ export default function AdminSettings() {
             </div>
           </div>
         </Section>
+
+        {/* Content Seeding */}
+        {storageConfig.isR2 && (
+          <Section 
+            title="Sample Content" 
+            icon={<DownloadIcon />}
+          >
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Download sample galleries from the VictoPress GitHub repository to your R2 bucket.
+                This includes ~250 photos organized into demo galleries.
+              </p>
+
+              {/* Seeding Progress */}
+              {seedingStatus.isSeeding && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <LoadingSpinner />
+                    <div>
+                      <p className="text-blue-800 dark:text-blue-200 font-medium">Seeding content from GitHub...</p>
+                      <p className="text-blue-600 dark:text-blue-400 text-sm mt-1">
+                        This may take a few minutes (~220 MB of images).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Success Result */}
+              {seedingStatus.success && seedingStatus.message && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                  <div className="flex gap-3">
+                    <CheckIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-green-800 dark:text-green-200 font-medium">Content seeded successfully!</p>
+                      <p className="text-green-600 dark:text-green-400 text-sm mt-1">{seedingStatus.message}</p>
+                      {seedingStatus.progress && (
+                        <div className="mt-3 flex gap-4 text-xs">
+                          <span className="text-green-600 dark:text-green-400">
+                            ✓ {seedingStatus.progress.uploaded} uploaded
+                          </span>
+                          {seedingStatus.progress.skipped > 0 && (
+                            <span className="text-gray-500">
+                              ○ {seedingStatus.progress.skipped} skipped
+                            </span>
+                          )}
+                          {seedingStatus.progress.failed > 0 && (
+                            <span className="text-red-600 dark:text-red-400">
+                              ✗ {seedingStatus.progress.failed} failed
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Result */}
+              {seedingStatus.error && !seedingStatus.success && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                  <div className="flex gap-3">
+                    <ErrorIcon className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-red-800 dark:text-red-200 font-medium">Seeding failed</p>
+                      <p className="text-red-600 dark:text-red-400 text-sm mt-1">{seedingStatus.error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Seed Button */}
+              <div className="flex items-center justify-between pt-2">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Existing files will be skipped
+                </div>
+                <button
+                  onClick={seedContent}
+                  disabled={seedingStatus.isSeeding}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                >
+                  {seedingStatus.isSeeding ? (
+                    <>
+                      <LoadingSpinner />
+                      Seeding...
+                    </>
+                  ) : (
+                    <>
+                      <DownloadIcon />
+                      Seed Sample Content
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </Section>
+        )}
 
         {/* Image Optimization */}
         <Section title="Image Optimization" icon={<ImageIcon />}>
@@ -551,6 +701,14 @@ function TestIcon() {
   return (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
     </svg>
   );
 }
