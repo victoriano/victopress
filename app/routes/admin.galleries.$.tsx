@@ -30,12 +30,33 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     throw new Response("Gallery not found", { status: 404 });
   }
   
-  return json({ username, gallery });
+  // Find parent gallery (if this is a nested gallery)
+  const slugParts = slug.split("/");
+  let parentGallery = null;
+  if (slugParts.length > 1) {
+    const parentSlug = slugParts.slice(0, -1).join("/");
+    parentGallery = galleries.find((g) => g.slug === parentSlug) || {
+      slug: parentSlug,
+      title: slugParts[slugParts.length - 2]
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" "),
+      isVirtual: true,
+    };
+  }
+  
+  // Find child galleries
+  const childGalleries = galleries
+    .filter((g) => g.slug.startsWith(slug + "/") && !g.slug.slice(slug.length + 1).includes("/"))
+    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  
+  return json({ username, gallery, parentGallery, childGalleries, allGalleries: galleries });
 }
 
 export default function AdminGalleryDetail() {
-  const { username, gallery } = useLoaderData<typeof loader>();
+  const { username, gallery, parentGallery, childGalleries } = useLoaderData<typeof loader>();
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
 
   const togglePhoto = (photoId: string) => {
     setSelectedPhotos((prev) =>
@@ -59,12 +80,30 @@ export default function AdminGalleryDetail() {
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+            {/* Breadcrumb with parent galleries */}
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2 flex-wrap">
               <Link to="/admin/galleries" className="hover:text-gray-700 dark:hover:text-gray-300">
                 Galleries
               </Link>
-              <span>/</span>
-              <span className="text-gray-900 dark:text-white">{gallery.title}</span>
+              {gallery.slug.split("/").map((part, index, arr) => {
+                const partialSlug = arr.slice(0, index + 1).join("/");
+                const isLast = index === arr.length - 1;
+                return (
+                  <span key={partialSlug} className="flex items-center gap-2">
+                    <span>/</span>
+                    {isLast ? (
+                      <span className="text-gray-900 dark:text-white">{gallery.title}</span>
+                    ) : (
+                      <Link 
+                        to={`/admin/galleries/${partialSlug}`}
+                        className="hover:text-gray-700 dark:hover:text-gray-300"
+                      >
+                        {part.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                      </Link>
+                    )}
+                  </span>
+                );
+              })}
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{gallery.title}</h1>
             {gallery.description && (
@@ -83,7 +122,12 @@ export default function AdminGalleryDetail() {
             </Link>
             <button
               type="button"
-              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
+              onClick={() => setShowSettings(!showSettings)}
+              className={`inline-flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm ${
+                showSettings 
+                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                  : "border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              }`}
             >
               <SettingsIcon />
               Settings
@@ -91,29 +135,83 @@ export default function AdminGalleryDetail() {
           </div>
         </div>
 
-        {/* Gallery Info */}
-        <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-4 mb-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Slug</span>
-              <p className="font-medium text-gray-900 dark:text-white">/{gallery.slug}</p>
+        {/* Settings Panel (collapsible) */}
+        {showSettings && (
+          <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-4 mb-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-4">Gallery Settings</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <label className="block text-gray-500 dark:text-gray-400 mb-1">Title</label>
+                <input 
+                  type="text" 
+                  defaultValue={gallery.title}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block text-gray-500 dark:text-gray-400 mb-1">Order</label>
+                <input 
+                  type="number" 
+                  defaultValue={gallery.order ?? ""}
+                  placeholder="Not set"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
+                  readOnly
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-gray-500 dark:text-gray-400 mb-1">Description</label>
+                <textarea 
+                  defaultValue={gallery.description || ""}
+                  placeholder="No description"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
+                  rows={2}
+                  readOnly
+                />
+              </div>
             </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Photos</span>
-              <p className="font-medium text-gray-900 dark:text-white">{gallery.photoCount}</p>
-            </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Order</span>
-              <p className="font-medium text-gray-900 dark:text-white">{gallery.order ?? "Not set"}</p>
-            </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Status</span>
-              <p className="font-medium text-gray-900 dark:text-white">
-                {gallery.private ? "Private" : gallery.password ? "Protected" : "Public"}
-              </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">
+              Edit <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">content/{gallery.path}/gallery.yaml</code> to change settings
+            </p>
+          </div>
+        )}
+
+        {/* Gallery Info Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <InfoCard label="Photos" value={gallery.photoCount.toString()} />
+          <InfoCard label="Order" value={gallery.order?.toString() ?? "—"} />
+          <InfoCard 
+            label="Status" 
+            value={gallery.private ? "Private" : gallery.password ? "Protected" : "Public"} 
+            variant={gallery.private ? "warning" : gallery.password ? "info" : "success"}
+          />
+          <InfoCard 
+            label="Parent" 
+            value={parentGallery ? parentGallery.title : "Root"}
+            href={parentGallery ? `/admin/galleries/${parentGallery.slug}` : undefined}
+          />
+          <InfoCard label="Children" value={childGalleries.length.toString()} />
+        </div>
+
+        {/* Child Galleries */}
+        {childGalleries.length > 0 && (
+          <div className="mb-6">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-3">Child Galleries</h3>
+            <div className="flex flex-wrap gap-2">
+              {childGalleries.map((child: any) => (
+                <Link
+                  key={child.slug}
+                  to={`/admin/galleries/${child.slug}`}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg hover:border-gray-300 dark:hover:border-gray-700 transition-colors text-sm"
+                >
+                  <FolderIcon />
+                  <span className="font-medium text-gray-900 dark:text-white">{child.title}</span>
+                  <span className="text-gray-500 dark:text-gray-400">({child.photoCount})</span>
+                </Link>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Toolbar */}
         <div className="flex items-center justify-between mb-4">
@@ -279,4 +377,48 @@ function CheckIcon() {
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </svg>
   );
+}
+
+function FolderIcon() {
+  return (
+    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+    </svg>
+  );
+}
+
+function InfoCard({ 
+  label, 
+  value, 
+  variant = "default",
+  href
+}: { 
+  label: string; 
+  value: string; 
+  variant?: "default" | "success" | "warning" | "info";
+  href?: string;
+}) {
+  const variantColors = {
+    default: "text-gray-900 dark:text-white",
+    success: "text-green-600 dark:text-green-400",
+    warning: "text-yellow-600 dark:text-yellow-400",
+    info: "text-blue-600 dark:text-blue-400",
+  };
+
+  const content = (
+    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+      <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">{label}</span>
+      <p className={`font-semibold text-lg mt-1 ${variantColors[variant]}`}>{value}</p>
+    </div>
+  );
+
+  if (href) {
+    return (
+      <Link to={href} className="block hover:ring-2 hover:ring-blue-500 rounded-xl transition-shadow">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }
