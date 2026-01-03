@@ -23,36 +23,46 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
-  // Find which parent gallery should be expanded based on current path
-  const activeParentSlug = useMemo(() => {
-    for (const item of navigation) {
-      if (item.children && item.children.length > 0) {
-        if (
-          location.pathname === item.path ||
-          location.pathname.startsWith(item.path + "/") ||
-          item.children.some(
-            (child) =>
-              location.pathname === child.path ||
-              location.pathname.startsWith(child.path + "/")
-          )
-        ) {
-          return item.slug;
+  // Find all slugs in the active path that should be expanded
+  const activePathSlugs = useMemo(() => {
+    const slugs: string[] = [];
+    
+    const findPath = (items: NavItem[], path: string[]): boolean => {
+      for (const item of items) {
+        const currentPath = [...path, item.slug];
+        
+        if (location.pathname === item.path || location.pathname.startsWith(item.path + "/")) {
+          slugs.push(...currentPath);
+          
+          if (item.children && item.children.length > 0) {
+            findPath(item.children, currentPath);
+          }
+          return true;
+        }
+        
+        if (item.children && item.children.length > 0) {
+          if (findPath(item.children, currentPath)) {
+            return true;
+          }
         }
       }
-    }
-    return null;
+      return false;
+    };
+    
+    findPath(navigation, []);
+    return slugs;
   }, [location.pathname, navigation]);
 
-  const [expandedItems, setExpandedItems] = useState<string[]>(() =>
-    activeParentSlug ? [activeParentSlug] : []
-  );
+  const [expandedItems, setExpandedItems] = useState<string[]>(() => activePathSlugs);
 
   // Update expanded items when route changes
   useEffect(() => {
-    if (activeParentSlug && !expandedItems.includes(activeParentSlug)) {
-      setExpandedItems([activeParentSlug]);
-    }
-  }, [activeParentSlug]);
+    setExpandedItems((prev) => {
+      const newExpanded = new Set(prev);
+      activePathSlugs.forEach(slug => newExpanded.add(slug));
+      return Array.from(newExpanded);
+    });
+  }, [activePathSlugs]);
 
   // Prevent background scrolling when the menu is open
   useEffect(() => {
@@ -64,15 +74,19 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
     };
   }, [isOpen]);
 
-  // Toggle expand/collapse - accordion behavior (only one at a time)
+  // Toggle expand/collapse for a specific item
   const toggleExpanded = (slug: string) => {
     setExpandedItems((prev) => {
       if (prev.includes(slug)) {
-        return activeParentSlug === slug ? [slug] : [];
+        return prev.filter(s => !s.startsWith(slug));
       } else {
-        return [slug];
+        return [...prev, slug];
       }
     });
+  };
+  
+  const collapseAll = () => {
+    setExpandedItems([]);
   };
 
   return (
@@ -119,10 +133,11 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
                 key={item.slug}
                 item={item}
                 currentPath={location.pathname}
-                isExpanded={expandedItems.includes(item.slug)}
-                onToggle={() => toggleExpanded(item.slug)}
-                onCollapse={() => setExpandedItems([])}
+                expandedItems={expandedItems}
+                onToggle={toggleExpanded}
+                onCollapse={collapseAll}
                 onNavigate={() => setIsOpen(false)}
+                depth={0}
               />
             ))}
 
@@ -189,71 +204,78 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
 function MobileNavSection({
   item,
   currentPath,
-  isExpanded,
+  expandedItems,
   onToggle,
   onCollapse,
   onNavigate,
+  depth,
 }: {
   item: NavItem;
   currentPath: string;
-  isExpanded: boolean;
-  onToggle: () => void;
+  expandedItems: string[];
+  onToggle: (slug: string) => void;
   onCollapse: () => void;
   onNavigate: () => void;
+  depth: number;
 }) {
   const navigate = useNavigate();
   const hasChildren = item.children && item.children.length > 0;
-  const isActive = currentPath === item.path || currentPath.startsWith(item.path + "/");
+  const isExpanded = expandedItems.includes(item.slug);
   const isExactMatch = currentPath === item.path;
+  const isInPath = currentPath === item.path || currentPath.startsWith(item.path + "/");
 
-  const handleParentClick = (e: React.MouseEvent) => {
-    if (hasChildren && isExpanded) {
-      // Already expanded - collapse and go to home
-      e.preventDefault();
-      onCollapse();
-      navigate("/");
-      onNavigate();
-    } else if (hasChildren) {
-      // Has children but not expanded - expand (navigation happens via Link)
-      onToggle();
-      onNavigate();
+  const handleClick = (e: React.MouseEvent) => {
+    if (hasChildren) {
+      if (isExpanded && depth === 0) {
+        // Top-level expanded item clicked - collapse all and go home
+        e.preventDefault();
+        onCollapse();
+        navigate("/");
+        onNavigate();
+      } else if (!isExpanded) {
+        // Expand this item (navigation happens via Link)
+        onToggle(item.slug);
+        onNavigate();
+      } else {
+        // Already expanded, just navigate
+        onNavigate();
+      }
     } else {
-      // No children - just navigate
       onNavigate();
     }
+  };
+
+  // Determine text color based on state
+  const getTextColor = () => {
+    if (isExactMatch) {
+      return "text-black dark:text-white font-bold";
+    }
+    if (isInPath && hasChildren && isExpanded) {
+      return "text-gray-400";
+    }
+    if (isInPath) {
+      return "text-black dark:text-white font-bold";
+    }
+    return depth > 0 ? "text-gray-400" : "text-black dark:text-white";
   };
 
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-1">
-        {hasChildren ? (
-          <Link
-            to={item.path}
-            onClick={handleParentClick}
-            className={`
-              text-[15px] font-medium leading-[24px] transition-colors
-              ${isExpanded && !isExactMatch ? "text-gray-400" : "text-black dark:text-white"}
-              hover:text-black dark:hover:text-white
-            `}
-          >
-            {item.title}
-          </Link>
-        ) : (
-          <Link
-            to={item.path}
-            onClick={onNavigate}
-            className={`
-              block text-[15px] font-medium leading-[24px] transition-colors
-              ${isActive ? "text-black dark:text-white" : "text-black dark:text-gray-100"}
-              hover:text-black dark:hover:text-white
-            `}
-          >
-            {item.title}
-          </Link>
-        )}
+        <Link
+          to={item.path}
+          onClick={handleClick}
+          className={`
+            text-[15px] font-medium leading-[24px] transition-colors
+            ${getTextColor()}
+            hover:text-black dark:hover:text-white
+          `}
+        >
+          {item.title}
+        </Link>
         {hasChildren && (
           <button
-            onClick={onToggle}
+            onClick={() => onToggle(item.slug)}
             className="p-1 text-gray-400"
             aria-label={isExpanded ? "Collapse" : "Expand"}
           >
@@ -262,26 +284,21 @@ function MobileNavSection({
         )}
       </div>
 
-      {/* Children */}
+      {/* Children - recursively render when expanded */}
       {hasChildren && isExpanded && (
         <div className="pl-4 space-y-1">
-          {item.children!.map((child) => {
-            const isChildActive = currentPath === child.path || currentPath.startsWith(child.path + "/");
-            return (
-              <Link
-                key={child.slug}
-                to={child.path}
-                onClick={onNavigate}
-                className={`
-                  block text-[15px] leading-[24px] transition-colors
-                  ${isChildActive ? "text-black dark:text-white font-bold" : "text-gray-400"}
-                  hover:text-black dark:hover:text-white
-                `}
-              >
-                {child.title}
-              </Link>
-            );
-          })}
+          {item.children!.map((child) => (
+            <MobileNavSection
+              key={child.slug}
+              item={child}
+              currentPath={currentPath}
+              expandedItems={expandedItems}
+              onToggle={onToggle}
+              onCollapse={onCollapse}
+              onNavigate={onNavigate}
+              depth={depth + 1}
+            />
+          ))}
         </div>
       )}
     </div>

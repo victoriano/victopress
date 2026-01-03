@@ -38,50 +38,69 @@ interface SidebarProps {
 export function Sidebar({ siteName, navigation, socialLinks, photoNav }: SidebarProps) {
   const location = useLocation();
   
-  // Find which parent gallery should be expanded based on current path
-  const activeParentSlug = useMemo(() => {
-    for (const item of navigation) {
-      if (item.children && item.children.length > 0) {
-        // Check if current path matches this parent or any of its children
-        if (
-          location.pathname === item.path ||
-          location.pathname.startsWith(item.path + "/") ||
-          item.children.some(
-            (child) =>
-              location.pathname === child.path ||
-              location.pathname.startsWith(child.path + "/")
-          )
-        ) {
-          return item.slug;
+  // Find all slugs in the active path that should be expanded
+  const activePathSlugs = useMemo(() => {
+    const slugs: string[] = [];
+    
+    // Recursively find the path to current location
+    const findPath = (items: NavItem[], path: string[]): boolean => {
+      for (const item of items) {
+        const currentPath = [...path, item.slug];
+        
+        if (location.pathname === item.path || location.pathname.startsWith(item.path + "/")) {
+          // Add all slugs in the path
+          slugs.push(...currentPath);
+          
+          // Continue searching in children for deeper match
+          if (item.children && item.children.length > 0) {
+            findPath(item.children, currentPath);
+          }
+          return true;
+        }
+        
+        // Search children
+        if (item.children && item.children.length > 0) {
+          if (findPath(item.children, currentPath)) {
+            return true;
+          }
         }
       }
-    }
-    return null;
+      return false;
+    };
+    
+    findPath(navigation, []);
+    return slugs;
   }, [location.pathname, navigation]);
 
-  // Initialize expanded state with the active parent (if any)
-  const [expandedItems, setExpandedItems] = useState<string[]>(() => 
-    activeParentSlug ? [activeParentSlug] : []
-  );
+  // Initialize expanded state with the active path
+  const [expandedItems, setExpandedItems] = useState<string[]>(() => activePathSlugs);
 
-  // Update expanded items when route changes to a different parent gallery
+  // Update expanded items when route changes
   useEffect(() => {
-    if (activeParentSlug && !expandedItems.includes(activeParentSlug)) {
-      setExpandedItems([activeParentSlug]);
-    }
-  }, [activeParentSlug]);
+    // Expand all items in the active path
+    setExpandedItems((prev) => {
+      const newExpanded = new Set(prev);
+      activePathSlugs.forEach(slug => newExpanded.add(slug));
+      return Array.from(newExpanded);
+    });
+  }, [activePathSlugs]);
 
-  // Toggle expand/collapse - accordion behavior (only one at a time)
+  // Toggle expand/collapse for a specific item
   const toggleExpanded = (slug: string) => {
     setExpandedItems((prev) => {
       if (prev.includes(slug)) {
-        // Close if already open (but only if not the active parent)
-        return activeParentSlug === slug ? [slug] : [];
+        // Close this item and all its descendants
+        return prev.filter(s => !s.startsWith(slug));
       } else {
-        // Open this one, close all others (accordion)
-        return [slug];
+        // Open this item
+        return [...prev, slug];
       }
     });
+  };
+  
+  // Collapse all and go home
+  const collapseAll = () => {
+    setExpandedItems([]);
   };
 
   return (
@@ -105,9 +124,10 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
               key={item.slug}
               item={item}
               currentPath={location.pathname}
-              isExpanded={expandedItems.includes(item.slug)}
-              onToggle={() => toggleExpanded(item.slug)}
-              onCollapse={() => setExpandedItems([])}
+              expandedItems={expandedItems}
+              onToggle={toggleExpanded}
+              onCollapse={collapseAll}
+              depth={0}
             />
           ))}
 
@@ -223,112 +243,97 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
 function NavSection({
   item,
   currentPath,
-  isExpanded,
+  expandedItems,
   onToggle,
   onCollapse,
+  depth,
 }: {
   item: NavItem;
   currentPath: string;
-  isExpanded: boolean;
-  onToggle: () => void;
+  expandedItems: string[];
+  onToggle: (slug: string) => void;
   onCollapse: () => void;
+  depth: number;
 }) {
   const navigate = useNavigate();
   const hasChildren = item.children && item.children.length > 0;
-  const isActive =
-    currentPath === item.path ||
-    currentPath.startsWith(item.path + "/") ||
-    item.children?.some(
-      (child) =>
-        currentPath === child.path || currentPath.startsWith(child.path + "/")
-    );
-  
-  // Check if we're exactly on this parent path (not a child)
+  const isExpanded = expandedItems.includes(item.slug);
   const isExactMatch = currentPath === item.path;
+  const isInPath = currentPath === item.path || currentPath.startsWith(item.path + "/");
 
-  const handleParentClick = (e: React.MouseEvent) => {
-    if (isExpanded) {
-      // Already expanded - collapse and go to home
-      e.preventDefault();
-      onCollapse();
-      navigate("/");
-    } else {
-      // Not expanded - expand (navigation happens via Link)
-      onToggle();
+  const handleClick = (e: React.MouseEvent) => {
+    if (hasChildren) {
+      if (isExpanded && depth === 0) {
+        // Top-level expanded item clicked - collapse all and go home
+        e.preventDefault();
+        onCollapse();
+        navigate("/");
+      } else if (!isExpanded) {
+        // Expand this item (navigation happens via Link)
+        onToggle(item.slug);
+      }
+      // If expanded and not top-level, just navigate (don't collapse)
     }
+  };
+
+  // Determine text color based on state
+  const getTextColor = () => {
+    if (isExactMatch) {
+      return "text-black dark:text-white font-bold";
+    }
+    if (isInPath && hasChildren && isExpanded) {
+      return "text-gray-400";
+    }
+    if (isInPath) {
+      return "text-black dark:text-white font-bold";
+    }
+    return depth > 0 ? "text-gray-400" : "text-black dark:text-white";
   };
 
   return (
     <div className="space-y-1">
       {hasChildren ? (
-        // Parent with children - navigates AND expands/collapses
         <Link
           to={item.path}
-          onClick={handleParentClick}
+          onClick={handleClick}
           className={`
             block text-[15px] font-medium leading-[24px] transition-colors text-left w-full
-            ${isExpanded && !isExactMatch ? "text-gray-400" : "text-black dark:text-white"}
+            ${getTextColor()}
             hover:text-black dark:hover:text-white
           `}
         >
           {item.title}
         </Link>
       ) : (
-        // No children - regular link
-        <NavLink
-          href={item.path}
-          currentPath={currentPath}
+        <Link
+          to={item.path}
+          className={`
+            block text-[15px] leading-[24px] transition-colors
+            ${isInPath ? "text-black dark:text-white font-bold" : "text-gray-400"}
+            hover:text-black dark:hover:text-white
+          `}
         >
           {item.title}
-        </NavLink>
+        </Link>
       )}
 
-      {/* Children - only show when expanded */}
+      {/* Children - recursively render when expanded */}
       {hasChildren && isExpanded && (
         <div className="pl-4 space-y-1">
           {item.children!.map((child) => (
-            <NavLink
+            <NavSection
               key={child.slug}
-              href={child.path}
+              item={child}
               currentPath={currentPath}
-              isChild
-            >
-              {child.title}
-            </NavLink>
+              expandedItems={expandedItems}
+              onToggle={onToggle}
+              onCollapse={onCollapse}
+              depth={depth + 1}
+            />
           ))}
         </div>
       )}
     </div>
-  );
-}
-
-function NavLink({
-  href,
-  currentPath,
-  isChild,
-  children,
-}: {
-  href: string;
-  currentPath: string;
-  isChild?: boolean;
-  children: React.ReactNode;
-}) {
-  const isActive = currentPath === href || currentPath.startsWith(href + "/");
-
-  return (
-    <Link
-      to={href}
-      className={`
-        block transition-colors
-        ${isChild 
-          ? `${isActive ? "text-black font-bold" : "text-gray-400"} text-[15px] leading-[24px]` 
-          : `text-[15px] font-medium leading-[24px] ${isActive ? "text-black dark:text-white" : "text-black dark:text-gray-100"}`
-        }
-        hover:text-black dark:hover:text-white
-      `}
-    >
-      {children}
-    </Link>
   );
 }
 
