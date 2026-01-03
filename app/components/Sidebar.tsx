@@ -6,6 +6,7 @@
 
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useState, useEffect, useMemo } from "react";
+import { ThemeToggle } from "./ThemeToggle";
 
 export interface NavItem {
   title: string;
@@ -169,44 +170,44 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
             </StaticNavLink>
           </div>
 
-          {/* Social Links - below Contact */}
-          {socialLinks && (
-            <div className="flex gap-4 pt-4">
-              {socialLinks.instagram && (
-                <a
-                  href={socialLinks.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
-                  aria-label="Instagram"
-                >
-                  <InstagramIcon />
-                </a>
-              )}
-              {socialLinks.twitter && (
-                <a
-                  href={socialLinks.twitter}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
-                  aria-label="Twitter"
-                >
-                  <TwitterIcon />
-                </a>
-              )}
-              {socialLinks.linkedin && (
-                <a
-                  href={socialLinks.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
-                  aria-label="LinkedIn"
-                >
-                  <LinkedInIcon />
-                </a>
-              )}
-            </div>
-          )}
+          {/* Social Links + Theme Toggle */}
+          <div className="flex items-center gap-4 pt-4">
+            {socialLinks?.instagram && (
+              <a
+                href={socialLinks.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                aria-label="Instagram"
+              >
+                <InstagramIcon />
+              </a>
+            )}
+            {socialLinks?.twitter && (
+              <a
+                href={socialLinks.twitter}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                aria-label="Twitter"
+              >
+                <TwitterIcon />
+              </a>
+            )}
+            {socialLinks?.linkedin && (
+              <a
+                href={socialLinks.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                aria-label="LinkedIn"
+              >
+                <LinkedInIcon />
+              </a>
+            )}
+            {/* Theme Toggle */}
+            <ThemeToggle />
+          </div>
         </nav>
       </div>
 

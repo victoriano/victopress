@@ -24,6 +24,20 @@ export const links: LinksFunction = () => [
   },
 ];
 
+// Script to detect and apply dark mode preference before hydration (prevents flash)
+const darkModeScript = `
+  (function() {
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (stored === 'dark' || (!stored && prefersDark)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  })();
+`;
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
@@ -32,6 +46,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
+        {/* Inline script to prevent flash of wrong theme */}
+        <script dangerouslySetInnerHTML={{ __html: darkModeScript }} />
       </head>
       <body className="h-full bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
         {children}

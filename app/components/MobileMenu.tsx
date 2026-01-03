@@ -7,6 +7,7 @@
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useEffect, useState, useMemo } from "react";
 import type { NavItem } from "./Sidebar";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface MobileMenuProps {
   siteName: string;
@@ -175,46 +176,46 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
             </div>
           </nav>
 
-          {/* Social Links */}
-          {socialLinks && (
-            <div className="px-6 py-8 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex gap-6">
-                {socialLinks.instagram && (
-                  <a
-                    href={socialLinks.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-600 dark:text-gray-400"
-                    aria-label="Instagram"
-                  >
-                    <InstagramIcon />
-                  </a>
-                )}
-                {socialLinks.twitter && (
-                  <a
-                    href={socialLinks.twitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-600 dark:text-gray-400"
-                    aria-label="Twitter"
-                  >
-                    <TwitterIcon />
-                  </a>
-                )}
-                {socialLinks.linkedin && (
-                  <a
-                    href={socialLinks.linkedin}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-600 dark:text-gray-400"
-                    aria-label="LinkedIn"
-                  >
-                    <LinkedInIcon />
-                  </a>
-                )}
-              </div>
+          {/* Social Links + Theme Toggle */}
+          <div className="px-6 py-8 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-6">
+              {socialLinks?.instagram && (
+                <a
+                  href={socialLinks.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 dark:text-gray-400"
+                  aria-label="Instagram"
+                >
+                  <InstagramIcon />
+                </a>
+              )}
+              {socialLinks?.twitter && (
+                <a
+                  href={socialLinks.twitter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 dark:text-gray-400"
+                  aria-label="Twitter"
+                >
+                  <TwitterIcon />
+                </a>
+              )}
+              {socialLinks?.linkedin && (
+                <a
+                  href={socialLinks.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 dark:text-gray-400"
+                  aria-label="LinkedIn"
+                >
+                  <LinkedInIcon />
+                </a>
+              )}
+              {/* Theme Toggle */}
+              <ThemeToggle />
             </div>
-          )}
+          </div>
         </div>
       )}
     </>

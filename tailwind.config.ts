@@ -25,6 +25,6 @@ export default {
       },
     },
   },
-  darkMode: "class",
+  darkMode: "class", // Class-based with toggle + system preference detection
   plugins: [],
 } satisfies Config;
