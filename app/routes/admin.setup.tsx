@@ -877,12 +877,12 @@ function BucketStep({
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
                 disabled={!bucketCreated || bindingCreated}
-                className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white disabled:opacity-50"
+                className="flex-1 min-w-0 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white disabled:opacity-50 truncate"
               >
                 <option value="">Select project...</option>
                 {projects.map((project) => (
                   <option key={project.name} value={project.name}>
-                    {project.name} ({project.subdomain}.pages.dev)
+                    {project.name}
                   </option>
                 ))}
               </select>
@@ -936,8 +936,8 @@ function BucketStep({
         )
       )}
       
-      {/* Result - only show if there's a message/error from bucket operations */}
-      {result && (result.message || result.error) && (result.bucketName !== undefined || result.message?.includes("bucket") || result.message?.includes("Bucket") || result.message?.includes("bound") || result.error) && (
+      {/* Result - only show if there's a bucket/binding related message */}
+      {result && (result.message?.toLowerCase().includes("bucket") || result.message?.toLowerCase().includes("bound") || (result.error && !result.accounts)) && (
         <div className={`mb-6 p-4 rounded-lg ${
           result.success 
             ? "bg-green-900/30 border border-green-700" 

@@ -135,6 +135,24 @@ When deploying to Cloudflare, you'll need to create an API token with these perm
 
 The setup wizard will guide you through creating this token.
 
+## 🔄 Keeping Your Fork Updated
+
+If you forked VictoPress to your own repository, you can pull in updates from the original repo:
+
+```bash
+# Add the original repo as upstream (one-time setup)
+git remote add upstream https://github.com/victoriano/victopress.git
+
+# Fetch and merge updates
+git fetch upstream
+git merge upstream/main
+
+# Push to your fork
+git push
+```
+
+This will bring in new features and bug fixes while preserving your customizations.
+
 ## 📖 Documentation
 
 See the [Project Home](https://www.notion.so/2dc358038bc5806e8d7bdd5649e4cef2) on Notion for full documentation.
