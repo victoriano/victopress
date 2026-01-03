@@ -308,10 +308,18 @@ function PhotoCard({
         className="w-full h-full object-cover"
       />
       
-      {/* Selection checkbox */}
+      {/* Hover overlay - pointer-events-none so clicks pass through */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end pointer-events-none">
+        <div className="w-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <p className="text-white text-sm truncate">{photo.title || photo.filename}</p>
+        </div>
+      </div>
+      
+      {/* Selection checkbox - z-10 to ensure it's above everything */}
       <button
+        type="button"
         onClick={onToggle}
-        className={`absolute top-2 left-2 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+        className={`absolute top-2 left-2 z-10 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
           isSelected
             ? "bg-blue-500 border-blue-500 text-white"
             : "bg-white/80 border-gray-300 text-transparent hover:border-gray-400"
@@ -322,17 +330,10 @@ function PhotoCard({
       
       {/* Hidden indicator */}
       {photo.hidden && (
-        <div className="absolute top-2 right-2 px-2 py-1 bg-gray-900/70 text-white text-xs rounded">
+        <div className="absolute top-2 right-2 z-10 px-2 py-1 bg-gray-900/70 text-white text-xs rounded">
           Hidden
         </div>
       )}
-      
-      {/* Hover overlay */}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end">
-        <div className="w-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <p className="text-white text-sm truncate">{photo.title || photo.filename}</p>
-        </div>
-      </div>
     </div>
   );
 }
