@@ -130,17 +130,22 @@ export default function PhotoPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // Format photo info (title/description · year)
-  const photoInfo = formatPhotoInfo(photo);
+  // Extract photo metadata
+  const photoTitle = photo.title || photo.exif?.title || undefined;
+  const photoDescription = photo.description || photo.exif?.imageDescription || undefined;
+  const photoYear = getPhotoYear(photo);
 
   // Photo navigation for sidebar
   const photoNav = {
     prevPhotoUrl: prevPhoto ? `/photo/${gallerySlug}/${prevPhoto.filename}` : undefined,
     nextPhotoUrl: nextPhoto ? `/photo/${gallerySlug}/${nextPhoto.filename}` : undefined,
     thumbnailsUrl: `/gallery/${gallerySlug}`,
-    photoInfo: photoInfo || undefined,
+    title: photoTitle,
+    description: photoDescription,
+    year: photoYear,
     currentIndex,
     totalPhotos,
+    galleryTitle: gallery.title,
   };
 
   return (
@@ -197,9 +202,15 @@ export default function PhotoPage() {
         {/* Bottom info bar (mobile only) */}
         <div className="bg-white px-4 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm gap-2 sm:gap-0 lg:hidden">
           {/* Photo info - left side */}
-          <div>
-            {photoInfo && (
-              <p className="text-gray-700">{photoInfo}</p>
+          <div className="space-y-0.5">
+            {photoTitle && (
+              <h2 className="text-[15px] font-bold text-black leading-tight">{photoTitle}</h2>
+            )}
+            {photoDescription && (
+              <p className="text-[13px] text-gray-500 leading-snug">{photoDescription}</p>
+            )}
+            {photoYear && (
+              <p className="text-[12px] text-gray-400">{photoYear}</p>
             )}
           </div>
 
@@ -247,43 +258,24 @@ export default function PhotoPage() {
 }
 
 /**
- * Format photo info from metadata
+ * Extract year from photo metadata
  */
-function formatPhotoInfo(photo: {
-  title?: string;
-  description?: string;
+function getPhotoYear(photo: {
   dateTaken?: string | Date;
   exif?: {
     dateTimeOriginal?: string | Date;
-    title?: string;
-    imageDescription?: string;
   };
-}): string | null {
-  const parts: string[] = [];
-
-  // Title or description
-  if (photo.title) {
-    parts.push(photo.title);
-  } else if (photo.description) {
-    parts.push(photo.description);
-  } else if (photo.exif?.title) {
-    parts.push(photo.exif.title);
-  } else if (photo.exif?.imageDescription) {
-    parts.push(photo.exif.imageDescription);
-  }
-
-  // Year from date
+}): number | undefined {
   if (photo.dateTaken) {
     const year = new Date(photo.dateTaken).getFullYear();
     if (!isNaN(year)) {
-      parts.push(String(year));
+      return year;
     }
   } else if (photo.exif?.dateTimeOriginal) {
     const year = new Date(photo.exif.dateTimeOriginal).getFullYear();
     if (!isNaN(year)) {
-      parts.push(String(year));
+      return year;
     }
   }
-
-  return parts.length > 0 ? parts.join(" · ") : null;
+  return undefined;
 }

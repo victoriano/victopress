@@ -279,19 +279,17 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
           </div>
           
           {/* Show Thumbnails */}
-          <div>
-            <Link
-              to={photoNav.thumbnailsUrl}
-              className="block text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
-            >
-              SHOW THUMBNAILS
-            </Link>
+          <Link
+            to={photoNav.thumbnailsUrl}
+            className="block text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+          >
+            <span className="text-xs uppercase tracking-wide">SHOW THUMBNAILS</span>
             {photoNav.galleryTitle && (
-              <p className="text-[11px] text-gray-400 mt-0.5">
+              <p className="text-[11px] mt-0.5">
                 from <span className="font-bold">{photoNav.galleryTitle}</span>
               </p>
             )}
-          </div>
+          </Link>
         </div>
       )}
     </aside>
