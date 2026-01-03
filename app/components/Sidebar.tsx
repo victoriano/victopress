@@ -220,7 +220,7 @@ function NavSection({
           onClick={onToggle}
           className={`
             block text-[15px] font-medium leading-[24px] transition-colors text-left w-full
-            ${isActive ? "text-black dark:text-white" : "text-black dark:text-gray-100"}
+            ${isExpanded ? "text-gray-400" : "text-black dark:text-white"}
             hover:text-black dark:hover:text-white
           `}
         >
@@ -273,8 +273,10 @@ function NavLink({
       to={href}
       className={`
         block transition-colors
-        ${isChild ? "text-[15px] text-gray-500 dark:text-gray-400 font-medium leading-[24px]" : "text-[15px] font-medium leading-[24px] text-black dark:text-gray-100"}
-        ${isActive ? "text-black dark:text-white" : ""}
+        ${isChild 
+          ? `${isActive ? "text-black font-bold" : "text-gray-400"} text-[15px] leading-[24px]` 
+          : `text-[15px] font-medium leading-[24px] ${isActive ? "text-black dark:text-white" : "text-black dark:text-gray-100"}`
+        }
         hover:text-black dark:hover:text-white
       `}
     >
@@ -299,7 +301,7 @@ function StaticNavLink({
       to={href}
       className={`
         block text-xs transition-colors
-        ${isActive ? "text-black dark:text-white" : "text-black dark:text-gray-400"}
+        ${isActive ? "text-black font-bold dark:text-white" : "text-gray-400"}
         hover:text-black dark:hover:text-white
       `}
     >
