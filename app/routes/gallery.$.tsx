@@ -2,10 +2,11 @@
  * Gallery Page (supports nested paths)
  * 
  * GET /gallery/:slug (e.g., /gallery/humans/portraits)
+ * GET /gallery/:slug?page=2 (pagination)
  */
 
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
-import { useLoaderData, Link } from "@remix-run/react";
+import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
@@ -13,6 +14,8 @@ import { PasswordProtectedGallery } from "~/components/PasswordProtectedGallery"
 import { buildNavigation } from "~/utils/navigation";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { isGalleryAuthenticated } from "~/utils/gallery-auth";
+
+const PHOTOS_PER_PAGE = 50;
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.gallery) {
@@ -168,15 +171,32 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     }));
 
   // If protected and not authenticated, don't expose photos
-  const exposedPhotos = isProtected && !isAuthenticated ? [] : visiblePhotos;
+  const allPhotos = isProtected && !isAuthenticated ? [] : visiblePhotos;
   const exposedOgImage = isProtected && !isAuthenticated ? null : ogImage;
+
+  // Pagination
+  const url = new URL(request.url);
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+  const totalPhotos = allPhotos.length;
+  const totalPages = Math.ceil(totalPhotos / PHOTOS_PER_PAGE);
+  const startIndex = (page - 1) * PHOTOS_PER_PAGE;
+  const endIndex = startIndex + PHOTOS_PER_PAGE;
+  const paginatedPhotos = allPhotos.slice(startIndex, endIndex);
 
   return json({
     isProtected,
     isAuthenticated,
     gallery: {
       ...gallery,
-      photos: exposedPhotos,
+      photos: paginatedPhotos,
+      photoCount: totalPhotos,
+    },
+    pagination: {
+      page,
+      totalPages,
+      totalPhotos,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
     },
     navigation,
     siteName,
@@ -192,8 +212,9 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 }
 
 export default function GalleryPage() {
-  const { gallery, navigation, siteName, socialLinks, isProtected, isAuthenticated } =
+  const { gallery, navigation, siteName, socialLinks, isProtected, isAuthenticated, pagination } =
     useLoaderData<typeof loader>();
+  const [searchParams] = useSearchParams();
 
   // Show password form for protected galleries
   if (isProtected && !isAuthenticated) {
@@ -224,6 +245,141 @@ export default function GalleryPage() {
           />
         ))}
       </PhotoGrid>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          gallerySlug={gallery.slug}
+        />
+      )}
     </Layout>
+  );
+}
+
+/**
+ * Pagination Component
+ */
+function Pagination({
+  currentPage,
+  totalPages,
+  gallerySlug,
+}: {
+  currentPage: number;
+  totalPages: number;
+  gallerySlug: string;
+}) {
+  // Generate page numbers to show
+  const getPageNumbers = () => {
+    const pages: (number | "...")[] = [];
+    const showPages = 5; // Number of page links to show
+    
+    if (totalPages <= showPages + 2) {
+      // Show all pages if total is small
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+      
+      // Calculate range around current page
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      
+      // Adjust if at edges
+      if (currentPage <= 3) {
+        end = Math.min(showPages, totalPages - 1);
+      } else if (currentPage >= totalPages - 2) {
+        start = Math.max(2, totalPages - showPages + 1);
+      }
+      
+      // Add ellipsis if needed
+      if (start > 2) {
+        pages.push("...");
+      }
+      
+      // Add middle pages
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      // Add ellipsis if needed
+      if (end < totalPages - 1) {
+        pages.push("...");
+      }
+      
+      // Always show last page
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
+  const baseUrl = `/gallery/${gallerySlug}`;
+
+  return (
+    <nav
+      className="flex items-center justify-center gap-2 py-8 px-4"
+      aria-label="Pagination"
+    >
+      {/* Previous button */}
+      {currentPage > 1 ? (
+        <Link
+          to={currentPage === 2 ? baseUrl : `${baseUrl}?page=${currentPage - 1}`}
+          className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors"
+          aria-label="Previous page"
+        >
+          ← Prev
+        </Link>
+      ) : (
+        <span className="px-3 py-2 text-sm font-medium text-gray-300 dark:text-gray-600">
+          ← Prev
+        </span>
+      )}
+
+      {/* Page numbers */}
+      <div className="flex items-center gap-1">
+        {getPageNumbers().map((page, index) =>
+          page === "..." ? (
+            <span
+              key={`ellipsis-${index}`}
+              className="px-3 py-2 text-sm text-gray-400"
+            >
+              …
+            </span>
+          ) : (
+            <Link
+              key={page}
+              to={page === 1 ? baseUrl : `${baseUrl}?page=${page}`}
+              className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+                page === currentPage
+                  ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+              aria-current={page === currentPage ? "page" : undefined}
+            >
+              {page}
+            </Link>
+          )
+        )}
+      </div>
+
+      {/* Next button */}
+      {currentPage < totalPages ? (
+        <Link
+          to={`${baseUrl}?page=${currentPage + 1}`}
+          className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors"
+          aria-label="Next page"
+        >
+          Next →
+        </Link>
+      ) : (
+        <span className="px-3 py-2 text-sm font-medium text-gray-300 dark:text-gray-600">
+          Next →
+        </span>
+      )}
+    </nav>
   );
 }

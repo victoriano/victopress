@@ -304,6 +304,12 @@ export interface StorageAdapter {
   /** Get file as text */
   getText(key: string): Promise<string | null>;
   
+  /** Upload file contents */
+  put(key: string, data: ArrayBuffer | string, contentType?: string): Promise<void>;
+  
+  /** Delete a file */
+  delete(key: string): Promise<void>;
+  
   /** Check if file exists */
   exists(key: string): Promise<boolean>;
   

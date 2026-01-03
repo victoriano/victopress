@@ -70,6 +70,42 @@ export class R2StorageAdapter implements StorageAdapter {
     return object.text();
   }
 
+  async put(key: string, data: ArrayBuffer | string, contentType?: string): Promise<void> {
+    const options: R2PutOptions = {};
+    
+    if (contentType) {
+      options.httpMetadata = { contentType };
+    } else {
+      // Auto-detect content type from key extension
+      const ext = key.split('.').pop()?.toLowerCase();
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+        'avif': 'image/avif',
+        'svg': 'image/svg+xml',
+        'md': 'text/markdown',
+        'yaml': 'text/yaml',
+        'yml': 'text/yaml',
+        'json': 'application/json',
+        'html': 'text/html',
+        'css': 'text/css',
+        'js': 'application/javascript',
+      };
+      if (ext && mimeTypes[ext]) {
+        options.httpMetadata = { contentType: mimeTypes[ext] };
+      }
+    }
+
+    await this.bucket.put(key, data, options);
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.bucket.delete(key);
+  }
+
   async exists(key: string): Promise<boolean> {
     const head = await this.bucket.head(key);
     return head !== null;

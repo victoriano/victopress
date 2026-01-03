@@ -12,8 +12,14 @@ declare module "@remix-run/cloudflare" {
 }
 
 export default defineConfig({
+  server: {
+    port: 5174,
+    host: true,
+  },
   plugins: [
-    remixCloudflareDevProxy(),
+    remixCloudflareDevProxy({
+      persist: { path: ".wrangler/state/v3" },
+    }),
     remix({
       future: {
         v3_fetcherPersist: true,

@@ -86,6 +86,34 @@ export class LocalStorageAdapter implements StorageAdapter {
     }
   }
 
+  async put(key: string, data: ArrayBuffer | string, _contentType?: string): Promise<void> {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    
+    const fullPath = this.resolvePath(key);
+    const dir = path.dirname(fullPath);
+    
+    // Ensure directory exists
+    await fs.mkdir(dir, { recursive: true });
+    
+    // Write file
+    if (typeof data === "string") {
+      await fs.writeFile(fullPath, data, "utf-8");
+    } else {
+      await fs.writeFile(fullPath, Buffer.from(data));
+    }
+  }
+
+  async delete(key: string): Promise<void> {
+    const fs = await import("node:fs/promises");
+    
+    try {
+      await fs.unlink(this.resolvePath(key));
+    } catch {
+      // File doesn't exist, ignore
+    }
+  }
+
   async exists(key: string): Promise<boolean> {
     const fs = await import("node:fs/promises");
     

@@ -221,57 +221,80 @@ export default function PhotoPage() {
         </div>
 
         {/* Bottom info bar (mobile only) */}
-        <div className="bg-white px-4 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm gap-2 sm:gap-0 lg:hidden">
+        <div className="bg-white dark:bg-gray-950 px-4 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm gap-2 sm:gap-0 lg:hidden">
           {/* Photo info - left side */}
           <div className="space-y-0.5">
             {photoTitle && (
-              <h2 className="text-[15px] font-bold text-black leading-tight">{photoTitle}</h2>
+              <h2 className="text-[15px] font-bold text-black dark:text-white leading-tight">{photoTitle}</h2>
             )}
             {photoDescription && (
-              <p className="text-[13px] text-gray-500 leading-snug">{photoDescription}</p>
+              <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-snug">{photoDescription}</p>
             )}
             {photoYear && (
-              <p className="text-[12px] text-gray-400">{photoYear}</p>
+              <p className="text-[12px] text-gray-400 dark:text-gray-500">{photoYear}</p>
             )}
           </div>
 
           {/* Navigation - right side */}
-          <div className="flex items-center gap-4 text-gray-500">
+          <div className="flex items-center gap-4 text-gray-500 dark:text-gray-400">
             {/* Prev/Next */}
             <div className="flex items-center gap-1">
               {prevPhoto ? (
                 <Link
                   to={`/photo/${gallerySlug}/${prevPhoto.filename}`}
-                  className="hover:text-gray-900 transition-colors uppercase text-xs tracking-wide"
+                  className="hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide"
                 >
                   PREV
                 </Link>
               ) : (
-                <span className="text-gray-300 uppercase text-xs tracking-wide">PREV</span>
+                <span className="text-gray-300 dark:text-gray-600 uppercase text-xs tracking-wide">PREV</span>
               )}
-              <span className="text-gray-300 mx-1">/</span>
+              <span className="text-gray-300 dark:text-gray-600 mx-1">/</span>
               {nextPhoto ? (
                 <Link
                   to={`/photo/${gallerySlug}/${nextPhoto.filename}`}
-                  className="hover:text-gray-900 transition-colors uppercase text-xs tracking-wide"
+                  className="hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide"
                 >
                   NEXT
                 </Link>
               ) : (
-                <span className="text-gray-300 uppercase text-xs tracking-wide">NEXT</span>
+                <span className="text-gray-300 dark:text-gray-600 uppercase text-xs tracking-wide">NEXT</span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Show thumbnails link (mobile only, desktop uses sidebar) */}
-        <div className="bg-white px-4 pb-4 lg:hidden">
+        {/* Bottom actions (mobile only) */}
+        <div className="bg-white dark:bg-gray-950 px-4 pb-4 flex items-center justify-between lg:hidden">
           <Link
             to={`/gallery/${gallerySlug}`}
-            className="text-xs text-gray-400 hover:text-gray-700 transition-colors uppercase tracking-wide"
+            className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
           >
             SHOW THUMBNAILS
           </Link>
+          
+          {/* Download button */}
+          <a
+            href={photoUrl}
+            download={photo.filename}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
+          >
+            <DownloadIcon />
+            DOWNLOAD
+          </a>
+        </div>
+
+        {/* Download button (desktop - fixed bottom right) */}
+        <div className="hidden lg:block fixed bottom-6 right-6 z-50">
+          <a
+            href={photoUrl}
+            download={photo.filename}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium shadow-lg"
+            title="Download original"
+          >
+            <DownloadIcon />
+            Download
+          </a>
         </div>
       </div>
     </Layout>
@@ -299,4 +322,25 @@ function getPhotoYear(photo: {
     }
   }
   return undefined;
+}
+
+/**
+ * Download icon component
+ */
+function DownloadIcon() {
+  return (
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+      />
+    </svg>
+  );
 }
