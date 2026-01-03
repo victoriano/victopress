@@ -25,6 +25,7 @@ export interface PhotoNavigation {
   year?: number;
   currentIndex?: number;
   totalPhotos?: number;
+  galleryTitle?: string;
 }
 
 interface SidebarProps {
@@ -278,12 +279,19 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
           </div>
           
           {/* Show Thumbnails */}
-          <Link
-            to={photoNav.thumbnailsUrl}
-            className="block text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
-          >
-            SHOW THUMBNAILS
-          </Link>
+          <div>
+            <Link
+              to={photoNav.thumbnailsUrl}
+              className="block text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
+            >
+              SHOW THUMBNAILS
+            </Link>
+            {photoNav.galleryTitle && (
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                from <span className="font-bold">{photoNav.galleryTitle}</span>
+              </p>
+            )}
+          </div>
         </div>
       )}
     </aside>

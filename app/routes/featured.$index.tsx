@@ -185,6 +185,7 @@ export default function FeaturedPhotoPage() {
     year: photoYear,
     currentIndex,
     totalPhotos,
+    galleryTitle: photo.galleryTitle,
   };
 
   return (
