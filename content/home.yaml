@@ -1,0 +1,18 @@
+# Home Page Photo Selection
+# 
+# Configure which photos appear on the home page.
+# If this file is empty or missing, defaults to 4 photos per gallery.
+#
+# Format:
+# photos:
+#   - gallery: humans        # gallery slug
+#     filename: photo1.jpg   # photo filename
+#   - gallery: spaces/tokyo
+#     filename: subway.jpg
+#
+# Leave 'photos' empty or remove this file to use default selection
+
+# Uncomment and customize to handpick photos:
+# photos:
+#   - gallery: humans
+#     filename: example.jpg
