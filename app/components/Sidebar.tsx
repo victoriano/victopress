@@ -5,7 +5,7 @@
  */
 
 import { Link, useLocation } from "@remix-run/react";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 export interface NavItem {
   title: string;
@@ -37,14 +37,46 @@ interface SidebarProps {
 
 export function Sidebar({ siteName, navigation, socialLinks, photoNav }: SidebarProps) {
   const location = useLocation();
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  
+  // Find which parent gallery should be expanded based on current path
+  const activeParentSlug = useMemo(() => {
+    for (const item of navigation) {
+      if (item.children && item.children.length > 0) {
+        // Check if current path matches this parent or any of its children
+        if (
+          location.pathname === item.path ||
+          location.pathname.startsWith(item.path + "/") ||
+          item.children.some(
+            (child) =>
+              location.pathname === child.path ||
+              location.pathname.startsWith(child.path + "/")
+          )
+        ) {
+          return item.slug;
+        }
+      }
+    }
+    return null;
+  }, [location.pathname, navigation]);
+
+  // Initialize expanded state with the active parent (if any)
+  const [expandedItems, setExpandedItems] = useState<string[]>(() => 
+    activeParentSlug ? [activeParentSlug] : []
+  );
+
+  // Update expanded items when route changes to a different parent gallery
+  useEffect(() => {
+    if (activeParentSlug && !expandedItems.includes(activeParentSlug)) {
+      setExpandedItems([activeParentSlug]);
+    }
+  }, [activeParentSlug]);
 
   // Toggle expand/collapse - accordion behavior (only one at a time)
   const toggleExpanded = (slug: string) => {
     setExpandedItems((prev) => {
       if (prev.includes(slug)) {
-        // Close if already open
-        return [];
+        // Close if already open (but only if not the active parent)
+        return activeParentSlug === slug ? [slug] : [];
       } else {
         // Open this one, close all others (accordion)
         return [slug];
@@ -206,21 +238,30 @@ function NavSection({
       (child) =>
         currentPath === child.path || currentPath.startsWith(child.path + "/")
     );
+  
+  // Check if we're exactly on this parent path (not a child)
+  const isExactMatch = currentPath === item.path;
 
   return (
     <div className="space-y-1">
       {hasChildren ? (
-        // Parent with children - clickable to toggle
-        <button
-          onClick={onToggle}
+        // Parent with children - navigates AND expands
+        <Link
+          to={item.path}
+          onClick={(e) => {
+            // Always expand when clicking (navigation will happen via Link)
+            if (!isExpanded) {
+              onToggle();
+            }
+          }}
           className={`
             block text-[15px] font-medium leading-[24px] transition-colors text-left w-full
-            ${isExpanded ? "text-gray-400" : "text-black dark:text-white"}
+            ${isExpanded && !isExactMatch ? "text-gray-400" : "text-black dark:text-white"}
             hover:text-black dark:hover:text-white
           `}
         >
           {item.title}
-        </button>
+        </Link>
       ) : (
         // No children - regular link
         <NavLink

@@ -5,7 +5,7 @@
  */
 
 import { Link, useLocation } from "@remix-run/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { NavItem } from "./Sidebar";
 
 interface MobileMenuProps {
@@ -21,8 +21,38 @@ interface MobileMenuProps {
 
 export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const location = useLocation();
+
+  // Find which parent gallery should be expanded based on current path
+  const activeParentSlug = useMemo(() => {
+    for (const item of navigation) {
+      if (item.children && item.children.length > 0) {
+        if (
+          location.pathname === item.path ||
+          location.pathname.startsWith(item.path + "/") ||
+          item.children.some(
+            (child) =>
+              location.pathname === child.path ||
+              location.pathname.startsWith(child.path + "/")
+          )
+        ) {
+          return item.slug;
+        }
+      }
+    }
+    return null;
+  }, [location.pathname, navigation]);
+
+  const [expandedItems, setExpandedItems] = useState<string[]>(() =>
+    activeParentSlug ? [activeParentSlug] : []
+  );
+
+  // Update expanded items when route changes
+  useEffect(() => {
+    if (activeParentSlug && !expandedItems.includes(activeParentSlug)) {
+      setExpandedItems([activeParentSlug]);
+    }
+  }, [activeParentSlug]);
 
   // Prevent background scrolling when the menu is open
   useEffect(() => {
@@ -36,9 +66,13 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
 
   // Toggle expand/collapse - accordion behavior (only one at a time)
   const toggleExpanded = (slug: string) => {
-    setExpandedItems((prev) =>
-      prev.includes(slug) ? [] : [slug]
-    );
+    setExpandedItems((prev) => {
+      if (prev.includes(slug)) {
+        return activeParentSlug === slug ? [slug] : [];
+      } else {
+        return [slug];
+      }
+    });
   };
 
   return (
@@ -174,7 +208,13 @@ function MobileNavSection({
       <div className="flex items-center justify-between py-4">
         <Link
           to={item.path}
-          onClick={onNavigate}
+          onClick={() => {
+            // Expand when navigating to parent gallery
+            if (hasChildren && !isExpanded) {
+              onToggle();
+            }
+            onNavigate();
+          }}
           className="text-xl font-semibold text-gray-900 dark:text-white"
         >
           {item.title}
