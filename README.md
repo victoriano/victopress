@@ -1,6 +1,8 @@
 # VictoPress
 
-A **files-first photo gallery CMS**. Drag folders, get galleries.
+A **files-first photo gallery CMS** for photographers. Drag folders, get galleries.
+
+[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/victoriano/victopress)
 
 ## ⚡ Key Principle: Zero-Config
 
@@ -22,7 +24,20 @@ content/
     └── another-post.md
 ```
 
-## 🚀 Quick Start
+## 🚀 One-Click Deploy
+
+1. **Click the "Deploy to Cloudflare" button** above
+2. **Connect your GitHub** and deploy
+3. **Visit your site** at `your-project.pages.dev`
+4. **Complete the setup wizard** to configure R2 storage
+
+The setup wizard will guide you through:
+- Creating an API token with the right permissions
+- Setting up an R2 bucket for your photos
+- Seeding initial content (optional)
+- Creating admin credentials
+
+## 💻 Local Development
 
 ```bash
 # Install dependencies
@@ -106,7 +121,19 @@ Your markdown content here...
 
 - `hidden: true` on photos → excluded from gallery
 - `private: true` on galleries → excluded from listings
-- Password protection for galleries (coming soon)
+- Password protection for galleries
+
+## 🔧 Setup Requirements
+
+When deploying to Cloudflare, you'll need to create an API token with these permissions:
+
+| Permission | Scope | Purpose |
+|------------|-------|---------|
+| Account Settings | Read | Verify token, detect account |
+| Workers R2 Storage | Edit | Create bucket, upload content |
+| Cloudflare Pages | Edit | Bind R2 bucket to app |
+
+The setup wizard will guide you through creating this token.
 
 ## 📖 Documentation
 

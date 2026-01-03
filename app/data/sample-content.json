@@ -1,0 +1,41 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-01-03T00:00:00.000Z",
+  "files": [
+    {
+      "path": "galleries",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T00:00:00.000Z",
+      "isDirectory": true
+    },
+    {
+      "path": "galleries/gallery.yaml",
+      "content": "title: Photo Galleries\ndescription: Welcome to VictoPress demo galleries",
+      "size": 62,
+      "lastModified": "2026-01-03T00:00:00.000Z",
+      "isDirectory": false
+    },
+    {
+      "path": "home.yaml",
+      "content": "title: VictoPress Demo\nsubtitle: A files-first photo gallery CMS\ndescription: This is a demo site running in read-only mode. Configure R2 storage to enable full CMS functionality.\nfeaturedGalleries:\n  - humans\n  - geographies\n  - spaces",
+      "size": 200,
+      "lastModified": "2026-01-03T00:00:00.000Z",
+      "isDirectory": false
+    },
+    {
+      "path": "blog",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T00:00:00.000Z",
+      "isDirectory": true
+    },
+    {
+      "path": "pages",
+      "content": "",
+      "size": 0,
+      "lastModified": "2026-01-03T00:00:00.000Z",
+      "isDirectory": true
+    }
+  ]
+}

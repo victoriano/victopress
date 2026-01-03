@@ -11,7 +11,7 @@ import { useLoaderData, useFetcher } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanGalleries, scanBlog, scanPages, getStorage } from "~/lib/content-engine";
+import { scanGalleries, scanBlog, scanPages, getStorage, isDemoMode } from "~/lib/content-engine";
 
 interface StorageConfig {
   isR2: boolean;
@@ -85,6 +85,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const username = getAdminUser(request);
   const storage = getStorage(context);
   const env = context.cloudflare?.env as Env | undefined;
+  const demoMode = isDemoMode(context);
   
   const [galleries, posts, pages] = await Promise.all([
     scanGalleries(storage),
@@ -106,6 +107,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   
   return json({
     username,
+    isDemoMode: demoMode,
     stats: {
       galleries: galleries.length,
       photos: totalPhotos,
@@ -121,7 +123,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function AdminSettings() {
-  const { username, stats, env, storageConfig } = useLoaderData<typeof loader>();
+  const { username, isDemoMode: demoMode, stats, env, storageConfig } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<{ testResult: StorageTestResult }>();
   const isTestingStorage = fetcher.state !== "idle";
   const testResult = fetcher.data?.testResult;
@@ -131,7 +133,7 @@ export default function AdminSettings() {
   };
 
   return (
-    <AdminLayout username={username || undefined}>
+    <AdminLayout username={username || undefined} isDemoMode={demoMode}>
       <div className="p-6 lg:p-8 max-w-4xl">
         {/* Header */}
         <div className="mb-8">

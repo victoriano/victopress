@@ -6,13 +6,15 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "prebuild": "bun run scripts/generate-sample-content.ts",
     "build": "remix vite:build",
     "dev": "remix vite:dev",
     "start": "wrangler pages dev ./build/client",
     "typecheck": "tsc",
     "preview": "wrangler pages dev ./build/client",
     "deploy": "wrangler pages deploy ./build/client",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "generate-content": "bun run scripts/generate-sample-content.ts"
   },
   "dependencies": {
     "@remix-run/cloudflare": "^2.15.2",

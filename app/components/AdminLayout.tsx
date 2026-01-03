@@ -6,15 +6,20 @@
 
 import { Link, NavLink, useLocation } from "@remix-run/react";
 import { ThemeToggle } from "./ThemeToggle";
+import { DemoModeBanner, DemoModeIndicator } from "./DemoModeBanner";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
   username?: string;
+  isDemoMode?: boolean;
 }
 
-export function AdminLayout({ children, username }: AdminLayoutProps) {
+export function AdminLayout({ children, username, isDemoMode = false }: AdminLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Demo Mode Banner - shown at top when in demo mode */}
+      {isDemoMode && <DemoModeBanner className="fixed top-0 left-0 right-0 z-50 lg:left-64" />}
+      
       {/* Sidebar - desktop */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 flex-col bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">
         {/* Logo */}
@@ -55,7 +60,8 @@ export function AdminLayout({ children, username }: AdminLayoutProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
+          {isDemoMode && <DemoModeIndicator />}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <UserIcon />
@@ -67,7 +73,7 @@ export function AdminLayout({ children, username }: AdminLayoutProps) {
       </aside>
 
       {/* Mobile header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 z-50 flex items-center justify-between px-4">
+      <header className={`lg:hidden fixed left-0 right-0 h-16 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 z-40 flex items-center justify-between px-4 ${isDemoMode ? "top-10" : "top-0"}`}>
         <Link to="/admin" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-lg flex items-center justify-center">
             <span className="text-white dark:text-gray-900 font-bold text-sm">V</span>
@@ -79,7 +85,7 @@ export function AdminLayout({ children, username }: AdminLayoutProps) {
       </header>
 
       {/* Main content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
+      <main className={`lg:ml-64 min-h-screen ${isDemoMode ? "pt-26 lg:pt-10" : "pt-16 lg:pt-0"}`}>
         {children}
       </main>
     </div>

@@ -9,7 +9,7 @@ import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanGalleries, scanBlog, getStorage } from "~/lib/content-engine";
+import { scanGalleries, scanBlog, getStorage, isDemoMode } from "~/lib/content-engine";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   // Check authentication
@@ -17,6 +17,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   
   const username = getAdminUser(request);
   const storage = getStorage(context);
+  const demoMode = isDemoMode(context);
   
   // Get stats
   const [galleries, posts] = await Promise.all([
@@ -28,6 +29,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   
   return json({
     username,
+    isDemoMode: demoMode,
     stats: {
       galleries: galleries.length,
       photos: totalPhotos,
@@ -44,10 +46,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function AdminDashboard() {
-  const { username, stats, recentGalleries, recentPosts } = useLoaderData<typeof loader>();
+  const { username, isDemoMode: demoMode, stats, recentGalleries, recentPosts } = useLoaderData<typeof loader>();
 
   return (
-    <AdminLayout username={username || undefined}>
+    <AdminLayout username={username || undefined} isDemoMode={demoMode}>
       <div className="p-6 lg:p-8">
         {/* Header */}
         <div className="mb-8">
