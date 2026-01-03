@@ -149,6 +149,8 @@ export default function PhotoPage() {
     gallerySlug,
     prevPhoto,
     nextPhoto,
+    currentIndex,
+    totalPhotos,
     navigation,
     siteName,
     socialLinks,
@@ -184,6 +186,8 @@ export default function PhotoPage() {
     nextPhotoUrl: nextPhoto ? `/photo/${gallerySlug}/${nextPhoto.filename}` : undefined,
     thumbnailsUrl: `/gallery/${gallerySlug}`,
     photoInfo: photoInfo || undefined,
+    currentIndex,
+    totalPhotos,
   };
 
   return (

@@ -19,6 +19,8 @@ export interface PhotoNavigation {
   nextPhotoUrl?: string;
   thumbnailsUrl: string;
   photoInfo?: string;
+  currentIndex?: number;
+  totalPhotos?: number;
 }
 
 interface SidebarProps {
@@ -142,6 +144,13 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
           {photoNav.photoInfo && (
             <p className="text-[15px] font-bold text-gray-900 dark:text-white">
               {photoNav.photoInfo}
+            </p>
+          )}
+          
+          {/* Photo counter */}
+          {photoNav.currentIndex !== undefined && photoNav.totalPhotos !== undefined && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {photoNav.currentIndex + 1} of {photoNav.totalPhotos}
             </p>
           )}
           
