@@ -285,26 +285,20 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
   }
   
-  // ==================== Send Credentials ====================
-  if (action === "send-credentials") {
-    const email = formData.get("email") as string;
-    
-    if (!email || !email.includes("@")) {
-      return json({ success: false, error: "Please provide a valid email address" });
-    }
-    
+  // ==================== Generate Credentials ====================
+  if (action === "generate-credentials") {
     const password = generateSecurePassword();
     
-    // TODO: Integrate with email service (Resend, SendGrid, etc.)
-    console.log(`[SETUP] Generated credentials for ${email}:`);
-    console.log(`[SETUP] Password: ${password}`);
-    console.log(`[SETUP] Set these as secrets: wrangler secret put ADMIN_USERNAME / ADMIN_PASSWORD`);
+    console.log(`[SETUP] Generated admin password`);
+    console.log(`[SETUP] Set these secrets in Cloudflare dashboard or via CLI:`);
+    console.log(`[SETUP]   ADMIN_USERNAME: admin`);
+    console.log(`[SETUP]   ADMIN_PASSWORD: ${password}`);
     
     return json({ 
       success: true, 
-      message: "Credentials generated! Check the console for the password (email integration coming soon).",
-      devPassword: isDev ? password : undefined,
-      email,
+      message: "Credentials generated! Copy the password below and save it securely.",
+      generatedPassword: password,
+      generatedUsername: "admin",
     });
   }
   
@@ -375,7 +369,6 @@ export default function AdminSetup() {
   const [bucketName, setBucketName] = useState(data.defaultBucketName);
   const [selectedProject, setSelectedProject] = useState("");
   const [projects, setProjects] = useState<Array<{ name: string; subdomain: string; domains: string[] }>>([]);
-  const [email, setEmail] = useState("");
   const [seedContent, setSeedContent] = useState(true);
   const [bucketCreated, setBucketCreated] = useState(false);
   const [bindingCreated, setBindingCreated] = useState(false);
@@ -462,8 +455,8 @@ export default function AdminSetup() {
     fetcher.submit({ action: "seed-content", simulate: simulate ? "true" : "false" }, { method: "POST" });
   };
   
-  const sendCredentials = () => {
-    fetcher.submit({ action: "send-credentials", email }, { method: "POST" });
+  const generateCredentials = () => {
+    fetcher.submit({ action: "generate-credentials" }, { method: "POST" });
   };
 
   return (
@@ -564,11 +557,9 @@ export default function AdminSetup() {
           
           {step === "credentials" && (
             <CredentialsStep
-              email={email}
-              setEmail={setEmail}
               isLoading={isLoading}
               result={result}
-              onSend={sendCredentials}
+              onGenerate={generateCredentials}
               onNext={() => setStep("complete")}
               onBack={() => setStep("seed")}
             />
@@ -1303,74 +1294,121 @@ function SeedStep({
 }
 
 function CredentialsStep({
-  email,
-  setEmail,
   isLoading,
   result,
-  onSend,
+  onGenerate,
   onNext,
   onBack,
 }: {
-  email: string;
-  setEmail: (email: string) => void;
   isLoading: boolean;
-  result: { success: boolean; message?: string; error?: string; devPassword?: string } | undefined;
-  onSend: () => void;
+  result: { success: boolean; message?: string; error?: string; generatedPassword?: string; generatedUsername?: string } | undefined;
+  onGenerate: () => void;
   onNext: () => void;
   onBack: () => void;
 }) {
+  const [copied, setCopied] = useState<"username" | "password" | null>(null);
+  
+  const copyToClipboard = (text: string, type: "username" | "password") => {
+    navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const hasCredentials = result?.generatedPassword && result?.generatedUsername;
+
   return (
     <div>
-      <h2 className="text-xl font-bold text-white mb-6">Admin Credentials</h2>
-      
-      <p className="text-gray-300 mb-6">
-        Enter your email address to receive your admin login credentials.
+      <h2 className="text-xl font-bold text-white mb-2">Admin Credentials</h2>
+      <p className="text-gray-400 mb-6">
+        Generate a secure password for your admin panel.
       </p>
       
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          Email Address
-        </label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="your@email.com"
-          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-        />
-      </div>
-
-      {/* Result */}
-      {result && (
-        <div className={`mb-6 p-4 rounded-lg ${
-          result.success 
-            ? "bg-green-900/30 border border-green-700" 
-            : "bg-red-900/30 border border-red-700"
-        }`}>
-          <p className={result.success ? "text-green-400" : "text-red-400"}>
-            {result.message || result.error}
-          </p>
-          {result.devPassword && (
-            <div className="mt-3 p-3 bg-gray-900 rounded">
-              <p className="text-xs text-gray-400 mb-1">Development Password (change in production!):</p>
-              <code className="text-yellow-400 font-mono">{result.devPassword}</code>
+      {!hasCredentials ? (
+        <>
+          <div className="bg-gray-900/50 rounded-lg p-6 mb-6 text-center">
+            <div className="text-4xl mb-4">🔐</div>
+            <p className="text-gray-300 mb-4">
+              Click the button below to generate a secure random password for your admin account.
+            </p>
+            <button
+              onClick={onGenerate}
+              disabled={isLoading}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+            >
+              {isLoading ? "Generating..." : "🎲 Generate Password"}
+            </button>
+          </div>
+          
+          {result?.error && (
+            <div className="mb-6 p-4 rounded-lg bg-red-900/30 border border-red-700">
+              <p className="text-red-400">{result.error}</p>
             </div>
           )}
-        </div>
+        </>
+      ) : (
+        <>
+          <div className="bg-green-900/20 border border-green-700 rounded-lg p-4 mb-6">
+            <p className="text-green-400 font-medium mb-1">✅ Credentials Generated!</p>
+            <p className="text-green-300/70 text-sm">
+              Copy these credentials and save them securely. You'll need them to log in.
+            </p>
+          </div>
+          
+          {/* Credentials Display */}
+          <div className="space-y-4 mb-6">
+            {/* Username */}
+            <div className="bg-gray-900 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-400">Username</label>
+                <button
+                  onClick={() => copyToClipboard(result.generatedUsername!, "username")}
+                  className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 transition-colors"
+                >
+                  {copied === "username" ? "✓ Copied!" : "Copy"}
+                </button>
+              </div>
+              <code className="text-lg text-white font-mono">{result.generatedUsername}</code>
+            </div>
+            
+            {/* Password */}
+            <div className="bg-gray-900 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-400">Password</label>
+                <button
+                  onClick={() => copyToClipboard(result.generatedPassword!, "password")}
+                  className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 transition-colors"
+                >
+                  {copied === "password" ? "✓ Copied!" : "Copy"}
+                </button>
+              </div>
+              <code className="text-lg text-yellow-400 font-mono break-all">{result.generatedPassword}</code>
+            </div>
+          </div>
+          
+          {/* Instructions */}
+          <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4 mb-6">
+            <p className="text-blue-300 text-sm font-medium mb-2">
+              📋 Set these as Cloudflare secrets:
+            </p>
+            <div className="bg-gray-900 rounded p-3 mb-3">
+              <p className="text-xs text-gray-500 mb-1">Option 1: Via Cloudflare Dashboard</p>
+              <p className="text-gray-300 text-sm">
+                Pages → Your Project → Settings → Environment Variables → Add variables
+              </p>
+            </div>
+            <div className="bg-gray-900 rounded p-3">
+              <p className="text-xs text-gray-500 mb-1">Option 2: Via CLI</p>
+              <pre className="text-xs text-gray-300 overflow-x-auto">
+{`wrangler pages secret put ADMIN_USERNAME
+wrangler pages secret put ADMIN_PASSWORD`}
+              </pre>
+            </div>
+            <p className="text-blue-300/70 text-xs mt-3">
+              ⚠️ Save this password now! It won't be shown again.
+            </p>
+          </div>
+        </>
       )}
-
-      <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4 mb-6">
-        <p className="text-blue-300 text-sm">
-          <strong>Note:</strong> After receiving your password, you'll need to set it as a Cloudflare secret:
-        </p>
-        <pre className="mt-2 bg-gray-900 rounded p-2 text-xs text-gray-300 overflow-x-auto">
-{`wrangler secret put ADMIN_USERNAME
-wrangler secret put ADMIN_PASSWORD`}
-        </pre>
-        <p className="text-blue-300/70 text-sm mt-2">
-          You can change your password later in Settings → Authentication.
-        </p>
-      </div>
 
       {/* Actions */}
       <div className="flex justify-between">
@@ -1380,21 +1418,13 @@ wrangler secret put ADMIN_PASSWORD`}
         >
           ← Back
         </button>
-        <div className="flex gap-3">
-          <button
-            onClick={onSend}
-            disabled={isLoading || !email.includes("@")}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-          >
-            {isLoading ? "Sending..." : "Generate Password"}
-          </button>
-          <button
-            onClick={onNext}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-          >
-            Continue →
-          </button>
-        </div>
+        <button
+          onClick={onNext}
+          disabled={!hasCredentials}
+          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+        >
+          Continue →
+        </button>
       </div>
     </div>
   );
