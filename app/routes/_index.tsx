@@ -10,7 +10,7 @@ import { useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { scanGalleries, getStorage } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
-import type { NavItem } from "~/components/Sidebar";
+import { buildNavigation } from "~/utils/navigation";
 import yaml from "js-yaml";
 
 interface HomeConfig {
@@ -105,63 +105,6 @@ export async function loader({ context }: LoaderFunctionArgs) {
       facebook: "https://facebook.com/victoriano",
     },
   });
-}
-
-/**
- * Build hierarchical navigation from flat gallery list
- */
-function buildNavigation(
-  galleries: Awaited<ReturnType<typeof scanGalleries>>
-): NavItem[] {
-  const navMap = new Map<string, NavItem>();
-  const rootItems: NavItem[] = [];
-
-  // Group galleries by their parent category
-  for (const gallery of galleries) {
-    const parts = gallery.slug.split("/");
-    
-    if (parts.length === 1) {
-      // Top-level gallery
-      const item: NavItem = {
-        title: gallery.title,
-        slug: gallery.slug,
-        path: `/gallery/${gallery.slug}`,
-        children: [],
-      };
-      navMap.set(gallery.slug, item);
-      rootItems.push(item);
-    } else {
-      // Nested gallery - find or create parent
-      const parentSlug = parts.slice(0, -1).join("/");
-      const parent = navMap.get(parentSlug);
-      
-      if (parent) {
-        parent.children = parent.children || [];
-        parent.children.push({
-          title: gallery.title,
-          slug: gallery.slug,
-          path: `/gallery/${gallery.slug}`,
-        });
-      } else {
-        // Create parent as nav-only item (no actual gallery)
-        const parentTitle = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-        const parentItem: NavItem = {
-          title: parentTitle,
-          slug: parentSlug,
-          path: `/gallery/${parentSlug}`,
-          children: [{
-            title: gallery.title,
-            slug: gallery.slug,
-            path: `/gallery/${gallery.slug}`,
-          }],
-        };
-        navMap.set(parentSlug, parentItem);
-        rootItems.push(parentItem);
-      }
-    }
-  }
-
-  return rootItems;
 }
 
 export default function Index() {
