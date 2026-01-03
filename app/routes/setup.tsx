@@ -213,8 +213,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
   }
   
-  // ==================== Seed Content (handled by /api/admin.seed) ====================
-  // Note: Seeding is now handled by the dedicated /api/admin.seed endpoint
+  // ==================== Seed Content (handled by /api/admin/seed) ====================
+  // Note: Seeding is now handled by the dedicated /api/admin/seed endpoint
   // which fetches content from the public GitHub repo and uploads to R2
   
   // ==================== Generate & Set Credentials ====================
@@ -438,7 +438,7 @@ export default function AdminSetup() {
     setSeedingStatus({ isSeeding: true });
     
     try {
-      const response = await fetch("/api/admin.seed", {
+      const response = await fetch("/api/admin/seed", {
         method: "POST",
         body: new URLSearchParams({
           action: "seed",

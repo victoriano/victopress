@@ -145,7 +145,7 @@ export default function AdminSettings() {
     setSeedingStatus({ isSeeding: true });
     
     try {
-      const response = await fetch("/api/admin.seed", {
+      const response = await fetch("/api/admin/seed", {
         method: "POST",
         body: new URLSearchParams({
           action: "seed",
