@@ -113,7 +113,7 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
           </div>
 
           {/* Navigation */}
-          <nav className="px-6 py-8">
+          <nav className="px-6 py-8 space-y-2">
             {navigation.map((item) => (
               <MobileNavSection
                 key={item.slug}
@@ -126,18 +126,15 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
               />
             ))}
 
-            {/* Divider */}
-            <div className="my-6 border-t border-gray-100 dark:border-gray-800" />
-
             {/* Static Links */}
-            <div className="space-y-4">
-              <MobileNavLink href="/blog" onClick={() => setIsOpen(false)}>
+            <div className="space-y-2 pt-6 mt-2">
+              <MobileNavLink href="/blog" currentPath={location.pathname} onClick={() => setIsOpen(false)}>
                 Blog
               </MobileNavLink>
-              <MobileNavLink href="/about" onClick={() => setIsOpen(false)}>
+              <MobileNavLink href="/about" currentPath={location.pathname} onClick={() => setIsOpen(false)}>
                 About Me
               </MobileNavLink>
-              <MobileNavLink href="/contact" onClick={() => setIsOpen(false)}>
+              <MobileNavLink href="/contact" currentPath={location.pathname} onClick={() => setIsOpen(false)}>
                 Contact
               </MobileNavLink>
             </div>
@@ -206,6 +203,8 @@ function MobileNavSection({
 }) {
   const navigate = useNavigate();
   const hasChildren = item.children && item.children.length > 0;
+  const isActive = currentPath === item.path || currentPath.startsWith(item.path + "/");
+  const isExactMatch = currentPath === item.path;
 
   const handleParentClick = (e: React.MouseEvent) => {
     if (hasChildren && isExpanded) {
@@ -225,19 +224,37 @@ function MobileNavSection({
   };
 
   return (
-    <div className="border-b border-gray-100 dark:border-gray-800">
-      <div className="flex items-center justify-between py-4">
-        <Link
-          to={item.path}
-          onClick={handleParentClick}
-          className="text-xl font-semibold text-gray-900 dark:text-white"
-        >
-          {item.title}
-        </Link>
+    <div className="space-y-1">
+      <div className="flex items-center gap-1">
+        {hasChildren ? (
+          <Link
+            to={item.path}
+            onClick={handleParentClick}
+            className={`
+              text-[15px] font-medium leading-[24px] transition-colors
+              ${isExpanded && !isExactMatch ? "text-gray-400" : "text-black dark:text-white"}
+              hover:text-black dark:hover:text-white
+            `}
+          >
+            {item.title}
+          </Link>
+        ) : (
+          <Link
+            to={item.path}
+            onClick={onNavigate}
+            className={`
+              block text-[15px] font-medium leading-[24px] transition-colors
+              ${isActive ? "text-black dark:text-white" : "text-black dark:text-gray-100"}
+              hover:text-black dark:hover:text-white
+            `}
+          >
+            {item.title}
+          </Link>
+        )}
         {hasChildren && (
           <button
             onClick={onToggle}
-            className="p-2 -mr-2 text-gray-400"
+            className="p-1 text-gray-400"
             aria-label={isExpanded ? "Collapse" : "Expand"}
           >
             <ChevronIcon className={`transform transition-transform ${isExpanded ? "rotate-90" : ""}`} />
@@ -247,17 +264,24 @@ function MobileNavSection({
 
       {/* Children */}
       {hasChildren && isExpanded && (
-        <div className="pb-4 pl-4 space-y-3">
-          {item.children!.map((child) => (
-            <Link
-              key={child.slug}
-              to={child.path}
-              onClick={onNavigate}
-              className="block text-gray-500 dark:text-gray-400 text-lg font-medium"
-            >
-              {child.title}
-            </Link>
-          ))}
+        <div className="pl-4 space-y-1">
+          {item.children!.map((child) => {
+            const isChildActive = currentPath === child.path || currentPath.startsWith(child.path + "/");
+            return (
+              <Link
+                key={child.slug}
+                to={child.path}
+                onClick={onNavigate}
+                className={`
+                  block text-[15px] leading-[24px] transition-colors
+                  ${isChildActive ? "text-black dark:text-white font-bold" : "text-gray-400"}
+                  hover:text-black dark:hover:text-white
+                `}
+              >
+                {child.title}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
@@ -266,18 +290,26 @@ function MobileNavSection({
 
 function MobileNavLink({
   href,
+  currentPath,
   onClick,
   children,
 }: {
   href: string;
+  currentPath: string;
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const isActive = currentPath === href || currentPath.startsWith(href + "/");
+  
   return (
     <Link
       to={href}
       onClick={onClick}
-      className="block text-xl font-semibold text-gray-900 dark:text-white py-2"
+      className={`
+        block text-xs transition-colors
+        ${isActive ? "text-black font-bold dark:text-white" : "text-gray-400"}
+        hover:text-black dark:hover:text-white
+      `}
     >
       {children}
     </Link>
