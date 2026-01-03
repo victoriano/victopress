@@ -5,12 +5,19 @@ import * as build from "../build/server";
 
 export const onRequest = createPagesFunctionHandler({
   build,
-  getLoadContext: ({ context }) => ({
-    cloudflare: {
-      env: context.env,
-      cf: context.cf,
-      ctx: context,
-    },
-  }),
+  getLoadContext: (args) => {
+    // Log what we receive for debugging
+    const { context } = args;
+    console.log("[Pages Function] Context keys:", Object.keys(context));
+    console.log("[Pages Function] Env keys:", context.env ? Object.keys(context.env) : "no env");
+    
+    return {
+      cloudflare: {
+        env: context.env,
+        cf: context.cf,
+        ctx: context,
+      },
+    };
+  },
   mode: process.env.NODE_ENV,
 });

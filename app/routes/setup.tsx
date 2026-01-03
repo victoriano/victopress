@@ -582,8 +582,8 @@ export default function AdminSetup() {
               onSimulate={() => seedToR2(true)}
               onNext={() => setStep("credentials")}
               onBack={() => setStep("bucket")}
-              isR2Configured={data.storageConfigured || bucketCreated}
-              needsRedeploy={bucketCreated && !data.storageConfigured}
+              isR2Configured={data.storageConfigured || bindingCreated}
+              needsRedeploy={bindingCreated && !data.storageConfigured}
             />
           )}
           
@@ -599,7 +599,7 @@ export default function AdminSetup() {
           
           {step === "complete" && (
             <CompleteStep 
-              needsRedeploy={bucketCreated && !data.storageConfigured}
+              needsRedeploy={bindingCreated && !data.storageConfigured}
               deploymentTriggered={deploymentTriggered}
               isLoading={isLoading}
               onTriggerDeployment={triggerDeployment}

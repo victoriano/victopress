@@ -34,8 +34,20 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
+  // Debug: log what we're seeing
+  const env = context.cloudflare?.env as { CONTENT_BUCKET?: unknown; ADMIN_PASSWORD?: string; ADMIN_USERNAME?: string } | undefined;
+  console.log("[Home] Environment check:", {
+    hasCloudflare: !!context.cloudflare,
+    hasEnv: !!context.cloudflare?.env,
+    hasContentBucket: !!env?.CONTENT_BUCKET,
+    hasAdminPassword: !!env?.ADMIN_PASSWORD,
+    hasAdminUsername: !!env?.ADMIN_USERNAME,
+    isDev: process.env.NODE_ENV === "development",
+  });
+  
   // Check if setup is needed (production + not configured)
   if (needsSetup(context)) {
+    console.log("[Home] Redirecting to /setup - needs setup");
     return redirect("/setup");
   }
   

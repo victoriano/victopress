@@ -12,6 +12,17 @@ import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { scanGalleries, scanBlog, getStorage, isDemoMode } from "~/lib/content-engine";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
+  // Debug: log context structure
+  const env = context.cloudflare?.env as Record<string, unknown> | undefined;
+  console.log("[Admin] Context check:", {
+    hasCloudflare: !!context.cloudflare,
+    hasEnv: !!env,
+    envKeys: env ? Object.keys(env) : [],
+    hasAdminPassword: !!env?.ADMIN_PASSWORD,
+    hasAdminUsername: !!env?.ADMIN_USERNAME,
+    hasContentBucket: !!env?.CONTENT_BUCKET,
+  });
+  
   // Check authentication
   checkAdminAuth(request, context.cloudflare?.env || {});
   
