@@ -1613,12 +1613,12 @@ function CompleteStep({
         </ul>
       </div>
       
-      <button
-        onClick={onFinish}
-        className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+      <a
+        href="/admin"
+        className="inline-block px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
       >
         Go to Admin Panel →
-      </button>
+      </a>
     </div>
   );
 }
