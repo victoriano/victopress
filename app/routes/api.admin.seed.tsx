@@ -41,16 +41,20 @@ function getMimeType(path: string): string {
   return MIME_TYPES[ext] || "application/octet-stream";
 }
 
-// Simple auth check (matches setup.tsx pattern)
+// Auth check using same pattern as admin-auth.ts
 function isAuthenticated(request: Request, env: Env): boolean {
-  const cookie = request.headers.get("Cookie") || "";
-  const adminAuth = cookie.split(";").find(c => c.trim().startsWith("admin_auth="));
-  
-  if (!adminAuth || !env.ADMIN_USERNAME || !env.ADMIN_PASSWORD) {
+  if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD) {
     return false;
   }
   
-  const token = adminAuth.split("=")[1];
+  const cookieHeader = request.headers.get("Cookie") || "";
+  const match = cookieHeader.match(/admin_auth=([^;]+)/);
+  
+  if (!match) {
+    return false;
+  }
+  
+  const token = match[1];
   const expectedToken = btoa(`${env.ADMIN_USERNAME}:${env.ADMIN_PASSWORD}`);
   
   return token === expectedToken;
