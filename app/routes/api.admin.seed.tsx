@@ -42,11 +42,8 @@ function getMimeType(path: string): string {
 }
 
 // Auth check using same pattern as admin-auth.ts
-function isAuthenticated(request: Request, env: Env): boolean {
-  if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD) {
-    return false;
-  }
-  
+// Also supports setup-mode auth where credentials are passed directly
+function isAuthenticated(request: Request, env: Env, setupCredentials?: { username: string; password: string }): boolean {
   const cookieHeader = request.headers.get("Cookie") || "";
   const match = cookieHeader.match(/admin_auth=([^;]+)/);
   
@@ -55,9 +52,24 @@ function isAuthenticated(request: Request, env: Env): boolean {
   }
   
   const token = match[1];
-  const expectedToken = btoa(`${env.ADMIN_USERNAME}:${env.ADMIN_PASSWORD}`);
   
-  return token === expectedToken;
+  // First try: env vars (normal operation after deployment)
+  if (env.ADMIN_USERNAME && env.ADMIN_PASSWORD) {
+    const expectedToken = btoa(`${env.ADMIN_USERNAME}:${env.ADMIN_PASSWORD}`);
+    if (token === expectedToken) {
+      return true;
+    }
+  }
+  
+  // Second try: setup credentials passed directly (for initial setup before redeploy)
+  if (setupCredentials?.username && setupCredentials?.password) {
+    const expectedToken = btoa(`${setupCredentials.username}:${setupCredentials.password}`);
+    if (token === expectedToken) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
@@ -80,9 +92,17 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const env = context.cloudflare?.env as Env | undefined;
+  const formData = await request.formData();
+  
+  // Support setup mode: credentials passed directly (before env vars are set via redeploy)
+  const setupUsername = formData.get("setupUsername") as string | null;
+  const setupPassword = formData.get("setupPassword") as string | null;
+  const setupCredentials = setupUsername && setupPassword 
+    ? { username: setupUsername, password: setupPassword }
+    : undefined;
   
   // Check authentication
-  if (!isAuthenticated(request, env!)) {
+  if (!isAuthenticated(request, env!, setupCredentials)) {
     return json({ error: "Unauthorized" }, { status: 401 });
   }
   
@@ -94,7 +114,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }, { status: 400 });
   }
   
-  const formData = await request.formData();
   const action = formData.get("action");
   
   // Check existing files action

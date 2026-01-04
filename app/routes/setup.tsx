@@ -227,6 +227,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
     
     console.log(`[SETUP] Generated admin credentials`);
     
+    // Create auth cookie so seeding will work immediately
+    const authToken = btoa(`${username}:${password}`);
+    const authCookie = `admin_auth=${authToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`;
+    
     // If we have token and project info, set credentials automatically
     if (token && accountId && projectName) {
       try {
@@ -241,6 +245,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
           generatedPassword: password,
           generatedUsername: username,
           credentialsSetAutomatically: true,
+        }, {
+          headers: { "Set-Cookie": authCookie }
         });
       } catch (error) {
         console.error(`[SETUP] Failed to set credentials automatically:`, error);
@@ -257,6 +263,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
       generatedPassword: password,
       generatedUsername: username,
       credentialsSetAutomatically: false,
+    }, {
+      headers: { "Set-Cookie": authCookie }
     });
   }
   
@@ -332,6 +340,7 @@ export default function AdminSetup() {
   const [bindingCreated, setBindingCreated] = useState(false);
   const [hasPagesPermission, setHasPagesPermission] = useState(true);
   const [deploymentTriggered, setDeploymentTriggered] = useState(false);
+  const [setupCredentials, setSetupCredentials] = useState<{ username: string; password: string } | null>(null);
   
   const isLoading = fetcher.state !== "idle";
   // Type the result as a flexible object that can contain various action responses
@@ -386,6 +395,13 @@ export default function AdminSetup() {
       }
       if (result.deploymentId) {
         setDeploymentTriggered(true);
+      }
+      // Store credentials when generated (for seeding before redeploy)
+      if (result.generatedUsername && result.generatedPassword) {
+        setSetupCredentials({ 
+          username: result.generatedUsername, 
+          password: result.generatedPassword 
+        });
       }
     }
   }, [result, data.hostname]);
@@ -446,13 +462,20 @@ export default function AdminSetup() {
     try {
       // Process files in batches
       while (true) {
+        // Build request body - include setup credentials if available (for auth before redeploy)
+        const body = new URLSearchParams({
+          action: "seed",
+          skipExisting: "true",
+          startIndex: startIndex.toString(),
+        });
+        if (setupCredentials) {
+          body.set("setupUsername", setupCredentials.username);
+          body.set("setupPassword", setupCredentials.password);
+        }
+        
         const response = await fetch("/api/admin/seed", {
           method: "POST",
-          body: new URLSearchParams({
-            action: "seed",
-            skipExisting: "true",
-            startIndex: startIndex.toString(),
-          }),
+          body,
           credentials: "include",
         });
         
