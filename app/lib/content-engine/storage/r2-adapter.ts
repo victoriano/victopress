@@ -114,6 +114,8 @@ export class R2StorageAdapter implements StorageAdapter {
   async getSignedUrl(key: string, _expiresIn = 3600): Promise<string> {
     // R2 doesn't support presigned URLs directly in Workers
     // We return the path and handle auth at the route level
-    return `/api/images/${encodeURIComponent(key)}`;
+    // Encode each path segment separately to preserve slashes
+    const encodedPath = key.split('/').map(segment => encodeURIComponent(segment)).join('/');
+    return `/api/images/${encodedPath}`;
   }
 }

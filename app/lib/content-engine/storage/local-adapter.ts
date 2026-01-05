@@ -127,6 +127,8 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   async getSignedUrl(key: string): Promise<string> {
     // For local dev, serve from the static route
-    return `/api/local-images/${encodeURIComponent(key)}`;
+    // Encode each path segment separately to preserve slashes
+    const encodedPath = key.split('/').map(segment => encodeURIComponent(segment)).join('/');
+    return `/api/local-images/${encodedPath}`;
   }
 }
