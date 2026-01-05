@@ -111,9 +111,9 @@ export default function AdminDashboard() {
                     className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                   >
                     <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0">
-                      {gallery.coverPhoto && (
+                      {gallery.cover && (
                         <img
-                          src={`/api/local-images/${gallery.coverPhoto}`}
+                          src={`/api/local-images/${encodeImagePath(gallery.cover)}`}
                           alt={gallery.title}
                           className="w-full h-full object-cover"
                         />
@@ -205,6 +205,11 @@ export default function AdminDashboard() {
       </div>
     </AdminLayout>
   );
+}
+
+// Helper to encode path segments for URLs (preserves slashes)
+function encodeImagePath(path: string): string {
+  return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
 }
 
 // Components
