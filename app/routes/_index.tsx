@@ -8,7 +8,7 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
 import { json, redirect } from "@remix-run/cloudflare";
-import { scanGalleries, scanParentMetadata, getStorage, needsSetup } from "~/lib/content-engine";
+import { scanGalleries, getStorage, needsSetup, getNavigationFromIndex } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
 import { buildNavigation } from "~/utils/navigation";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
@@ -41,18 +41,17 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   
   const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
-  const [allGalleries, parentMetadata] = await Promise.all([
+  
+  // Load galleries for photo grid and navigation from index in parallel
+  const [allGalleries, navigation] = await Promise.all([
     scanGalleries(storage),
-    scanParentMetadata(storage),
+    getNavigationFromIndex(storage),
   ]);
   
-  // Filter public galleries and sort by order
+  // Filter public galleries and sort by order for photo selection
   const galleries = allGalleries
     .filter((g) => !g.private)
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-
-  // Build navigation structure from galleries with parent metadata
-  const navigation = buildNavigation(galleries, parentMetadata);
   
   // Try to load home.yaml config
   let homeConfig: HomeConfig | null = null;

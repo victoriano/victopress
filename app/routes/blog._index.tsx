@@ -8,9 +8,8 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { scanBlog, filterPublishedPosts, scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
+import { getStorage, getContentIndex, getNavigationFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
-import { buildNavigation } from "~/utils/navigation";
 
 export const meta: MetaFunction = () => {
   return [
@@ -22,24 +21,20 @@ export const meta: MetaFunction = () => {
 export async function loader({ context }: LoaderFunctionArgs) {
   const storage = getStorage(context);
 
-  const [allPosts, allGalleries, parentMetadata] = await Promise.all([
-    scanBlog(storage),
-    scanGalleries(storage),
-    scanParentMetadata(storage),
+  // Use content index for fast loading
+  const [contentIndex, navigation] = await Promise.all([
+    getContentIndex(storage),
+    getNavigationFromIndex(storage),
   ]);
 
-  const posts = filterPublishedPosts(allPosts).sort((a, b) => {
-    const dateA = a.date || new Date(0);
-    const dateB = b.date || new Date(0);
-    return dateB.getTime() - dateA.getTime();
-  });
-
-  // Build navigation from galleries
-  const publicGalleries = allGalleries
-    .filter((g) => !g.private)
-    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-
-  const navigation = buildNavigation(publicGalleries, parentMetadata);
+  // Filter published posts and sort by date
+  const posts = contentIndex.posts
+    .filter(p => !p.draft)
+    .sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA;
+    });
 
   return json({
     posts,

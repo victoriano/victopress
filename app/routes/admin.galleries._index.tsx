@@ -9,7 +9,7 @@ import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanGalleries, getStorage } from "~/lib/content-engine";
+import { getStorage, getContentIndex } from "~/lib/content-engine";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
@@ -17,10 +17,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const username = getAdminUser(request);
   const storage = getStorage(context);
   
-  const galleries = await scanGalleries(storage);
+  // Use pre-calculated content index for fast loading
+  const contentIndex = await getContentIndex(storage);
   
   // Sort by order, then by title
-  galleries.sort((a, b) => {
+  const galleries = [...contentIndex.galleries].sort((a, b) => {
     const orderA = a.order ?? 999;
     const orderB = b.order ?? 999;
     if (orderA !== orderB) return orderA - orderB;
@@ -91,9 +92,9 @@ function GalleryCard({ gallery }: { gallery: any }) {
     >
       {/* Cover Image */}
       <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800 overflow-hidden">
-        {gallery.cover ? (
+        {gallery.coverPhoto ? (
           <img
-            src={`/api/local-images/${gallery.cover}`}
+            src={`/api/local-images/${gallery.coverPhoto}`}
             alt={gallery.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
@@ -115,12 +116,7 @@ function GalleryCard({ gallery }: { gallery: any }) {
               {gallery.photoCount} photos
             </p>
           </div>
-          {gallery.private && (
-            <span className="flex-shrink-0 px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
-              Private
-            </span>
-          )}
-          {gallery.password && (
+          {gallery.isProtected && (
             <span className="flex-shrink-0 px-2 py-1 text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded">
               Protected
             </span>

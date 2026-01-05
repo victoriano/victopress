@@ -8,10 +8,9 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
+import { scanGalleries, getStorage, getNavigationFromIndex } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
 import { PasswordProtectedGallery } from "~/components/PasswordProtectedGallery";
-import { buildNavigation } from "~/utils/navigation";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { isGalleryAuthenticated } from "~/utils/gallery-auth";
 
@@ -63,9 +62,11 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
-  const [allGalleries, parentMetadata] = await Promise.all([
+  
+  // Load galleries for content and navigation from index in parallel
+  const [allGalleries, navigation] = await Promise.all([
     scanGalleries(storage),
-    scanParentMetadata(storage),
+    getNavigationFromIndex(storage),
   ]);
   
   // Filter galleries for navigation
@@ -147,8 +148,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     throw new Response("Not Found", { status: 404 });
   }
 
-  const navigation = buildNavigation(publicGalleries, parentMetadata);
-
+  // Navigation is loaded from index in parallel above
   const siteName = "Victoriano Izquierdo";
   const canonicalUrl = `${baseUrl}/gallery/${gallery.slug}`;
   const ogImage = buildImageUrl(baseUrl, gallery.cover);

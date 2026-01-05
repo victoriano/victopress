@@ -8,9 +8,8 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { getPostBySlug, scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
+import { getPostBySlug, getStorage, getNavigationFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
-import { buildNavigation } from "~/utils/navigation";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -41,22 +40,15 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
 
-  const [post, allGalleries, parentMetadata] = await Promise.all([
+  // Load post and navigation from index in parallel
+  const [post, navigation] = await Promise.all([
     getPostBySlug(storage, slug),
-    scanGalleries(storage),
-    scanParentMetadata(storage),
+    getNavigationFromIndex(storage),
   ]);
 
   if (!post || post.draft) {
     throw new Response("Not Found", { status: 404 });
   }
-
-  // Build navigation from galleries
-  const publicGalleries = allGalleries
-    .filter((g) => !g.private)
-    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-
-  const navigation = buildNavigation(publicGalleries, parentMetadata);
 
   const siteName = "Victoriano Izquierdo";
   const canonicalUrl = `${baseUrl}/blog/${post.slug}`;

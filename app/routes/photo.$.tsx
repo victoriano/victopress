@@ -8,9 +8,8 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
+import { scanGalleries, getStorage, getNavigationFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
-import { buildNavigation } from "~/utils/navigation";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { useEffect, useCallback } from "react";
 
@@ -54,9 +53,11 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
   const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
-  const [allGalleries, parentMetadata] = await Promise.all([
+  
+  // Load galleries and navigation from index in parallel
+  const [allGalleries, navigation] = await Promise.all([
     scanGalleries(storage),
-    scanParentMetadata(storage),
+    getNavigationFromIndex(storage),
   ]);
 
   // Find the gallery
@@ -82,13 +83,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   // Get signed URL for the photo
   const photoUrl = await storage.getSignedUrl(photo.path);
 
-  // Build navigation from all galleries
-  const publicGalleries = allGalleries
-    .filter((g) => !g.private)
-    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-
-  const navigation = buildNavigation(publicGalleries, parentMetadata);
-
+  // Navigation is loaded from index in parallel above
   const siteName = "Victoriano Izquierdo";
   const canonicalUrl = `${baseUrl}/photo/${gallerySlug}/${photoFilename}`;
   const ogImage = buildImageUrl(baseUrl, photo.path);

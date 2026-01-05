@@ -9,7 +9,7 @@ import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanPages, getStorage } from "~/lib/content-engine";
+import { getStorage, getContentIndex } from "~/lib/content-engine";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
@@ -17,7 +17,14 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const username = getAdminUser(request);
   const storage = getStorage(context);
   
-  const pages = await scanPages(storage);
+  // Use pre-calculated content index for fast loading
+  const contentIndex = await getContentIndex(storage);
+  
+  // Add isHtml property based on path
+  const pages = contentIndex.pages.map(page => ({
+    ...page,
+    isHtml: page.path.endsWith('.html'),
+  }));
   
   return json({ username, pages });
 }

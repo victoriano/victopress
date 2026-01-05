@@ -9,7 +9,7 @@ import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanGalleries, scanBlog, getStorage, isDemoMode } from "~/lib/content-engine";
+import { getStorage, isDemoMode, getContentIndex } from "~/lib/content-engine";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   // Check authentication
@@ -19,29 +19,29 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const storage = getStorage(context);
   const demoMode = isDemoMode(context);
   
-  // Get stats
-  const [galleries, posts] = await Promise.all([
-    scanGalleries(storage),
-    scanBlog(storage),
-  ]);
+  // Use pre-calculated content index for fast loading
+  const contentIndex = await getContentIndex(storage);
   
-  const totalPhotos = galleries.reduce((acc, g) => acc + g.photoCount, 0);
+  // Get recent items from index
+  const recentGalleries = [...contentIndex.galleries]
+    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+    .slice(0, 5);
+  
+  const recentPosts = [...contentIndex.posts]
+    .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+    .slice(0, 5);
   
   return json({
     username,
     isDemoMode: demoMode,
     stats: {
-      galleries: galleries.length,
-      photos: totalPhotos,
-      posts: posts.length,
-      drafts: posts.filter(p => p.draft).length,
+      galleries: contentIndex.stats.totalGalleries,
+      photos: contentIndex.stats.totalPhotos,
+      posts: contentIndex.stats.totalPosts,
+      drafts: contentIndex.posts.filter(p => p.draft).length,
     },
-    recentGalleries: galleries
-      .sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())
-      .slice(0, 5),
-    recentPosts: posts
-      .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
-      .slice(0, 5),
+    recentGalleries,
+    recentPosts,
   });
 }
 
@@ -111,9 +111,9 @@ export default function AdminDashboard() {
                     className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                   >
                     <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0">
-                      {gallery.cover && (
+                      {gallery.coverPhoto && (
                         <img
-                          src={`/api/local-images/${gallery.cover}`}
+                          src={`/api/local-images/${gallery.coverPhoto}`}
                           alt={gallery.title}
                           className="w-full h-full object-cover"
                         />

@@ -9,7 +9,7 @@ import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanBlog, getStorage } from "~/lib/content-engine";
+import { getStorage, getContentIndex } from "~/lib/content-engine";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
@@ -17,10 +17,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const username = getAdminUser(request);
   const storage = getStorage(context);
   
-  const posts = await scanBlog(storage);
+  // Use pre-calculated content index for fast loading
+  const contentIndex = await getContentIndex(storage);
   
   // Sort by date (newest first)
-  posts.sort((a, b) => {
+  const posts = [...contentIndex.posts].sort((a, b) => {
     const dateA = a.date ? new Date(a.date).getTime() : 0;
     const dateB = b.date ? new Date(b.date).getTime() : 0;
     return dateB - dateA;
@@ -133,9 +134,9 @@ export default function AdminBlog() {
                         >
                           {post.title}
                         </Link>
-                        {post.description && (
+                        {post.excerpt && (
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
-                            {post.description}
+                            {post.excerpt}
                           </p>
                         )}
                       </div>

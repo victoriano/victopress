@@ -8,9 +8,8 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { getPageBySlug, scanGalleries, scanParentMetadata, getStorage } from "~/lib/content-engine";
+import { getPageBySlug, getStorage, getNavigationFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
-import { buildNavigation } from "~/utils/navigation";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.page) {
@@ -30,22 +29,15 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
   const storage = getStorage(context);
 
-  const [page, allGalleries, parentMetadata] = await Promise.all([
+  // Load page and navigation from index in parallel
+  const [page, navigation] = await Promise.all([
     getPageBySlug(storage, slug),
-    scanGalleries(storage),
-    scanParentMetadata(storage),
+    getNavigationFromIndex(storage),
   ]);
 
   if (!page || page.hidden) {
     throw new Response("Not Found", { status: 404 });
   }
-
-  // Build navigation from galleries
-  const publicGalleries = allGalleries
-    .filter((g) => !g.private)
-    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-
-  const navigation = buildNavigation(publicGalleries, parentMetadata);
 
   return json({
     page,

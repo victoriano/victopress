@@ -10,7 +10,7 @@ import { useLoaderData, useFetcher, useSearchParams } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanGalleries, getStorage } from "~/lib/content-engine";
+import { getStorage, getContentIndex, invalidateContentIndex } from "~/lib/content-engine";
 import { useState, useCallback, useRef } from "react";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
@@ -19,10 +19,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const username = getAdminUser(request);
   const storage = getStorage(context);
   
-  const galleries = await scanGalleries(storage);
+  // Use pre-calculated content index for fast loading
+  const contentIndex = await getContentIndex(storage);
   
   // Sort galleries for dropdown
-  galleries.sort((a, b) => a.title.localeCompare(b.title));
+  const galleries = [...contentIndex.galleries].sort((a, b) => a.title.localeCompare(b.title));
   
   return json({ username, galleries });
 }
@@ -69,6 +70,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
   
   const successCount = results.filter((r) => r.status === "success").length;
+  
+  // Invalidate content index if any uploads succeeded
+  // (will be rebuilt on next request)
+  if (successCount > 0) {
+    await invalidateContentIndex(storage);
+  }
   
   return json({
     success: successCount > 0,

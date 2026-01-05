@@ -11,8 +11,8 @@ import { useLoaderData, useFetcher } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanGalleries, scanBlog, scanPages, getStorage, isDemoMode, getStorageMode, isDevelopment, getAdapterPreference } from "~/lib/content-engine";
-import type { StorageAdapterPreference } from "~/lib/content-engine";
+import { getStorage, isDemoMode, getStorageMode, isDevelopment, getAdapterPreference, getContentIndex, rebuildContentIndex } from "~/lib/content-engine";
+import type { StorageAdapterPreference, ContentIndex } from "~/lib/content-engine";
 
 type StorageAdapterType = "local" | "r2" | "unconfigured";
 
@@ -97,13 +97,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const storageMode = getStorageMode(context, request);
   const isDevMode = isDevelopment();
   
-  const [galleries, posts, pages] = await Promise.all([
-    scanGalleries(storage),
-    scanBlog(storage),
-    scanPages(storage),
-  ]);
-  
-  const totalPhotos = galleries.reduce((acc, g) => acc + g.photoCount, 0);
+  // Use pre-calculated content index for fast loading
+  const contentIndex = await getContentIndex(storage);
   
   // Get adapter preference (checks cookie first for instant switching)
   const adapterPreference = getAdapterPreference(context, request);
@@ -126,11 +121,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   return json({
     username,
     isDemoMode: demoMode,
-    stats: {
-      galleries: galleries.length,
-      photos: totalPhotos,
-      posts: posts.length,
-      pages: pages.length,
+    stats: contentIndex.stats,
+    indexInfo: {
+      updatedAt: contentIndex.updatedAt,
+      version: contentIndex.version,
     },
     env: {
       hasAdminCredentials: !!env?.ADMIN_USERNAME,
@@ -141,7 +135,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function AdminSettings() {
-  const { username, isDemoMode: demoMode, stats, env, storageConfig } = useLoaderData<typeof loader>();
+  const { username, isDemoMode: demoMode, stats, indexInfo, env, storageConfig } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<{ testResult: StorageTestResult }>();
   const isTestingStorage = fetcher.state !== "idle";
   const testResult = fetcher.data?.testResult;
@@ -272,10 +266,22 @@ export default function AdminSettings() {
 
         {/* Content Stats */}
         <Section title="Content Statistics">
-          <InfoRow label="Galleries" value={stats.galleries.toString()} />
-          <InfoRow label="Photos" value={stats.photos.toString()} />
-          <InfoRow label="Blog Posts" value={stats.posts.toString()} />
-          <InfoRow label="Pages" value={stats.pages.toString()} />
+          <InfoRow label="Galleries" value={stats.totalGalleries.toString()} />
+          <InfoRow label="Photos" value={stats.totalPhotos.toString()} />
+          <InfoRow label="Blog Posts" value={stats.totalPosts.toString()} />
+          <InfoRow label="Pages" value={stats.totalPages.toString()} />
+        </Section>
+
+        {/* Content Index */}
+        <Section 
+          title="Content Index" 
+          icon={<IndexIcon />}
+          badge={{ 
+            text: indexInfo.updatedAt ? "Active" : "Not Built", 
+            color: indexInfo.updatedAt ? "green" : "yellow" 
+          }}
+        >
+          <ContentIndexPanel indexInfo={indexInfo} />
         </Section>
 
         {/* Storage Configuration */}
@@ -982,6 +988,22 @@ function CloudIcon({ className }: { className?: string }) {
   );
 }
 
+function IndexIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+    </svg>
+  );
+}
+
+function RefreshIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+    </svg>
+  );
+}
+
 function FolderIcon({ className }: { className?: string }) {
   return (
     <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1630,6 +1652,134 @@ function InfoIcon({ className }: { className?: string }) {
     <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
     </svg>
+  );
+}
+
+// Content Index Panel Component
+function ContentIndexPanel({ 
+  indexInfo 
+}: { 
+  indexInfo: { updatedAt: string; version: number } 
+}) {
+  const fetcher = useFetcher<{ success: boolean; message: string; rebuildTime?: number }>();
+  const isRebuilding = fetcher.state !== "idle";
+  
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleString();
+  };
+  
+  const getTimeSince = (isoString: string) => {
+    const ms = Date.now() - new Date(isoString).getTime();
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    return 'just now';
+  };
+  
+  const handleRebuild = () => {
+    fetcher.submit(
+      { action: "rebuild-index" },
+      { method: "POST", action: "/api/content-index" }
+    );
+  };
+  
+  return (
+    <div className="space-y-4">
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-800/50 rounded-lg">
+              <IndexIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Pre-calculated Index
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Enables instant navigation in admin panel
+              </p>
+            </div>
+          </div>
+          <span className="px-2.5 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400 rounded-full">
+            v{indexInfo.version}
+          </span>
+        </div>
+      </div>
+      
+      {/* Index Status */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Last Updated</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+            {indexInfo.updatedAt ? formatDate(indexInfo.updatedAt) : 'Never'}
+          </p>
+          {indexInfo.updatedAt && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {getTimeSince(indexInfo.updatedAt)}
+            </p>
+          )}
+        </div>
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Status</p>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Active</p>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Auto-updates on content changes
+          </p>
+        </div>
+      </div>
+      
+      {/* Rebuild Button */}
+      <div className="pt-2">
+        <button
+          onClick={handleRebuild}
+          disabled={isRebuilding}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 disabled:shadow-none"
+        >
+          {isRebuilding ? (
+            <>
+              <LoadingSpinner />
+              Rebuilding Index...
+            </>
+          ) : (
+            <>
+              <RefreshIcon className="w-5 h-5" />
+              Rebuild Index
+            </>
+          )}
+        </button>
+        <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+          Force a full re-scan of all content. Use if content appears outdated.
+        </p>
+      </div>
+      
+      {/* Result Messages */}
+      {fetcher.data?.success && (
+        <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <p className="text-sm text-green-700 dark:text-green-400">
+            {fetcher.data.message}
+            {fetcher.data.rebuildTime && (
+              <span className="block text-xs mt-1 opacity-75">
+                Completed in {fetcher.data.rebuildTime}ms
+              </span>
+            )}
+          </p>
+        </div>
+      )}
+      {fetcher.data?.success === false && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-700 dark:text-red-400">{fetcher.data.message}</p>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -8,6 +8,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import contentManifest from "~/data/content-manifest.json";
+import { getStorage, invalidateContentIndex } from "~/lib/content-engine";
 
 interface Env {
   CONTENT_BUCKET?: R2Bucket;
@@ -210,6 +211,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
           results.failed++;
           results.processed++;
           results.errors.push(`Error processing ${file.path}: ${fileError instanceof Error ? fileError.message : "Unknown"}`);
+        }
+      }
+      
+      // Invalidate content index when seeding is complete
+      if (!results.hasMore && results.uploaded > 0) {
+        try {
+          const storage = getStorage(context, request);
+          await invalidateContentIndex(storage);
+        } catch {
+          // Index invalidation failure is non-critical
         }
       }
       

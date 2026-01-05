@@ -51,6 +51,31 @@ export {
   getCategories,
 } from "./tag-indexer";
 
+// Content Index (pre-calculated for fast navigation)
+export {
+  getContentIndex,
+  rebuildContentIndex,
+  readContentIndex,
+  writeContentIndex,
+  hasValidIndex,
+  getIndexAge,
+  invalidateContentIndex,
+  getNavigationFromIndex,
+  updateGalleryInIndex,
+  removeGalleryFromIndex,
+  updatePostInIndex,
+  removePostFromIndex,
+  updatePageInIndex,
+  removePageFromIndex,
+} from "./content-index";
+export type {
+  ContentIndex,
+  GalleryIndexEntry,
+  PostIndexEntry,
+  PageIndexEntry,
+  ParentMetadataEntry,
+} from "./content-index";
+
 // EXIF
 export { extractExif, formatExifForDisplay } from "./exif";
 
