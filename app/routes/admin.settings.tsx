@@ -2,7 +2,7 @@
  * Admin - Settings
  * 
  * GET /admin/settings
- * POST /admin/settings (storage test)
+ * POST /admin/settings (storage test, R2 configuration)
  */
 
 import { useState } from "react";
@@ -11,10 +11,15 @@ import { useLoaderData, useFetcher } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanGalleries, scanBlog, scanPages, getStorage, isDemoMode } from "~/lib/content-engine";
+import { scanGalleries, scanBlog, scanPages, getStorage, isDemoMode, getStorageMode, isDevelopment } from "~/lib/content-engine";
+
+type StorageAdapterType = "local" | "r2" | "demo";
 
 interface StorageConfig {
+  adapterType: StorageAdapterType;
   isR2: boolean;
+  isDevelopment: boolean;
+  localPath: string | null;
   bucketName: string | null;
   publicUrl: string | null;
   accountId: string | null;
@@ -86,6 +91,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const storage = getStorage(context);
   const env = context.cloudflare?.env as Env | undefined;
   const demoMode = isDemoMode(context);
+  const storageMode = getStorageMode(context);
+  const isDevMode = isDevelopment();
   
   const [galleries, posts, pages] = await Promise.all([
     scanGalleries(storage),
@@ -97,7 +104,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   
   // Get storage configuration details
   const storageConfig: StorageConfig = {
+    adapterType: storageMode,
     isR2: !!env?.CONTENT_BUCKET,
+    isDevelopment: isDevMode,
+    localPath: isDevMode ? "./content" : null,
     bucketName: env?.R2_BUCKET_NAME || null,
     publicUrl: env?.R2_PUBLIC_URL || null,
     accountId: env?.R2_ACCOUNT_ID || null,
@@ -127,6 +137,9 @@ export default function AdminSettings() {
   const fetcher = useFetcher<{ testResult: StorageTestResult }>();
   const isTestingStorage = fetcher.state !== "idle";
   const testResult = fetcher.data?.testResult;
+
+  // R2 config modal state
+  const [showR2Config, setShowR2Config] = useState(false);
 
   // Seeding state
   const [seedingStatus, setSeedingStatus] = useState<{
@@ -257,21 +270,107 @@ export default function AdminSettings() {
           <InfoRow label="Pages" value={stats.pages.toString()} />
         </Section>
 
-        {/* R2 Storage Configuration */}
+        {/* Storage Configuration */}
         <Section 
-          title="R2 Storage Configuration" 
+          title="Storage Configuration" 
           icon={<StorageIcon />}
-          badge={storageConfig.isR2 ? { text: "Connected", color: "green" } : { text: "Local Mode", color: "yellow" }}
+          badge={
+            storageConfig.adapterType === "r2" 
+              ? { text: "R2 Connected", color: "green" } 
+              : storageConfig.adapterType === "local"
+              ? { text: "Local Storage", color: "blue" }
+              : { text: "Demo Mode", color: "yellow" }
+          }
         >
           <div className="space-y-4">
-            {/* Connection Status */}
-            <InfoRow 
-              label="Storage Provider" 
-              value={storageConfig.isR2 ? "Cloudflare R2" : "Local Filesystem"} 
-              status={storageConfig.isR2 ? "success" : "info"}
-            />
+            {/* Current Adapter Info */}
+            <div className="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div className={`p-3 rounded-xl ${
+                storageConfig.adapterType === "r2" 
+                  ? "bg-orange-100 dark:bg-orange-900/30" 
+                  : storageConfig.adapterType === "local"
+                  ? "bg-blue-100 dark:bg-blue-900/30"
+                  : "bg-yellow-100 dark:bg-yellow-900/30"
+              }`}>
+                {storageConfig.adapterType === "r2" ? (
+                  <CloudIcon className={`w-6 h-6 text-orange-600 dark:text-orange-400`} />
+                ) : storageConfig.adapterType === "local" ? (
+                  <FolderIcon className={`w-6 h-6 text-blue-600 dark:text-blue-400`} />
+                ) : (
+                  <DemoIcon className={`w-6 h-6 text-yellow-600 dark:text-yellow-400`} />
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-white">
+                  {storageConfig.adapterType === "r2" 
+                    ? "Cloudflare R2" 
+                    : storageConfig.adapterType === "local"
+                    ? "Local Storage Adapter"
+                    : "Demo Mode (Bundled Content)"}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {storageConfig.adapterType === "r2" 
+                    ? "Connected to Cloudflare R2 bucket for production storage" 
+                    : storageConfig.adapterType === "local"
+                    ? "Reading content from local filesystem"
+                    : "Using pre-bundled sample content (read-only)"}
+                </p>
+              </div>
+              {storageConfig.isDevelopment && (
+                <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 rounded-full">
+                  Dev Mode
+                </span>
+              )}
+            </div>
             
-            {storageConfig.isR2 ? (
+            {/* Adapter-specific details */}
+            {storageConfig.adapterType === "local" && (
+              <>
+                {/* Local Storage Details */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <div className="flex gap-3">
+                    <FolderIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm flex-1">
+                      <p className="text-blue-800 dark:text-blue-200 font-medium">Local Filesystem</p>
+                      <p className="text-blue-700 dark:text-blue-300 mt-1">
+                        Content is being served from: <code className="bg-blue-100 dark:bg-blue-800 px-2 py-0.5 rounded font-mono">{storageConfig.localPath}</code>
+                      </p>
+                      <ul className="mt-3 space-y-1 text-blue-600 dark:text-blue-400">
+                        <li className="flex items-center gap-2">
+                          <CheckIcon className="w-4 h-4" />
+                          <span>Full read/write access</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckIcon className="w-4 h-4" />
+                          <span>Changes reflect immediately</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckIcon className="w-4 h-4" />
+                          <span>No cloud connection required</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Option to connect to R2 */}
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Connect to R2 Storage</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Want to use Cloudflare R2 for production? You can switch to R2 storage to serve content from the cloud.
+                  </p>
+                  <button
+                    onClick={() => setShowR2Config(true)}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <CloudIcon className="w-4 h-4" />
+                    Configure R2 Connection
+                  </button>
+                </div>
+              </>
+            )}
+
+            {storageConfig.adapterType === "r2" && (
               <>
                 {/* R2 Configuration Details */}
                 <InfoRow 
@@ -306,21 +405,49 @@ export default function AdminSettings() {
                     </a>
                   </div>
                 )}
+
+                {/* Edit Configuration */}
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => setShowR2Config(true)}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <SettingsIcon className="w-4 h-4" />
+                    Edit Configuration
+                  </button>
+                </div>
               </>
-            ) : (
+            )}
+
+            {storageConfig.adapterType === "demo" && (
               <>
-                {/* Local Storage Info */}
+                {/* Demo Mode Info */}
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                   <div className="flex gap-3">
                     <WarningIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
                     <div className="text-sm">
-                      <p className="text-yellow-800 dark:text-yellow-200 font-medium">Development Mode</p>
+                      <p className="text-yellow-800 dark:text-yellow-200 font-medium">Read-Only Mode</p>
                       <p className="text-yellow-700 dark:text-yellow-300 mt-1">
-                        Using local filesystem at <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">./content</code>. 
-                        Configure R2 in <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">wrangler.toml</code> for production.
+                        The site is running with bundled sample content. This is a demonstration mode with limited functionality.
+                        Configure R2 storage to enable full content management.
                       </p>
                     </div>
                   </div>
+                </div>
+
+                {/* Option to connect to R2 */}
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Connect Storage</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Configure R2 storage to enable full content management and uploads.
+                  </p>
+                  <button
+                    onClick={() => setShowR2Config(true)}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <CloudIcon className="w-4 h-4" />
+                    Configure R2 Connection
+                  </button>
                 </div>
               </>
             )}
@@ -388,8 +515,17 @@ export default function AdminSettings() {
           </div>
         </Section>
 
-        {/* Content Seeding */}
-        {storageConfig.isR2 && (
+        {/* R2 Configuration Modal */}
+        {showR2Config && (
+          <R2ConfigModal
+            isOpen={showR2Config}
+            onClose={() => setShowR2Config(false)}
+            currentConfig={storageConfig}
+          />
+        )}
+
+        {/* Content Seeding - only show when using R2 adapter */}
+        {storageConfig.adapterType === "r2" && (
           <Section 
             title="Sample Content" 
             icon={<DownloadIcon />}
@@ -819,6 +955,274 @@ function ChevronIcon({ className }: { className?: string }) {
   return (
     <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+    </svg>
+  );
+}
+
+function CloudIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+    </svg>
+  );
+}
+
+function FolderIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+    </svg>
+  );
+}
+
+function DemoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+    </svg>
+  );
+}
+
+function SettingsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+// R2 Configuration Modal Component
+function R2ConfigModal({ 
+  isOpen, 
+  onClose, 
+  currentConfig 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  currentConfig: StorageConfig;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative min-h-screen flex items-center justify-center p-4">
+        <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <CloudIcon className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  R2 Storage Configuration
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Configure Cloudflare R2 bucket connection
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <CloseIcon className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-6">
+            {/* Info Banner for Development */}
+            {currentConfig.isDevelopment && (
+              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <InfoIcon className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="text-purple-800 dark:text-purple-200 font-medium">Development Mode</p>
+                    <p className="text-purple-700 dark:text-purple-300 mt-1">
+                      You're running locally. To test R2 connection, you'll need to configure credentials in your <code className="bg-purple-100 dark:bg-purple-800 px-1 rounded">.dev.vars</code> file or run with <code className="bg-purple-100 dark:bg-purple-800 px-1 rounded">wrangler dev --remote</code>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Configuration Steps */}
+            <div className="space-y-6">
+              {/* Step 1: Create Bucket */}
+              <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">1</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 dark:text-white mb-2">Create R2 Bucket</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Go to Cloudflare Dashboard → R2 → Create Bucket
+                    </p>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Recommended bucket name:</p>
+                      <code className="text-sm text-orange-600 dark:text-orange-400 font-mono">victopress-content</code>
+                    </div>
+                    <a 
+                      href="https://dash.cloudflare.com/?to=/:account/r2/new"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 mt-3 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      <ExternalIcon />
+                      Open Cloudflare R2 Dashboard
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2: Configure wrangler.toml */}
+              <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">2</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 dark:text-white mb-2">Configure wrangler.toml</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Add the R2 binding to your <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">wrangler.toml</code>:
+                    </p>
+                    <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
+{`[[r2_buckets]]
+binding = "CONTENT_BUCKET"
+bucket_name = "victopress-content"
+
+[vars]
+R2_BUCKET_NAME = "victopress-content"
+R2_ACCOUNT_ID = "your-account-id"  # Optional: enables dashboard links
+R2_PUBLIC_URL = ""  # Optional: custom domain for images`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3: For Local Development */}
+              {currentConfig.isDevelopment && (
+                <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-bold text-orange-600 dark:text-orange-400">3</span>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">Test R2 Locally (Optional)</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        To test R2 connection during local development, run:
+                      </p>
+                      <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
+{`# Run with remote R2 bucket
+bun run dev --remote
+
+# Or use wrangler directly
+wrangler pages dev --remote`}
+                      </pre>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                        Note: This will use your actual R2 bucket instead of local filesystem.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Upload Content */}
+              <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">{currentConfig.isDevelopment ? "4" : "3"}</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 dark:text-white mb-2">Upload Content to R2</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Sync your local content folder to R2 using rclone:
+                    </p>
+                    <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
+{`# Install rclone and configure R2
+rclone config
+
+# Sync local content to R2
+rclone sync ./content r2:victopress-content --progress`}
+                    </pre>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                      Or use the "Seed Sample Content" button in Settings after deployment.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Current Configuration */}
+            {currentConfig.isR2 && (
+              <div className="border-t border-gray-200 dark:border-gray-800 pt-6">
+                <h3 className="font-medium text-gray-900 dark:text-white mb-4">Current Configuration</h3>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Bucket:</span>
+                    <span className="text-gray-900 dark:text-white font-mono">{currentConfig.bucketName || "—"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Public URL:</span>
+                    <span className="text-gray-900 dark:text-white font-mono">{currentConfig.publicUrl || "Worker routes"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Account ID:</span>
+                    <span className="text-gray-900 dark:text-white font-mono">
+                      {currentConfig.accountId ? `${currentConfig.accountId.slice(0, 8)}...` : "—"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-sm font-medium"
+            >
+              Close
+            </button>
+            <a
+              href="https://developers.cloudflare.com/r2/get-started/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors text-sm font-medium inline-flex items-center gap-2"
+            >
+              <ExternalIcon />
+              R2 Documentation
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
     </svg>
   );
 }
