@@ -129,8 +129,8 @@ export interface Gallery extends GalleryMetadata {
   /** Folder path relative to content root */
   path: string;
   
-  /** Cover image path */
-  cover: string;
+  /** Cover image path (optional for parent galleries without photos) */
+  cover?: string;
   
   /** Gallery photos */
   photos: Photo[];
@@ -143,6 +143,9 @@ export interface Gallery extends GalleryMetadata {
   
   /** Whether metadata came from gallery.yaml */
   hasCustomMetadata: boolean;
+  
+  /** Whether this is a parent/container gallery (has config but no direct photos) */
+  isParentGallery?: boolean;
 }
 
 // =============================================================================

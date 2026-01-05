@@ -84,13 +84,18 @@ async function scanGalleryFolder(
   // Find image files
   const imageFiles = contents.filter((f) => !f.isDirectory && isImageFile(f.name));
   
-  // No images = not a gallery
-  if (imageFiles.length === 0) {
-    return null;
-  }
-
   // Check for gallery.yaml (custom metadata)
   const yamlMetadata = await loadGalleryYaml(storage, folderPath);
+  
+  // A folder is a gallery if it has:
+  // 1. Images (traditional gallery), OR
+  // 2. A gallery.yaml file (parent/container gallery with settings)
+  const hasImages = imageFiles.length > 0;
+  const hasGalleryConfig = yamlMetadata !== null;
+  
+  if (!hasImages && !hasGalleryConfig) {
+    return null;
+  }
   
   // Check for photos.yaml (custom photo order/metadata)
   const photosYaml = await loadPhotosYaml(storage, folderPath);
@@ -98,17 +103,19 @@ async function scanGalleryFolder(
   // Generate automatic metadata
   const autoTitle = folderNameToTitle(folderName);
   const autoSlug = toSlug(folderName);
-  const lastModified = getLatestModification(imageFiles);
+  const lastModified = hasImages ? getLatestModification(imageFiles) : new Date();
   
-  // Scan each photo
-  const photos = await scanPhotos(storage, folderPath, imageFiles, photosYaml);
+  // Scan each photo (only if there are images)
+  const photos = hasImages 
+    ? await scanPhotos(storage, folderPath, imageFiles, photosYaml)
+    : [];
   
   // Sort photos (by custom order or alphabetically)
   const sortedPhotos = sortPhotos(photos, photosYaml);
   
-  // Determine cover image
-  const cover = yamlMetadata?.cover || sortedPhotos[0]?.filename || imageFiles[0].name;
-  const coverPath = `${folderPath}/${cover}`;
+  // Determine cover image (may be undefined for parent galleries without photos)
+  const cover = yamlMetadata?.cover || sortedPhotos[0]?.filename || (imageFiles[0]?.name ?? null);
+  const coverPath = cover ? `${folderPath}/${cover}` : undefined;
 
   // Derive category from path if not set in YAML
   const derivedCategory = yamlMetadata?.category || parentCategory;
@@ -118,6 +125,9 @@ async function scanGalleryFolder(
     ? `${parentCategory}/${autoSlug}` 
     : autoSlug;
 
+  // Check if this is a parent/container gallery (has config but no direct photos)
+  const isParentGallery = hasGalleryConfig && !hasImages;
+  
   // Build gallery object
   const gallery: Gallery = {
     id: fullSlug,
@@ -137,6 +147,7 @@ async function scanGalleryFolder(
     order: yamlMetadata?.order,
     hasCustomMetadata: !!yamlMetadata,
     includeNestedPhotos: yamlMetadata?.includeNestedPhotos,
+    isParentGallery,
   };
 
   return gallery;

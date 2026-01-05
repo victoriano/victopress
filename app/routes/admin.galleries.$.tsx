@@ -23,15 +23,57 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const username = getAdminUser(request);
   const storage = getStorage(context);
   
+  // Get content index for lookups
+  const contentIndex = await getContentIndex(storage);
+  
   // Use pre-calculated index for fast loading
   const gallery = await getGalleryFromIndex(storage, slug);
   
+  // Find child galleries from index (direct children only)
+  const childGalleries = contentIndex.galleryData
+    .filter((g) => g.slug.startsWith(slug + "/") && !g.slug.slice(slug.length + 1).includes("/"))
+    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  
+  // If gallery not found in index, it might be a virtual parent
   if (!gallery) {
+    // Check if there are any child galleries
+    if (childGalleries.length > 0) {
+      // This is a virtual parent gallery - create a virtual gallery object
+      const slugParts = slug.split("/");
+      const virtualGallery = {
+        slug,
+        title: slugParts[slugParts.length - 1]
+          .split("-")
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" "),
+        description: null,
+        photos: [],
+        photoCount: 0,
+        isProtected: false,
+        isVirtual: true,
+      };
+      
+      // Find parent gallery for breadcrumbs
+      let parentGallery = null;
+      if (slugParts.length > 1) {
+        const parentSlug = slugParts.slice(0, -1).join("/");
+        const foundParent = contentIndex.galleryData.find((g) => g.slug === parentSlug);
+        parentGallery = foundParent || {
+          slug: parentSlug,
+          title: slugParts[slugParts.length - 2]
+            .split("-")
+            .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(" "),
+          isVirtual: true,
+        };
+      }
+      
+      return json({ username, gallery: virtualGallery, parentGallery, childGalleries, isVirtualParent: true });
+    }
+    
+    // No gallery and no children - truly not found
     throw new Response("Gallery not found", { status: 404 });
   }
-  
-  // Get content index for navigation lookups
-  const contentIndex = await getContentIndex(storage);
   
   // Find parent gallery (if this is a nested gallery)
   const slugParts = slug.split("/");
@@ -49,16 +91,11 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     };
   }
   
-  // Find child galleries from index
-  const childGalleries = contentIndex.galleryData
-    .filter((g) => g.slug.startsWith(slug + "/") && !g.slug.slice(slug.length + 1).includes("/"))
-    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-  
-  return json({ username, gallery, parentGallery, childGalleries });
+  return json({ username, gallery, parentGallery, childGalleries, isVirtualParent: false });
 }
 
 export default function AdminGalleryDetail() {
-  const { username, gallery, parentGallery, childGalleries } = useLoaderData<typeof loader>();
+  const { username, gallery, parentGallery, childGalleries, isVirtualParent } = useLoaderData<typeof loader>();
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -116,26 +153,40 @@ export default function AdminGalleryDetail() {
           </div>
           
           <div className="flex items-center gap-2">
-            <Link
-              to={`/gallery/${gallery.slug}`}
-              target="_blank"
-              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
-            >
-              <ExternalIcon />
-              View
-            </Link>
-            <button
-              type="button"
-              onClick={() => setShowSettings(!showSettings)}
-              className={`inline-flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm ${
-                showSettings 
-                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
-                  : "border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-              }`}
-            >
-              <SettingsIcon />
-              Settings
-            </button>
+            {!isVirtualParent && (
+              <Link
+                to={`/gallery/${gallery.slug}`}
+                target="_blank"
+                className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
+              >
+                <ExternalIcon />
+                View
+              </Link>
+            )}
+            {!isVirtualParent && (
+              <button
+                type="button"
+                onClick={() => setShowSettings(!showSettings)}
+                className={`inline-flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm ${
+                  showSettings 
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                    : "border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                }`}
+              >
+                <SettingsIcon />
+                Settings
+              </button>
+            )}
+            {isVirtualParent && (
+              <span className="px-3 py-1.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
+                Virtual Container
+              </span>
+            )}
+            {!isVirtualParent && gallery.isParentGallery && (
+              <span className="px-3 py-1.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
+                Parent Gallery
+              </span>
+            )}
           </div>
         </div>
 
@@ -181,20 +232,32 @@ export default function AdminGalleryDetail() {
         )}
 
         {/* Gallery Info Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-          <InfoCard label="Photos" value={gallery.photoCount.toString()} />
-          <InfoCard label="Order" value={gallery.order?.toString() ?? "—"} />
-          <InfoCard 
-            label="Status" 
-            value={gallery.private ? "Private" : gallery.password ? "Protected" : "Public"} 
-            variant={gallery.private ? "warning" : gallery.password ? "info" : "success"}
-          />
+        <div className={`grid gap-4 mb-6 ${isVirtualParent ? 'grid-cols-2 lg:grid-cols-3' : gallery.isParentGallery ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-5'}`}>
+          {!isVirtualParent && (
+            <>
+              <InfoCard label="Photos" value={gallery.photoCount.toString()} />
+              <InfoCard label="Order" value={gallery.order?.toString() ?? "—"} />
+              {!gallery.isParentGallery && (
+                <InfoCard 
+                  label="Status" 
+                  value={gallery.private ? "Private" : gallery.password ? "Protected" : "Public"} 
+                  variant={gallery.private ? "warning" : gallery.password ? "info" : "success"}
+                />
+              )}
+            </>
+          )}
           <InfoCard 
             label="Parent" 
             value={parentGallery ? parentGallery.title : "Root"}
             href={parentGallery ? `/admin/galleries/${parentGallery.slug}` : undefined}
           />
           <InfoCard label="Children" value={childGalleries.length.toString()} />
+          {isVirtualParent && (
+            <InfoCard label="Type" value="Container" variant="warning" />
+          )}
+          {!isVirtualParent && gallery.isParentGallery && (
+            <InfoCard label="Type" value="Parent Gallery" variant="info" />
+          )}
         </div>
 
         {/* Child Galleries */}
@@ -217,70 +280,103 @@ export default function AdminGalleryDetail() {
           </div>
         )}
 
-        {/* Toolbar */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={toggleAll}
-              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-            >
-              {selectedPhotos.length === gallery.photos.length ? "Deselect all" : "Select all"}
-            </button>
-            {selectedPhotos.length > 0 && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {selectedPhotos.length} selected
-              </span>
-            )}
-          </div>
-          
-          {selectedPhotos.length > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                Hide
-              </button>
-              <button
-                type="button"
-                className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-              >
-                Delete
-              </button>
+        {/* Virtual Container Notice - no gallery.yaml, just a folder */}
+        {isVirtualParent && (
+          <div className="text-center py-12 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-800">
+            <div className="w-16 h-16 mx-auto mb-4 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-sm">
+              <FolderIcon />
             </div>
-          )}
-        </div>
-
-        {/* Photos Grid */}
-        {gallery.photos.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-              <PhotoIcon />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No photos</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              Upload photos to this gallery
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Virtual Container</h3>
+            <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-4">
+              This folder organizes child galleries but has no configuration. 
+              Create a <code className="bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-sm">gallery.yaml</code> to customize it.
             </p>
-            <Link
-              to={`/admin/upload?gallery=${gallery.slug}`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium"
-            >
-              <UploadIcon />
-              Upload Photos
-            </Link>
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Path: <code className="bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">content/galleries/{gallery.slug}/gallery.yaml</code>
+            </p>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-            {gallery.photos.map((photo) => (
-              <PhotoCard
-                key={photo.id}
-                photo={photo}
-                gallerySlug={gallery.slug}
-                isSelected={selectedPhotos.includes(photo.id)}
-                onToggle={() => togglePhoto(photo.id)}
-              />
-            ))}
+        )}
+
+        {/* Parent Gallery Notice - has gallery.yaml but no direct photos */}
+        {!isVirtualParent && gallery.isParentGallery && gallery.photos.length === 0 && (
+          <div className="text-center py-12 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+            <div className="w-16 h-16 mx-auto mb-4 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-sm">
+              <FolderIcon />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Parent Gallery</h3>
+            <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-4">
+              This gallery has settings but no direct photos. You can upload photos or configure it to show photos from child galleries.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <Link
+                to={`/admin/upload?gallery=${gallery.slug}`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium"
+              >
+                <UploadIcon />
+                Upload Photos
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
+              >
+                <SettingsIcon />
+                Configure
+              </button>
+            </div>
           </div>
+        )}
+
+        {/* Toolbar & Photos - for galleries with photos */}
+        {!isVirtualParent && gallery.photos.length > 0 && (
+          <>
+            {/* Toolbar */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={toggleAll}
+                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                >
+                  {selectedPhotos.length === gallery.photos.length ? "Deselect all" : "Select all"}
+                </button>
+                {selectedPhotos.length > 0 && (
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {selectedPhotos.length} selected
+                  </span>
+                )}
+              </div>
+              
+              {selectedPhotos.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    Hide
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Photos Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+              {gallery.photos.map((photo) => (
+                <PhotoCard
+                  key={photo.id}
+                  photo={photo}
+                  gallerySlug={gallery.slug}
+                  isSelected={selectedPhotos.includes(photo.id)}
+                  onToggle={() => togglePhoto(photo.id)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </AdminLayout>

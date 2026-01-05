@@ -16,7 +16,7 @@ import { buildNavigation } from "../../utils/navigation";
 import type { NavItem } from "../../components/Sidebar";
 
 const INDEX_FILE = "_content-index.json";
-const INDEX_VERSION = 4; // Bumped to fix cover field name
+const INDEX_VERSION = 5; // Bumped to include isParentGallery flag
 
 /** Number of photos to store per gallery for home page */
 const PHOTOS_PER_GALLERY = 6;
@@ -54,7 +54,8 @@ export interface GalleryDataEntry {
   slug: string;
   title: string;
   description?: string;
-  cover: string;
+  /** Cover image path (optional for parent galleries without photos) */
+  cover?: string;
   path: string;
   photoCount: number;
   isProtected: boolean;
@@ -65,6 +66,8 @@ export interface GalleryDataEntry {
   hasChildren: boolean;
   childCount: number;
   includeNestedPhotos?: boolean;
+  /** Whether this is a parent/container gallery (has config but no direct photos) */
+  isParentGallery?: boolean;
   /** All photos in this gallery */
   photos: GalleryPhotoEntry[];
 }
@@ -123,6 +126,8 @@ export interface GalleryIndexEntry {
   path: string;
   hasChildren: boolean;
   childCount: number;
+  /** Whether this is a parent/container gallery (has config but no direct photos) */
+  isParentGallery?: boolean;
 }
 
 /**
@@ -213,6 +218,7 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
     path: g.path,
     hasChildren: (g.children?.length ?? 0) > 0,
     childCount: g.children?.length ?? 0,
+    isParentGallery: g.isParentGallery,
   }));
   
   // Build full gallery data with all photos
@@ -257,6 +263,7 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
       hasChildren: (g.children?.length ?? 0) > 0,
       childCount: g.children?.length ?? 0,
       includeNestedPhotos: g.includeNestedPhotos,
+      isParentGallery: g.isParentGallery,
       photos,
     };
   });
