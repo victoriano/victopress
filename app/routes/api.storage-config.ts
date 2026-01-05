@@ -205,6 +205,7 @@ async function handleCreateBucket(formData: FormData) {
 }
 
 async function handleSaveConfig(formData: FormData, context: { cloudflare?: { env?: Record<string, unknown> } }) {
+  const apiToken = formData.get("apiToken") as string;
   const accountId = formData.get("accountId") as string;
   const bucketName = formData.get("bucketName") as string;
   const publicUrl = formData.get("publicUrl") as string || "";
@@ -264,11 +265,56 @@ async function handleSaveConfig(formData: FormData, context: { cloudflare?: { en
       
       await fs.writeFile(devVarsPath, newContent);
       
+      // Also update wrangler.toml with R2 bucket binding
+      const wranglerPath = path.join(process.cwd(), "wrangler.toml");
+      let wranglerUpdated = false;
+      
+      try {
+        let wranglerContent = await fs.readFile(wranglerPath, "utf-8");
+        
+        // Check if R2 bucket binding already exists
+        if (!wranglerContent.includes("[[r2_buckets]]")) {
+          // Add R2 bucket binding before [vars] or at the end
+          const r2Config = `
+# R2 Storage Bucket
+[[r2_buckets]]
+binding = "CONTENT_BUCKET"
+bucket_name = "${bucketName}"
+`;
+          
+          // Find a good place to insert (before [vars] if it exists)
+          if (wranglerContent.includes("[vars]")) {
+            wranglerContent = wranglerContent.replace("[vars]", r2Config + "\n[vars]");
+          } else {
+            wranglerContent += "\n" + r2Config;
+          }
+          
+          await fs.writeFile(wranglerPath, wranglerContent);
+          wranglerUpdated = true;
+        } else {
+          // R2 bucket already configured, just update the bucket name if different
+          const bucketMatch = wranglerContent.match(/bucket_name\s*=\s*"([^"]+)"/);
+          if (bucketMatch && bucketMatch[1] !== bucketName) {
+            wranglerContent = wranglerContent.replace(
+              /bucket_name\s*=\s*"[^"]+"/,
+              `bucket_name = "${bucketName}"`
+            );
+            await fs.writeFile(wranglerPath, wranglerContent);
+            wranglerUpdated = true;
+          }
+        }
+      } catch (e) {
+        // wrangler.toml doesn't exist or couldn't be updated
+        console.warn("Could not update wrangler.toml:", e);
+      }
+      
       return json({
         success: true,
-        message: "Your R2 configuration is verified and ready for production deployment!",
+        message: wranglerUpdated 
+          ? "Configuration saved! Both .dev.vars and wrangler.toml have been updated."
+          : "Configuration saved to .dev.vars. wrangler.toml already has R2 configured.",
         configSaved: true,
-        wranglerConfig: generateWranglerConfig(accountId, bucketName, publicUrl),
+        wranglerUpdated,
       });
     } catch (error) {
       return json({ 
@@ -277,13 +323,111 @@ async function handleSaveConfig(formData: FormData, context: { cloudflare?: { en
       });
     }
   } else {
-    // In production, return the wrangler.toml snippet they need to add
-    return json({
-      success: true,
-      message: "Copy the configuration below to your wrangler.toml and redeploy.",
-      configSaved: false,
-      wranglerConfig: generateWranglerConfig(accountId, bucketName, publicUrl),
-    });
+    // In production, use Cloudflare API to configure the project
+    const projectName = formData.get("projectName") as string;
+    
+    if (!projectName || !apiToken) {
+      // If no project name or token, fall back to showing config
+      return json({
+        success: true,
+        message: "Copy the configuration below to your wrangler.toml and redeploy.",
+        configSaved: false,
+        wranglerConfig: generateWranglerConfig(accountId, bucketName, publicUrl),
+      });
+    }
+    
+    try {
+      // Step 1: Set environment variables for the Pages project
+      const envVarsResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Authorization": `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            deployment_configs: {
+              production: {
+                env_vars: {
+                  R2_BUCKET_NAME: { value: bucketName },
+                  R2_ACCOUNT_ID: { value: accountId },
+                  ...(publicUrl ? { R2_PUBLIC_URL: { value: publicUrl } } : {}),
+                },
+                r2_buckets: {
+                  CONTENT_BUCKET: { name: bucketName },
+                },
+              },
+              preview: {
+                env_vars: {
+                  R2_BUCKET_NAME: { value: bucketName },
+                  R2_ACCOUNT_ID: { value: accountId },
+                  ...(publicUrl ? { R2_PUBLIC_URL: { value: publicUrl } } : {}),
+                },
+                r2_buckets: {
+                  CONTENT_BUCKET: { name: bucketName },
+                },
+              },
+            },
+          }),
+        }
+      );
+      
+      const envResult = await envVarsResponse.json() as { 
+        success: boolean; 
+        errors?: Array<{ message: string }>;
+      };
+      
+      if (!envResult.success) {
+        return json({
+          success: false,
+          error: `Failed to configure project: ${envResult.errors?.[0]?.message || "Unknown error"}`,
+        });
+      }
+      
+      // Step 2: Trigger a new deployment
+      const deployResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}/deployments`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      const deployResult = await deployResponse.json() as { 
+        success: boolean;
+        result?: { id: string; url: string };
+        errors?: Array<{ message: string }>;
+      };
+      
+      if (deployResult.success && deployResult.result) {
+        return json({
+          success: true,
+          message: "Configuration saved and deployment triggered!",
+          configSaved: true,
+          deploymentId: deployResult.result.id,
+          deploymentUrl: deployResult.result.url,
+        });
+      } else {
+        // Config saved but deployment didn't trigger - still a success
+        return json({
+          success: true,
+          message: "Configuration saved! A new deployment will use these settings.",
+          configSaved: true,
+          deploymentNote: "Trigger a new deployment from the Cloudflare dashboard or push a commit.",
+        });
+      }
+    } catch (error) {
+      // API calls failed, fall back to showing config
+      return json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to configure project via API",
+        wranglerConfig: generateWranglerConfig(accountId, bucketName, publicUrl),
+      });
+    }
   }
 }
 

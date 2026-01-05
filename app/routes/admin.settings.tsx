@@ -1057,6 +1057,10 @@ function R2ConfigModal({
     bucket?: { name: string };
     configSaved?: boolean;
     wranglerConfig?: string;
+    wranglerUpdated?: boolean;
+    deploymentId?: string;
+    deploymentUrl?: string;
+    deploymentNote?: string;
   }>();
   
   // Wizard state
@@ -1068,6 +1072,7 @@ function R2ConfigModal({
   const [newBucketName, setNewBucketName] = useState("victopress-content");
   const [createNewBucket, setCreateNewBucket] = useState(false);
   const [publicUrl, setPublicUrl] = useState("");
+  const [projectName, setProjectName] = useState("victopress"); // Cloudflare Pages project name
   const [showToken, setShowToken] = useState(false);
   
   // Reset state when modal closes
@@ -1115,9 +1120,14 @@ function R2ConfigModal({
   const handleSaveConfig = () => {
     const formData = new FormData();
     formData.append("action", "save-config");
+    formData.append("apiToken", apiToken); // Need token for production API calls
     formData.append("accountId", selectedAccount!.id);
     formData.append("bucketName", createNewBucket ? newBucketName : selectedBucket);
     formData.append("publicUrl", publicUrl);
+    // Include project name for production deployment via API
+    if (!currentConfig.isDevelopment && projectName) {
+      formData.append("projectName", projectName);
+    }
     fetcher.submit(formData, { method: "post", action: "/api/storage-config" });
   };
   
@@ -1468,7 +1478,7 @@ function R2ConfigModal({
                   </p>
                 </div>
                 
-                {currentConfig.isDevelopment && (
+                {currentConfig.isDevelopment ? (
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <div className="flex gap-3">
                       <InfoIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
@@ -1480,6 +1490,37 @@ function R2ConfigModal({
                       </div>
                     </div>
                   </div>
+                ) : (
+                  <>
+                    {/* Project Name for Production Auto-Deploy */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Cloudflare Pages Project Name
+                      </label>
+                      <input
+                        type="text"
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                        placeholder="your-project-name"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        The name of your Cloudflare Pages project (used to configure R2 and trigger deployment)
+                      </p>
+                    </div>
+                    
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="text-green-800 dark:text-green-200 font-medium">Automatic Configuration</p>
+                          <p className="text-green-700 dark:text-green-300 mt-1">
+                            We'll use the Cloudflare API to automatically configure your project with the R2 bucket and trigger a new deployment.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
                 
                 {fetcher.data?.error && step === 4 && (
@@ -1505,29 +1546,116 @@ function R2ConfigModal({
                   </p>
                 </div>
                 
-                {fetcher.data?.wranglerConfig && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {fetcher.data.configSaved 
-                        ? "Add this to your wrangler.toml for production:" 
-                        : "Copy this configuration to your wrangler.toml:"
-                      }
-                    </p>
-                    <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
-                      {fetcher.data.wranglerConfig}
-                    </pre>
+                {/* Production with deployment triggered */}
+                {fetcher.data?.deploymentId && (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="text-green-800 dark:text-green-200 font-medium">Deployment Triggered!</p>
+                          <p className="text-green-700 dark:text-green-300 mt-1">
+                            Your project is being redeployed with the new R2 configuration.
+                          </p>
+                          {fetcher.data.deploymentUrl && (
+                            <a 
+                              href={fetcher.data.deploymentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 mt-2 text-green-600 dark:text-green-400 hover:underline"
+                            >
+                              <ExternalIcon />
+                              View Deployment
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
                 
-                {fetcher.data?.configSaved && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <div className="flex gap-3">
-                      <InfoIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm">
-                        <p className="text-blue-800 dark:text-blue-200 font-medium">Ready for Production</p>
-                        <p className="text-blue-700 dark:text-blue-300 mt-1">
-                          Your R2 credentials are saved to <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">.dev.vars</code>. In local development, you'll continue using the <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">./content/</code> folder. R2 will be used automatically when you deploy to Cloudflare.
-                        </p>
+                {/* Production config saved but no deployment (manual trigger needed) */}
+                {fetcher.data?.configSaved && fetcher.data?.deploymentNote && !fetcher.data?.deploymentId && (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="text-green-800 dark:text-green-200 font-medium">Configuration Saved!</p>
+                          <p className="text-green-700 dark:text-green-300 mt-1">
+                            R2 settings have been configured for your project.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        <InfoIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="text-blue-800 dark:text-blue-200 font-medium">Deploy to Apply</p>
+                          <p className="text-blue-700 dark:text-blue-300 mt-1">
+                            {fetcher.data.deploymentNote}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Fallback: Show wrangler config to copy (when API fails) */}
+                {fetcher.data?.wranglerConfig && !fetcher.data?.configSaved && (
+                  <div className="space-y-4">
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        <WarningIcon className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="text-amber-800 dark:text-amber-200 font-medium">Manual Configuration Required</p>
+                          <p className="text-amber-700 dark:text-amber-300 mt-1">
+                            We couldn't automatically configure your project. Copy the configuration below to your wrangler.toml and redeploy.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Add to wrangler.toml:
+                      </p>
+                      <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
+                        {fetcher.data.wranglerConfig}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Development: Config auto-saved to local files */}
+                {fetcher.data?.configSaved && currentConfig.isDevelopment && (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="text-green-800 dark:text-green-200 font-medium">Files Updated Automatically</p>
+                          <ul className="text-green-700 dark:text-green-300 mt-1 space-y-1">
+                            <li>✓ <code className="bg-green-100 dark:bg-green-800 px-1 rounded">.dev.vars</code> - R2 credentials saved</li>
+                            {fetcher.data.wranglerUpdated && (
+                              <li>✓ <code className="bg-green-100 dark:bg-green-800 px-1 rounded">wrangler.toml</code> - R2 bucket binding configured</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        <InfoIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="text-blue-800 dark:text-blue-200 font-medium">Ready for Production</p>
+                          <p className="text-blue-700 dark:text-blue-300 mt-1">
+                            You can switch to R2 storage using the toggle above, or commit your changes and deploy to Cloudflare where R2 will be used automatically.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
