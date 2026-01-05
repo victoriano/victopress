@@ -2,7 +2,7 @@
  * Storage Factory
  * 
  * Automatically selects the right storage adapter based on environment.
- * - Development: Local filesystem
+ * - Development: Local filesystem (default) or R2 if STORAGE_ADAPTER=r2
  * - Production with R2: Cloudflare R2
  * - Production without R2: Demo mode (bundled content)
  */
@@ -22,6 +22,7 @@ export interface StorageConfig {
 }
 
 export type StorageMode = "r2" | "local" | "demo";
+export type StorageAdapterPreference = "auto" | "local" | "r2";
 
 /**
  * Create a storage adapter based on the environment
@@ -57,13 +58,19 @@ export function createStorageAdapter(config: StorageConfig): StorageAdapter {
  * Get storage adapter for the current request context
  */
 export function getStorage(context: {
-  cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket } };
+  cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket; STORAGE_ADAPTER?: string } };
 }): StorageAdapter {
   const bucket = context.cloudflare?.env?.CONTENT_BUCKET;
+  const adapterPreference = context.cloudflare?.env?.STORAGE_ADAPTER as StorageAdapterPreference | undefined;
+  const localPath = process.cwd() + "/content";
   
-  // In development, use local filesystem
+  // In development, respect the adapter preference
   if (process.env.NODE_ENV === "development") {
-    const localPath = process.cwd() + "/content";
+    // If user explicitly wants R2 and it's available
+    if (adapterPreference === "r2" && bucket) {
+      return new R2StorageAdapter(bucket);
+    }
+    // Default to local in development
     return new LocalStorageAdapter(localPath);
   }
   
@@ -80,11 +87,16 @@ export function getStorage(context: {
  * Detect the current storage mode
  */
 export function getStorageMode(context: {
-  cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket } };
+  cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket; STORAGE_ADAPTER?: string } };
 }): StorageMode {
   const bucket = context.cloudflare?.env?.CONTENT_BUCKET;
+  const adapterPreference = context.cloudflare?.env?.STORAGE_ADAPTER as StorageAdapterPreference | undefined;
   
   if (process.env.NODE_ENV === "development") {
+    // If user explicitly wants R2 and it's available
+    if (adapterPreference === "r2" && bucket) {
+      return "r2";
+    }
     return "local";
   }
   
@@ -93,6 +105,19 @@ export function getStorageMode(context: {
   }
 
   return "demo";
+}
+
+/**
+ * Get the current adapter preference
+ */
+export function getAdapterPreference(context: {
+  cloudflare?: { env?: { STORAGE_ADAPTER?: string } };
+}): StorageAdapterPreference {
+  const pref = context.cloudflare?.env?.STORAGE_ADAPTER;
+  if (pref === "r2" || pref === "local") {
+    return pref;
+  }
+  return "auto";
 }
 
 /**

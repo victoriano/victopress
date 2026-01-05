@@ -62,13 +62,14 @@ export {
   createStorageAdapter, 
   getStorage, 
   getStorageMode, 
+  getAdapterPreference,
   isDemoMode, 
   isR2Configured,
   isSiteConfigured,
   isDevelopment,
   needsSetup,
 } from "./storage";
-export type { StorageMode } from "./storage";
+export type { StorageMode, StorageAdapterPreference } from "./storage";
 
 // Utilities
 export {

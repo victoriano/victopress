@@ -5,19 +5,22 @@
  * POST /admin/settings (storage test, R2 configuration)
  */
 
-import { useState } from "react";
+import React, { useState } from "react";
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, useFetcher } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanGalleries, scanBlog, scanPages, getStorage, isDemoMode, getStorageMode, isDevelopment } from "~/lib/content-engine";
+import { scanGalleries, scanBlog, scanPages, getStorage, isDemoMode, getStorageMode, isDevelopment, getAdapterPreference } from "~/lib/content-engine";
+import type { StorageAdapterPreference } from "~/lib/content-engine";
 
 type StorageAdapterType = "local" | "r2" | "demo";
 
 interface StorageConfig {
   adapterType: StorageAdapterType;
+  adapterPreference: StorageAdapterPreference;
   isR2: boolean;
+  r2Available: boolean; // R2 bucket is configured and available
   isDevelopment: boolean;
   localPath: string | null;
   bucketName: string | null;
@@ -102,10 +105,15 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   
   const totalPhotos = galleries.reduce((acc, g) => acc + g.photoCount, 0);
   
+  // Get adapter preference
+  const adapterPreference = getAdapterPreference(context);
+  
   // Get storage configuration details
   const storageConfig: StorageConfig = {
     adapterType: storageMode,
-    isR2: !!env?.CONTENT_BUCKET,
+    adapterPreference,
+    isR2: storageMode === "r2",
+    r2Available: !!env?.CONTENT_BUCKET, // R2 is configured even if not in use
     isDevelopment: isDevMode,
     localPath: isDevMode ? "./content" : null,
     bucketName: env?.R2_BUCKET_NAME || null,
@@ -322,6 +330,14 @@ export default function AdminSettings() {
                 </span>
               )}
             </div>
+            
+            {/* Adapter Toggle - only in development when R2 is available */}
+            {storageConfig.isDevelopment && storageConfig.r2Available && (
+              <AdapterToggle 
+                currentAdapter={storageConfig.adapterType}
+                bucketName={storageConfig.bucketName}
+              />
+            )}
             
             {/* Adapter-specific details */}
             {storageConfig.adapterType === "local" && (
@@ -1000,7 +1016,7 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
-// R2 Configuration Modal Component
+// R2 Configuration Wizard Component
 function R2ConfigModal({ 
   isOpen, 
   onClose, 
@@ -1010,6 +1026,108 @@ function R2ConfigModal({
   onClose: () => void; 
   currentConfig: StorageConfig;
 }) {
+  const fetcher = useFetcher<{
+    success: boolean;
+    error?: string;
+    message?: string;
+    tokenInfo?: { id: string; name: string; status: string };
+    accounts?: Array<{ id: string; name: string }>;
+    buckets?: Array<{ name: string; creation_date: string }>;
+    bucket?: { name: string };
+    configSaved?: boolean;
+    wranglerConfig?: string;
+  }>();
+  
+  // Wizard state
+  const [step, setStep] = useState(1);
+  const [apiToken, setApiToken] = useState("");
+  const [selectedAccount, setSelectedAccount] = useState<{ id: string; name: string } | null>(null);
+  const [buckets, setBuckets] = useState<Array<{ name: string; creation_date: string }>>([]);
+  const [selectedBucket, setSelectedBucket] = useState("");
+  const [newBucketName, setNewBucketName] = useState("victopress-content");
+  const [createNewBucket, setCreateNewBucket] = useState(false);
+  const [publicUrl, setPublicUrl] = useState("");
+  const [showToken, setShowToken] = useState(false);
+  
+  // Reset state when modal closes
+  const handleClose = () => {
+    setStep(1);
+    setApiToken("");
+    setSelectedAccount(null);
+    setBuckets([]);
+    setSelectedBucket("");
+    setNewBucketName("victopress-content");
+    setCreateNewBucket(false);
+    setPublicUrl("");
+    setShowToken(false);
+    onClose();
+  };
+  
+  // Handle API token verification
+  const handleVerifyToken = () => {
+    const formData = new FormData();
+    formData.append("action", "test-token");
+    formData.append("apiToken", apiToken);
+    fetcher.submit(formData, { method: "post", action: "/api/storage-config" });
+  };
+  
+  // Handle listing buckets
+  const handleListBuckets = (accountId: string) => {
+    const formData = new FormData();
+    formData.append("action", "list-buckets");
+    formData.append("apiToken", apiToken);
+    formData.append("accountId", accountId);
+    fetcher.submit(formData, { method: "post", action: "/api/storage-config" });
+  };
+  
+  // Handle creating bucket
+  const handleCreateBucket = () => {
+    const formData = new FormData();
+    formData.append("action", "create-bucket");
+    formData.append("apiToken", apiToken);
+    formData.append("accountId", selectedAccount!.id);
+    formData.append("bucketName", newBucketName);
+    fetcher.submit(formData, { method: "post", action: "/api/storage-config" });
+  };
+  
+  // Handle saving configuration
+  const handleSaveConfig = () => {
+    const formData = new FormData();
+    formData.append("action", "save-config");
+    formData.append("accountId", selectedAccount!.id);
+    formData.append("bucketName", createNewBucket ? newBucketName : selectedBucket);
+    formData.append("publicUrl", publicUrl);
+    fetcher.submit(formData, { method: "post", action: "/api/storage-config" });
+  };
+  
+  // Handle fetcher results
+  React.useEffect(() => {
+    if (fetcher.data?.success) {
+      // Token verified - get accounts
+      if (fetcher.data.accounts && step === 1) {
+        setStep(2);
+      }
+      // Buckets listed
+      if (fetcher.data.buckets !== undefined && step === 2) {
+        setBuckets(fetcher.data.buckets);
+        setStep(3);
+      }
+      // Bucket created
+      if (fetcher.data.bucket) {
+        setSelectedBucket(fetcher.data.bucket.name);
+        setCreateNewBucket(false);
+        // Refresh bucket list
+        handleListBuckets(selectedAccount!.id);
+      }
+      // Config saved
+      if (fetcher.data.configSaved !== undefined) {
+        setStep(5);
+      }
+    }
+  }, [fetcher.data]);
+  
+  const isLoading = fetcher.state === "submitting";
+  
   if (!isOpen) return null;
 
   return (
@@ -1017,205 +1135,494 @@ function R2ConfigModal({
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
+        onClick={handleClose}
       />
       
       {/* Modal */}
       <div className="relative min-h-screen flex items-center justify-center p-4">
         <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           {/* Header */}
-          <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
                 <CloudIcon className="w-5 h-5 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  R2 Storage Configuration
+                  R2 Storage Setup Wizard
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Configure Cloudflare R2 bucket connection
+                  Step {step} of 5 — {getStepTitle(step)}
                 </p>
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
               <CloseIcon className="w-5 h-5" />
             </button>
           </div>
+          
+          {/* Progress Bar */}
+          <div className="px-6 pt-4">
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <div key={s} className="flex-1 flex items-center">
+                  <div className={`flex-1 h-1.5 rounded-full transition-colors ${
+                    s <= step ? "bg-orange-500" : "bg-gray-200 dark:bg-gray-700"
+                  }`} />
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Content */}
-          <div className="p-6 space-y-6">
-            {/* Info Banner for Development */}
-            {currentConfig.isDevelopment && (
-              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-                <div className="flex gap-3">
-                  <InfoIcon className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="text-purple-800 dark:text-purple-200 font-medium">Development Mode</p>
-                    <p className="text-purple-700 dark:text-purple-300 mt-1">
-                      You're running locally. To test R2 connection, you'll need to configure credentials in your <code className="bg-purple-100 dark:bg-purple-800 px-1 rounded">.dev.vars</code> file or run with <code className="bg-purple-100 dark:bg-purple-800 px-1 rounded">wrangler dev --remote</code>.
+          <div className="p-6">
+            {/* Step 1: API Token */}
+            {step === 1 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/30 mb-4">
+                    <KeyIcon className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Connect to Cloudflare
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    Enter your Cloudflare API Token to get started
+                  </p>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Cloudflare API Token
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showToken ? "text" : "password"}
+                        value={apiToken}
+                        onChange={(e) => setApiToken(e.target.value)}
+                        placeholder="Enter your API token..."
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowToken(!showToken)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      >
+                        {showToken ? <EyeOffIcon /> : <EyeIcon />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Need a token? Create one with <strong>R2:Edit</strong> permissions.
                     </p>
                   </div>
+                  
+                  <a
+                    href="https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22r2_bucket%22%2C%22type%22%3A%22edit%22%7D%5D&name=VictoPress+R2+Access"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    <ExternalIcon />
+                    Create API Token with R2 permissions
+                  </a>
+                  
+                  {fetcher.data?.error && step === 1 && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                      <p className="text-sm text-red-700 dark:text-red-300">{fetcher.data.error}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-
-            {/* Configuration Steps */}
-            <div className="space-y-6">
-              {/* Step 1: Create Bucket */}
-              <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">1</span>
+            
+            {/* Step 2: Select Account */}
+            {step === 2 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+                    <CheckCircleIcon className="w-8 h-8 text-green-600 dark:text-green-400" />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 dark:text-white mb-2">Create R2 Bucket</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      Go to Cloudflare Dashboard → R2 → Create Bucket
-                    </p>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Recommended bucket name:</p>
-                      <code className="text-sm text-orange-600 dark:text-orange-400 font-mono">victopress-content</code>
-                    </div>
-                    <a 
-                      href="https://dash.cloudflare.com/?to=/:account/r2/new"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 mt-3 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Token Verified!
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    Select the Cloudflare account to use
+                  </p>
+                </div>
+                
+                <div className="space-y-3">
+                  {fetcher.data?.accounts?.map((account) => (
+                    <button
+                      key={account.id}
+                      onClick={() => {
+                        setSelectedAccount(account);
+                        handleListBuckets(account.id);
+                      }}
+                      disabled={isLoading}
+                      className={`w-full p-4 border rounded-xl text-left transition-all ${
+                        selectedAccount?.id === account.id
+                          ? "border-orange-500 bg-orange-50 dark:bg-orange-900/20"
+                          : "border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-700"
+                      }`}
                     >
-                      <ExternalIcon />
-                      Open Cloudflare R2 Dashboard
-                    </a>
-                  </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">{account.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{account.id}</p>
+                        </div>
+                        {selectedAccount?.id === account.id && isLoading && (
+                          <LoadingSpinner />
+                        )}
+                      </div>
+                    </button>
+                  ))}
                 </div>
+                
+                {fetcher.data?.error && step === 2 && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <p className="text-sm text-red-700 dark:text-red-300">{fetcher.data.error}</p>
+                  </div>
+                )}
               </div>
-
-              {/* Step 2: Configure wrangler.toml */}
-              <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">2</span>
+            )}
+            
+            {/* Step 3: Select or Create Bucket */}
+            {step === 3 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/30 mb-4">
+                    <StorageIcon className="w-8 h-8 text-orange-600 dark:text-orange-400" />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 dark:text-white mb-2">Configure wrangler.toml</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      Add the R2 binding to your <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">wrangler.toml</code>:
-                    </p>
-                    <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
-{`[[r2_buckets]]
-binding = "CONTENT_BUCKET"
-bucket_name = "victopress-content"
-
-[vars]
-R2_BUCKET_NAME = "victopress-content"
-R2_ACCOUNT_ID = "your-account-id"  # Optional: enables dashboard links
-R2_PUBLIC_URL = ""  # Optional: custom domain for images`}
-                    </pre>
-                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Choose R2 Bucket
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    Select an existing bucket or create a new one
+                  </p>
                 </div>
-              </div>
-
-              {/* Step 3: For Local Development */}
-              {currentConfig.isDevelopment && (
-                <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0 w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-bold text-orange-600 dark:text-orange-400">3</span>
+                
+                {/* Existing Buckets */}
+                {buckets.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Existing Buckets:</p>
+                    {buckets.map((bucket) => (
+                      <button
+                        key={bucket.name}
+                        onClick={() => {
+                          setSelectedBucket(bucket.name);
+                          setCreateNewBucket(false);
+                        }}
+                        className={`w-full p-4 border rounded-xl text-left transition-all ${
+                          selectedBucket === bucket.name && !createNewBucket
+                            ? "border-orange-500 bg-orange-50 dark:bg-orange-900/20"
+                            : "border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-700"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white font-mono">{bucket.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Created: {new Date(bucket.creation_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          {selectedBucket === bucket.name && !createNewBucket && (
+                            <CheckCircleIcon className="w-5 h-5 text-orange-500" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Create New Bucket */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <button
+                    onClick={() => setCreateNewBucket(true)}
+                    className={`w-full p-4 border-2 border-dashed rounded-xl text-left transition-all ${
+                      createNewBucket
+                        ? "border-orange-500 bg-orange-50 dark:bg-orange-900/20"
+                        : "border-gray-300 dark:border-gray-600 hover:border-orange-300 dark:hover:border-orange-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <PlusIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Create New Bucket</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Create a fresh bucket for your content
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">Test R2 Locally (Optional)</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        To test R2 connection during local development, run:
+                  </button>
+                  
+                  {createNewBucket && (
+                    <div className="mt-4 space-y-3">
+                      <input
+                        type="text"
+                        value={newBucketName}
+                        onChange={(e) => setNewBucketName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                        placeholder="bucket-name"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        3-63 characters, lowercase letters, numbers, and hyphens only
                       </p>
-                      <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
-{`# Run with remote R2 bucket
-bun run dev --remote
-
-# Or use wrangler directly
-wrangler pages dev --remote`}
-                      </pre>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                        Note: This will use your actual R2 bucket instead of local filesystem.
-                      </p>
+                      <button
+                        onClick={handleCreateBucket}
+                        disabled={isLoading || newBucketName.length < 3}
+                        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg transition-colors text-sm font-medium inline-flex items-center gap-2"
+                      >
+                        {isLoading ? <LoadingSpinner /> : <PlusIcon className="w-4 h-4" />}
+                        Create Bucket
+                      </button>
                     </div>
-                  </div>
+                  )}
                 </div>
-              )}
-
-              {/* Step 4: Upload Content */}
-              <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">{currentConfig.isDevelopment ? "4" : "3"}</span>
+                
+                {fetcher.data?.error && step === 3 && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <p className="text-sm text-red-700 dark:text-red-300">{fetcher.data.error}</p>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 dark:text-white mb-2">Upload Content to R2</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      Sync your local content folder to R2 using rclone:
-                    </p>
-                    <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
-{`# Install rclone and configure R2
-rclone config
-
-# Sync local content to R2
-rclone sync ./content r2:victopress-content --progress`}
-                    </pre>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                      Or use the "Seed Sample Content" button in Settings after deployment.
-                    </p>
+                )}
+                
+                {fetcher.data?.message && fetcher.data.bucket && (
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <p className="text-sm text-green-700 dark:text-green-300">{fetcher.data.message}</p>
                   </div>
-                </div>
+                )}
               </div>
-            </div>
-
-            {/* Current Configuration */}
-            {currentConfig.isR2 && (
-              <div className="border-t border-gray-200 dark:border-gray-800 pt-6">
-                <h3 className="font-medium text-gray-900 dark:text-white mb-4">Current Configuration</h3>
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Bucket:</span>
-                    <span className="text-gray-900 dark:text-white font-mono">{currentConfig.bucketName || "—"}</span>
+            )}
+            
+            {/* Step 4: Review & Save */}
+            {step === 4 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
+                    <SettingsIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Public URL:</span>
-                    <span className="text-gray-900 dark:text-white font-mono">{currentConfig.publicUrl || "Worker routes"}</span>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Review Configuration
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    Confirm your R2 storage settings
+                  </p>
+                </div>
+                
+                {/* Configuration Summary */}
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Account:</span>
+                    <span className="text-gray-900 dark:text-white font-medium">{selectedAccount?.name}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-gray-600 dark:text-gray-400">Account ID:</span>
-                    <span className="text-gray-900 dark:text-white font-mono">
-                      {currentConfig.accountId ? `${currentConfig.accountId.slice(0, 8)}...` : "—"}
-                    </span>
+                    <span className="text-gray-900 dark:text-white font-mono text-sm">{selectedAccount?.id}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Bucket:</span>
+                    <span className="text-gray-900 dark:text-white font-mono">{createNewBucket ? newBucketName : selectedBucket}</span>
                   </div>
                 </div>
+                
+                {/* Optional Public URL */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Custom Public URL (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={publicUrl}
+                    onChange={(e) => setPublicUrl(e.target.value)}
+                    placeholder="https://cdn.example.com"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    If you have a custom domain configured for your R2 bucket
+                  </p>
+                </div>
+                
+                {currentConfig.isDevelopment && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex gap-3">
+                      <InfoIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="text-blue-800 dark:text-blue-200 font-medium">Local Development</p>
+                        <p className="text-blue-700 dark:text-blue-300 mt-1">
+                          Credentials will be verified and saved. Local dev will continue using <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">./content/</code> folder. R2 is used in production.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {fetcher.data?.error && step === 4 && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <p className="text-sm text-red-700 dark:text-red-300">{fetcher.data.error}</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Step 5: Complete */}
+            {step === 5 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+                    <CheckCircleIcon className="w-8 h-8 text-green-600 dark:text-green-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Configuration Complete!
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    {fetcher.data?.message}
+                  </p>
+                </div>
+                
+                {fetcher.data?.wranglerConfig && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {fetcher.data.configSaved 
+                        ? "Add this to your wrangler.toml for production:" 
+                        : "Copy this configuration to your wrangler.toml:"
+                      }
+                    </p>
+                    <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
+                      {fetcher.data.wranglerConfig}
+                    </pre>
+                  </div>
+                )}
+                
+                {fetcher.data?.configSaved && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex gap-3">
+                      <InfoIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="text-blue-800 dark:text-blue-200 font-medium">Ready for Production</p>
+                        <p className="text-blue-700 dark:text-blue-300 mt-1">
+                          Your R2 credentials are saved to <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">.dev.vars</code>. In local development, you'll continue using the <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">./content/</code> folder. R2 will be used automatically when you deploy to Cloudflare.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
+          <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 px-6 py-4 flex justify-between rounded-b-2xl">
             <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-sm font-medium"
+              onClick={step === 1 ? handleClose : () => setStep(step - 1)}
+              disabled={step === 5}
+              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 rounded-lg transition-colors text-sm font-medium"
             >
-              Close
+              {step === 1 ? "Cancel" : "Back"}
             </button>
-            <a
-              href="https://developers.cloudflare.com/r2/get-started/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors text-sm font-medium inline-flex items-center gap-2"
-            >
-              <ExternalIcon />
-              R2 Documentation
-            </a>
+            
+            <div className="flex gap-3">
+              {step === 1 && (
+                <button
+                  onClick={handleVerifyToken}
+                  disabled={!apiToken || isLoading}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg transition-colors text-sm font-medium inline-flex items-center gap-2"
+                >
+                  {isLoading ? <LoadingSpinner /> : null}
+                  Verify Token
+                </button>
+              )}
+              
+              {step === 3 && (
+                <button
+                  onClick={() => setStep(4)}
+                  disabled={!selectedBucket && !createNewBucket}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  Continue
+                </button>
+              )}
+              
+              {step === 4 && (
+                <button
+                  onClick={handleSaveConfig}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg transition-colors text-sm font-medium inline-flex items-center gap-2"
+                >
+                  {isLoading ? <LoadingSpinner /> : null}
+                  Save Configuration
+                </button>
+              )}
+              
+              {step === 5 && (
+                <button
+                  onClick={handleClose}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  Done
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function getStepTitle(step: number): string {
+  switch (step) {
+    case 1: return "Connect to Cloudflare";
+    case 2: return "Select Account";
+    case 3: return "Choose Bucket";
+    case 4: return "Review & Save";
+    case 5: return "Complete";
+    default: return "";
+  }
+}
+
+function KeyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+    </svg>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+    </svg>
+  );
+}
+
+function CheckCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
   );
 }
 
@@ -1224,5 +1631,118 @@ function InfoIcon({ className }: { className?: string }) {
     <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
     </svg>
+  );
+}
+
+// Adapter Toggle Component
+function AdapterToggle({ 
+  currentAdapter, 
+  bucketName 
+}: { 
+  currentAdapter: StorageAdapterType;
+  bucketName: string | null;
+}) {
+  const fetcher = useFetcher<{ success: boolean; message: string; needsRestart?: boolean }>();
+  const isLoading = fetcher.state !== "idle";
+  const [showRestartMessage, setShowRestartMessage] = useState(false);
+  
+  const handleSwitch = (newAdapter: "local" | "r2") => {
+    if (newAdapter === currentAdapter) return;
+    
+    fetcher.submit(
+      { action: "switch-adapter", adapter: newAdapter },
+      { method: "POST", action: "/api/storage-config" }
+    );
+  };
+  
+  // Show restart message when switch is successful
+  React.useEffect(() => {
+    if (fetcher.data?.success && fetcher.data?.needsRestart) {
+      setShowRestartMessage(true);
+    }
+  }, [fetcher.data]);
+  
+  return (
+    <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800/30 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Storage Adapter</h4>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Switch between local files and cloud storage
+          </p>
+        </div>
+        <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 rounded-full">
+          Dev Only
+        </span>
+      </div>
+      
+      {/* Toggle Buttons */}
+      <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1 gap-1">
+        <button
+          onClick={() => handleSwitch("local")}
+          disabled={isLoading}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            currentAdapter === "local"
+              ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm"
+              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          <FolderIcon className="w-4 h-4" />
+          <span>Local Storage</span>
+          {currentAdapter === "local" && (
+            <CheckIcon className="w-4 h-4 text-green-500" />
+          )}
+        </button>
+        
+        <button
+          onClick={() => handleSwitch("r2")}
+          disabled={isLoading}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            currentAdapter === "r2"
+              ? "bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm"
+              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          <CloudIcon className="w-4 h-4" />
+          <span>R2 Storage</span>
+          {bucketName && (
+            <span className="text-xs opacity-60">({bucketName})</span>
+          )}
+          {currentAdapter === "r2" && (
+            <CheckIcon className="w-4 h-4 text-green-500" />
+          )}
+        </button>
+      </div>
+      
+      {/* Loading State */}
+      {isLoading && (
+        <div className="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <LoadingSpinner />
+          <span>Switching adapter...</span>
+        </div>
+      )}
+      
+      {/* Error State */}
+      {fetcher.data && !fetcher.data.success && (
+        <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-700 dark:text-red-400">{fetcher.data.message}</p>
+        </div>
+      )}
+      
+      {/* Restart Required Message */}
+      {showRestartMessage && (
+        <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="flex items-start gap-2">
+            <WarningIcon className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Restart Required</p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                Stop and restart the dev server (<code className="bg-amber-100 dark:bg-amber-800/50 px-1 rounded">bun run dev</code>) to apply the change.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
