@@ -3,12 +3,13 @@
  * 
  * GET /featured/:index
  * Displays a photo from the featured/home virtual album with navigation within that album
+ * Uses pre-calculated content index for fast loading.
  */
 
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { scanGalleries, getStorage, getNavigationFromIndex } from "~/lib/content-engine";
+import { getStorage, getNavigationFromIndex, getHomePhotosFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { useEffect, useCallback } from "react";
 import yaml from "js-yaml";
@@ -35,18 +36,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   
   const storage = getStorage(context);
   
-  // Load galleries and navigation from index in parallel
-  const [allGalleries, navigation] = await Promise.all([
-    scanGalleries(storage),
-    getNavigationFromIndex(storage),
-  ]);
-  
-  // Filter public galleries and sort by order
-  const galleries = allGalleries
-    .filter((g) => !g.private)
-    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-  
-  // Try to load home.yaml config
+  // Try to load home.yaml config for custom photo selection
   let homeConfig: HomeConfig | null = null;
   try {
     const homeYamlContent = await storage.getText("home.yaml");
@@ -54,56 +44,14 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       homeConfig = yaml.load(homeYamlContent) as HomeConfig;
     }
   } catch {
-    // No home.yaml or invalid - use defaults
+    // No home.yaml or invalid - use defaults from index
   }
-
-  // Build the same photo list as the home page
-  let homePhotos: Array<{
-    id: string;
-    path: string;
-    filename: string;
-    title?: string;
-    description?: string;
-    dateTaken?: string | Date;
-    exif?: {
-      dateTimeOriginal?: string | Date;
-      title?: string;
-      imageDescription?: string;
-    };
-    gallerySlug: string;
-    galleryTitle: string;
-  }> = [];
-
-  if (homeConfig?.photos && homeConfig.photos.length > 0) {
-    // Use handpicked photos from config
-    homeConfig.photos.forEach((config) => {
-      const gallery = galleries.find((g) => g.slug === config.gallery);
-      if (gallery) {
-        const photo = gallery.photos.find((p) => p.filename === config.filename);
-        if (photo && !photo.hidden) {
-          homePhotos.push({
-            ...photo,
-            gallerySlug: gallery.slug,
-            galleryTitle: gallery.title,
-          });
-        }
-      }
-    });
-  } else {
-    // Default: 4 photos per gallery
-    galleries.forEach((g) => {
-      g.photos
-        .filter((p) => !p.hidden)
-        .slice(0, 4)
-        .forEach((p) => {
-          homePhotos.push({
-            ...p,
-            gallerySlug: g.slug,
-            galleryTitle: g.title,
-          });
-        });
-    });
-  }
+  
+  // Load navigation and home photos from index in parallel (fast!)
+  const [navigation, homePhotos] = await Promise.all([
+    getNavigationFromIndex(storage),
+    getHomePhotosFromIndex(storage, homeConfig ?? undefined),
+  ]);
 
   if (index < 0 || index >= homePhotos.length) {
     throw new Response("Photo Not Found", { status: 404 });
@@ -168,10 +116,10 @@ export default function FeaturedPhotoPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // Extract photo metadata
-  const photoTitle = photo.title || photo.exif?.title || undefined;
-  const photoDescription = photo.description || photo.exif?.imageDescription || undefined;
-  const photoYear = getPhotoYear(photo);
+  // Extract photo metadata (now pre-computed in index)
+  const photoTitle = photo.title;
+  const photoDescription = photo.description;
+  const photoYear = photo.year;
 
   // Photo navigation for sidebar
   const photoNav = {
@@ -295,25 +243,3 @@ export default function FeaturedPhotoPage() {
   );
 }
 
-/**
- * Extract year from photo metadata
- */
-function getPhotoYear(photo: {
-  dateTaken?: string | Date;
-  exif?: {
-    dateTimeOriginal?: string | Date;
-  };
-}): number | undefined {
-  if (photo.dateTaken) {
-    const year = new Date(photo.dateTaken).getFullYear();
-    if (!isNaN(year)) {
-      return year;
-    }
-  } else if (photo.exif?.dateTimeOriginal) {
-    const year = new Date(photo.exif.dateTimeOriginal).getFullYear();
-    if (!isNaN(year)) {
-      return year;
-    }
-  }
-  return undefined;
-}

@@ -71,21 +71,30 @@ export function OptimizedImage({
     ? normalizedSrc.replace("/api/local-images/", "")
     : normalizedSrc;
 
+  // Encode URL for srcset (spaces and special chars must be encoded)
+  const encodeForSrcset = (url: string): string => {
+    // Split path and encode each segment, then rejoin
+    // This handles spaces and special characters in folder/file names
+    return url.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  };
+
   // Generate URLs for different sizes
-  const generateUrl = (targetWidth: number): string => {
+  const generateUrl = (targetWidth: number, forSrcset = false): string => {
     if (useCloudflare && typeof window !== "undefined" && !window.location.hostname.includes("localhost")) {
       // Cloudflare Image Resizing URL format
       // https://developers.cloudflare.com/images/image-resizing/url-format/
       const cfOptions = [`width=${targetWidth}`, `quality=${quality}`, "format=auto"];
-      return `/cdn-cgi/image/${cfOptions.join(",")}${normalizedSrc}`;
+      const url = `/cdn-cgi/image/${cfOptions.join(",")}${normalizedSrc}`;
+      return forSrcset ? encodeForSrcset(url) : url;
     }
 
     // Development / fallback: use original image
-    return isLocalPath ? normalizedSrc : `/api/local-images/${imagePath}`;
+    const url = isLocalPath ? normalizedSrc : `/api/local-images/${imagePath}`;
+    return forSrcset ? encodeForSrcset(url) : url;
   };
 
-  // Generate srcset
-  const srcSet = SRCSET_WIDTHS.map((w) => `${generateUrl(w)} ${w}w`).join(", ");
+  // Generate srcset with properly encoded URLs
+  const srcSet = SRCSET_WIDTHS.map((w) => `${generateUrl(w, true)} ${w}w`).join(", ");
 
   // Default src (medium size)
   const defaultSrc = generateUrl(1200);
@@ -122,7 +131,8 @@ export function OptimizedImage({
         height={height}
         loading={priority ? "eager" : loading}
         decoding={priority ? "sync" : "async"}
-        fetchPriority={priority ? "high" : undefined}
+        // @ts-expect-error - React types use fetchPriority but DOM expects lowercase
+        fetchpriority={priority ? "high" : undefined}
         className={`w-full h-full object-cover transition-opacity duration-300 ${
           isLoaded ? "opacity-100" : "opacity-0"
         }`}
@@ -176,18 +186,23 @@ export function OptimizedPicture({
   const [isLoaded, setIsLoaded] = useState(false);
 
   const normalizedSrc = src.startsWith("/") ? src : `/${src}`;
+  
+  // Encode URL for srcset (spaces and special chars must be encoded)
+  const encodeForSrcset = (url: string): string => {
+    return url.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  };
 
   // Generate srcset for different formats
   const generateSrcSet = (format: string) =>
     SRCSET_WIDTHS.map((w) => {
       const url = `/cdn-cgi/image/width=${w},quality=80,format=${format}${normalizedSrc}`;
-      return `${url} ${w}w`;
+      return `${encodeForSrcset(url)} ${w}w`;
     }).join(", ");
 
   // Fallback srcset (original format)
   const fallbackSrcSet = SRCSET_WIDTHS.map((w) => {
     const url = `/cdn-cgi/image/width=${w},quality=80${normalizedSrc}`;
-    return `${url} ${w}w`;
+    return `${encodeForSrcset(url)} ${w}w`;
   }).join(", ");
 
   return (
@@ -206,7 +221,8 @@ export function OptimizedPicture({
         alt={alt}
         loading={priority ? "eager" : loading}
         decoding={priority ? "sync" : "async"}
-        fetchPriority={priority ? "high" : undefined}
+        // @ts-expect-error - React types use fetchPriority but DOM expects lowercase
+        fetchpriority={priority ? "high" : undefined}
         className={`w-full h-full object-cover transition-opacity duration-300 ${
           isLoaded ? "opacity-100" : "opacity-0"
         }`}

@@ -16,7 +16,10 @@ import { buildNavigation } from "../../utils/navigation";
 import type { NavItem } from "../../components/Sidebar";
 
 const INDEX_FILE = "_content-index.json";
-const INDEX_VERSION = 1;
+const INDEX_VERSION = 2; // Bumped to include featuredPhotos
+
+/** Number of photos to store per gallery for home page */
+const PHOTOS_PER_GALLERY = 6;
 
 /**
  * Parent folder metadata
@@ -25,6 +28,23 @@ export interface ParentMetadataEntry {
   slug: string;
   title?: string;
   order?: number;
+}
+
+/**
+ * Photo info for index (used in home page grid and featured view)
+ * Includes essential metadata for display without full EXIF
+ */
+export interface PhotoIndexEntry {
+  id: string;
+  path: string;
+  filename: string;
+  title?: string;
+  description?: string;
+  gallerySlug: string;
+  galleryTitle: string;
+  hidden?: boolean;
+  /** Year the photo was taken (from EXIF or filename) */
+  year?: number;
 }
 
 /**
@@ -37,6 +57,8 @@ export interface ContentIndex {
   posts: PostIndexEntry[];
   pages: PageIndexEntry[];
   parentMetadata: ParentMetadataEntry[];
+  /** First N photos from each gallery for home page grid */
+  featuredPhotos: PhotoIndexEntry[];
   stats: {
     totalGalleries: number;
     totalPhotos: number;
@@ -180,6 +202,42 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
     order: p.order,
   }));
   
+  // Build featured photos: first N non-hidden photos from each public gallery
+  // Sort galleries by order first to get featured photos in the right sequence
+  const sortedGalleries = [...galleries]
+    .filter(g => !g.private)
+    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  
+  const featuredPhotos: PhotoIndexEntry[] = [];
+  for (const gallery of sortedGalleries) {
+    const visiblePhotos = gallery.photos.filter(p => !p.hidden);
+    const photosToInclude = visiblePhotos.slice(0, PHOTOS_PER_GALLERY);
+    
+    for (const photo of photosToInclude) {
+      // Extract year from dateTaken or EXIF
+      let year: number | undefined;
+      if (photo.dateTaken) {
+        const d = new Date(photo.dateTaken);
+        if (!isNaN(d.getTime())) year = d.getFullYear();
+      } else if (photo.exif?.dateTimeOriginal) {
+        const d = new Date(photo.exif.dateTimeOriginal);
+        if (!isNaN(d.getTime())) year = d.getFullYear();
+      }
+      
+      featuredPhotos.push({
+        id: photo.id,
+        path: photo.path,
+        filename: photo.filename,
+        title: photo.title || photo.exif?.title,
+        description: photo.description || photo.exif?.imageDescription,
+        gallerySlug: gallery.slug,
+        galleryTitle: gallery.title,
+        hidden: photo.hidden,
+        year,
+      });
+    }
+  }
+  
   // Calculate stats
   const totalPhotos = galleries.reduce((acc, g) => acc + g.photoCount, 0);
   
@@ -190,6 +248,7 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
     posts: postEntries,
     pages: pageEntries,
     parentMetadata: parentMetadataEntries,
+    featuredPhotos,
     stats: {
       totalGalleries: galleries.length,
       totalPhotos,
@@ -268,6 +327,51 @@ export async function getNavigationFromIndex(storage: StorageAdapter): Promise<N
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   
   return buildNavigation(publicGalleries, index.parentMetadata);
+}
+
+// ==================== Home Page Helper ====================
+
+/**
+ * Home photo with index for rendering
+ */
+export interface HomePhoto extends PhotoIndexEntry {
+  homeIndex: number;
+}
+
+/**
+ * Get photos for the home page from the content index
+ * Optionally uses custom selection from home.yaml
+ */
+export async function getHomePhotosFromIndex(
+  storage: StorageAdapter,
+  homeConfig?: { photos?: Array<{ gallery: string; filename: string }> }
+): Promise<HomePhoto[]> {
+  const index = await getContentIndex(storage);
+  
+  if (homeConfig?.photos && homeConfig.photos.length > 0) {
+    // Use handpicked photos from config
+    const homePhotos: HomePhoto[] = [];
+    homeConfig.photos.forEach((config, idx) => {
+      // Find the photo in featuredPhotos (it might not be there if not in top N)
+      const photo = index.featuredPhotos.find(
+        p => p.gallerySlug === config.gallery && p.filename === config.filename
+      );
+      
+      if (photo && !photo.hidden) {
+        homePhotos.push({ ...photo, homeIndex: idx });
+      } else {
+        // Photo not in featured list - we'd need to scan for it
+        // For now, we'll skip if not in the index
+        // TODO: Consider storing all configured home photos separately
+      }
+    });
+    return homePhotos;
+  }
+  
+  // Default: use all featured photos in order
+  return index.featuredPhotos
+    .filter(p => !p.hidden)
+    .map((photo, idx) => ({ ...photo, homeIndex: idx }));
 }
 
 // ==================== Incremental Updates ====================

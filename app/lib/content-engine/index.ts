@@ -61,6 +61,7 @@ export {
   getIndexAge,
   invalidateContentIndex,
   getNavigationFromIndex,
+  getHomePhotosFromIndex,
   updateGalleryInIndex,
   removeGalleryFromIndex,
   updatePostInIndex,
@@ -69,11 +70,13 @@ export {
   removePageFromIndex,
 } from "./content-index";
 export type {
-  ContentIndex,
+  ContentIndex as ContentIndexData,
   GalleryIndexEntry,
   PostIndexEntry,
   PageIndexEntry,
   ParentMetadataEntry,
+  PhotoIndexEntry,
+  HomePhoto,
 } from "./content-index";
 
 // EXIF

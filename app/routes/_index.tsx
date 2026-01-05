@@ -2,15 +2,15 @@
  * Home Page
  * 
  * Main portfolio page with sidebar navigation and photo grid
- * Photos can be configured via content/home.yaml or default to 4 per gallery
+ * Photos are loaded from the pre-calculated content index for fast performance.
+ * Custom selection can be configured via content/home.yaml
  */
 
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
 import { json, redirect } from "@remix-run/cloudflare";
-import { scanGalleries, getStorage, needsSetup, getNavigationFromIndex } from "~/lib/content-engine";
+import { getStorage, needsSetup, getNavigationFromIndex, getHomePhotosFromIndex } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
-import { buildNavigation } from "~/utils/navigation";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import yaml from "js-yaml";
 
@@ -42,18 +42,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
   
-  // Load galleries for photo grid and navigation from index in parallel
-  const [allGalleries, navigation] = await Promise.all([
-    scanGalleries(storage),
-    getNavigationFromIndex(storage),
-  ]);
-  
-  // Filter public galleries and sort by order for photo selection
-  const galleries = allGalleries
-    .filter((g) => !g.private)
-    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-  
-  // Try to load home.yaml config
+  // Try to load home.yaml config for custom photo selection
   let homeConfig: HomeConfig | null = null;
   try {
     const homeYamlContent = await storage.getText("home.yaml");
@@ -61,52 +50,14 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       homeConfig = yaml.load(homeYamlContent) as HomeConfig;
     }
   } catch {
-    // No home.yaml or invalid - use defaults
+    // No home.yaml or invalid - use defaults from index
   }
-
-  let homePhotos: Array<{
-    id: string;
-    path: string;
-    filename: string;
-    title?: string;
-    gallerySlug: string;
-    galleryTitle: string;
-    homeIndex: number;
-  }> = [];
-
-  if (homeConfig?.photos && homeConfig.photos.length > 0) {
-    // Use handpicked photos from config
-    homeConfig.photos.forEach((config, index) => {
-      const gallery = galleries.find((g) => g.slug === config.gallery);
-      if (gallery) {
-        const photo = gallery.photos.find((p) => p.filename === config.filename);
-        if (photo && !photo.hidden) {
-          homePhotos.push({
-            ...photo,
-            gallerySlug: gallery.slug,
-            galleryTitle: gallery.title,
-            homeIndex: index,
-          });
-        }
-      }
-    });
-  } else {
-    // Default: 4 photos per gallery
-    let index = 0;
-    galleries.forEach((g) => {
-      g.photos
-        .filter((p) => !p.hidden)
-        .slice(0, 4)
-        .forEach((p) => {
-          homePhotos.push({
-            ...p,
-            gallerySlug: g.slug,
-            galleryTitle: g.title,
-            homeIndex: index++,
-          });
-        });
-    });
-  }
+  
+  // Load navigation and home photos from index in parallel (fast!)
+  const [navigation, homePhotos] = await Promise.all([
+    getNavigationFromIndex(storage),
+    getHomePhotosFromIndex(storage, homeConfig ?? undefined),
+  ]);
 
   const siteName = "Victoriano Izquierdo"; // TODO: Make configurable
   const siteDescription = "Photography portfolio showcasing travel, street, and portrait photography";
