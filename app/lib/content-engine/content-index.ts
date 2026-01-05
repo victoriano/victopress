@@ -16,7 +16,7 @@ import { buildNavigation } from "../../utils/navigation";
 import type { NavItem } from "../../components/Sidebar";
 
 const INDEX_FILE = "_content-index.json";
-const INDEX_VERSION = 3; // Bumped to include full gallery data
+const INDEX_VERSION = 4; // Bumped to fix cover field name
 
 /** Number of photos to store per gallery for home page */
 const PHOTOS_PER_GALLERY = 6;
@@ -113,7 +113,8 @@ export interface GalleryIndexEntry {
   slug: string;
   title: string;
   description?: string;
-  coverPhoto?: string;
+  /** Cover image path (relative to content root, e.g., "galleries/asia/japan/photo.jpg") */
+  cover?: string;
   photoCount: number;
   isProtected: boolean;
   order?: number;
@@ -203,7 +204,7 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
     slug: g.slug,
     title: g.title,
     description: g.description,
-    coverPhoto: g.coverPhoto,
+    cover: g.cover,
     photoCount: g.photoCount,
     isProtected: g.isProtected,
     order: g.order,
@@ -541,7 +542,7 @@ export async function updateGalleryInIndex(
     slug: gallery.slug,
     title: gallery.title,
     description: gallery.description,
-    coverPhoto: gallery.coverPhoto,
+    cover: gallery.cover,
     photoCount: gallery.photoCount,
     isProtected: gallery.isProtected,
     order: gallery.order,

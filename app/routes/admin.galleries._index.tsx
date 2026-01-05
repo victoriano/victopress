@@ -84,7 +84,17 @@ export default function AdminGalleries() {
   );
 }
 
+// Helper to encode path segments for URLs (preserves slashes)
+function encodeImagePath(path: string): string {
+  return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+}
+
 function GalleryCard({ gallery }: { gallery: any }) {
+  // Build image URL with proper encoding
+  const coverUrl = gallery.cover 
+    ? `/api/local-images/${encodeImagePath(gallery.cover)}`
+    : null;
+
   return (
     <Link
       to={`/admin/galleries/${gallery.slug}`}
@@ -92,9 +102,9 @@ function GalleryCard({ gallery }: { gallery: any }) {
     >
       {/* Cover Image */}
       <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800 overflow-hidden">
-        {gallery.coverPhoto ? (
+        {coverUrl ? (
           <img
-            src={`/api/local-images/${gallery.coverPhoto}`}
+            src={coverUrl}
             alt={gallery.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />

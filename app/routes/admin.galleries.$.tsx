@@ -9,7 +9,7 @@ import { useLoaderData, Form, Link, useFetcher } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanGalleries, getStorage } from "~/lib/content-engine";
+import { getStorage, getGalleryFromIndex, getAllGalleriesFromIndex, getContentIndex } from "~/lib/content-engine";
 import { useState } from "react";
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
@@ -23,34 +23,38 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const username = getAdminUser(request);
   const storage = getStorage(context);
   
-  const galleries = await scanGalleries(storage);
-  const gallery = galleries.find((g) => g.slug === slug);
+  // Use pre-calculated index for fast loading
+  const gallery = await getGalleryFromIndex(storage, slug);
   
   if (!gallery) {
     throw new Response("Gallery not found", { status: 404 });
   }
+  
+  // Get content index for navigation lookups
+  const contentIndex = await getContentIndex(storage);
   
   // Find parent gallery (if this is a nested gallery)
   const slugParts = slug.split("/");
   let parentGallery = null;
   if (slugParts.length > 1) {
     const parentSlug = slugParts.slice(0, -1).join("/");
-    parentGallery = galleries.find((g) => g.slug === parentSlug) || {
+    const foundParent = contentIndex.galleryData.find((g) => g.slug === parentSlug);
+    parentGallery = foundParent || {
       slug: parentSlug,
       title: slugParts[slugParts.length - 2]
         .split("-")
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" "),
       isVirtual: true,
     };
   }
   
-  // Find child galleries
-  const childGalleries = galleries
+  // Find child galleries from index
+  const childGalleries = contentIndex.galleryData
     .filter((g) => g.slug.startsWith(slug + "/") && !g.slug.slice(slug.length + 1).includes("/"))
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   
-  return json({ username, gallery, parentGallery, childGalleries, allGalleries: galleries });
+  return json({ username, gallery, parentGallery, childGalleries });
 }
 
 export default function AdminGalleryDetail() {
@@ -283,6 +287,11 @@ export default function AdminGalleryDetail() {
   );
 }
 
+// Helper to encode path segments for URLs (preserves slashes)
+function encodeImagePath(path: string): string {
+  return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+}
+
 function PhotoCard({
   photo,
   gallerySlug,
@@ -295,6 +304,9 @@ function PhotoCard({
   onToggle: () => void;
 }) {
   const [showInfo, setShowInfo] = useState(false);
+  
+  // Build image URL with proper encoding for paths with spaces
+  const imageUrl = `/api/local-images/${encodeImagePath(photo.path)}`;
 
   return (
     <div
@@ -303,7 +315,7 @@ function PhotoCard({
       }`}
     >
       <img
-        src={`/api/local-images/${photo.path}`}
+        src={imageUrl}
         alt={photo.title || photo.filename}
         className="w-full h-full object-cover"
       />
