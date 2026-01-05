@@ -57,17 +57,18 @@ export { extractExif, formatExifForDisplay } from "./exif";
 // Storage adapters
 export { R2StorageAdapter } from "./storage/r2-adapter";
 export { LocalStorageAdapter } from "./storage/local-adapter";
-export { BundledStorageAdapter } from "./storage/bundled-adapter";
 export { 
   createStorageAdapter, 
   getStorage, 
   getStorageMode, 
   getAdapterPreference,
-  isDemoMode, 
+  isDemoMode,
+  isStorageConfigured,
   isR2Configured,
   isSiteConfigured,
   isDevelopment,
   needsSetup,
+  StorageNotConfiguredError,
 } from "./storage";
 export type { StorageMode, StorageAdapterPreference } from "./storage";
 

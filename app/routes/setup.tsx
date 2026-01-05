@@ -683,24 +683,20 @@ function WelcomeStep({ storageMode, onNext }: { storageMode: string; onNext: () 
       <div className="text-6xl mb-6">🎉</div>
       <h2 className="text-2xl font-bold text-white mb-4">Welcome to VictoPress!</h2>
       
-      {storageMode === "demo" ? (
+      {storageMode === "unconfigured" ? (
         <div className="space-y-4">
           <p className="text-gray-300">
-            Your site is running in <span className="text-yellow-400 font-medium">Demo Mode</span> with sample content.
+            <span className="text-red-400 font-medium">R2 Storage is required</span> for VictoPress to function.
           </p>
-          <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 text-left">
-            <p className="text-yellow-200 text-sm">
-              <strong>Demo Mode Limitations:</strong>
+          <div className="bg-red-900/30 border border-red-700 rounded-lg p-4 text-left">
+            <p className="text-red-200 text-sm">
+              <strong>Storage Required:</strong>
             </p>
-            <ul className="text-yellow-300/80 text-sm mt-2 space-y-1 list-disc list-inside">
-              <li>Read-only access to galleries</li>
-              <li>Cannot upload new photos</li>
-              <li>Cannot edit content</li>
-            </ul>
+            <p className="text-red-300/80 text-sm mt-2">
+              VictoPress needs Cloudflare R2 storage to store your photos and content.
+              Let's connect your R2 bucket to get started.
+            </p>
           </div>
-          <p className="text-gray-400">
-            Let's set up Cloudflare R2 storage to unlock the full CMS functionality.
-          </p>
         </div>
       ) : (
         <p className="text-gray-300">

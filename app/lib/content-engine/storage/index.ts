@@ -3,14 +3,12 @@
  * 
  * Automatically selects the right storage adapter based on environment.
  * - Development: Local filesystem (default) or R2 if STORAGE_ADAPTER=r2
- * - Production with R2: Cloudflare R2
- * - Production without R2: Demo mode (bundled content)
+ * - Production: Cloudflare R2 (REQUIRED - no fallback)
  */
 
 import type { StorageAdapter } from "../types";
 import { R2StorageAdapter } from "./r2-adapter";
 import { LocalStorageAdapter } from "./local-adapter";
-import { BundledStorageAdapter } from "./bundled-adapter";
 
 export interface StorageConfig {
   /** R2 bucket binding (for Cloudflare Workers) */
@@ -18,11 +16,21 @@ export interface StorageConfig {
   /** Local content path (for development) */
   localPath?: string;
   /** Force a specific adapter */
-  forceAdapter?: "r2" | "local" | "bundled";
+  forceAdapter?: "r2" | "local";
 }
 
-export type StorageMode = "r2" | "local" | "demo";
+export type StorageMode = "r2" | "local" | "unconfigured";
 export type StorageAdapterPreference = "auto" | "local" | "r2";
+
+/**
+ * Error thrown when R2 is not configured in production
+ */
+export class StorageNotConfiguredError extends Error {
+  constructor() {
+    super("R2 Storage is not configured. Please connect an R2 bucket to use VictoPress in production.");
+    this.name = "StorageNotConfiguredError";
+  }
+}
 
 /**
  * Create a storage adapter based on the environment
@@ -37,10 +45,6 @@ export function createStorageAdapter(config: StorageConfig): StorageAdapter {
     return new R2StorageAdapter(config.bucket);
   }
 
-  if (config.forceAdapter === "bundled") {
-    return new BundledStorageAdapter();
-  }
-
   // Auto-detect: prefer R2 in production, local in development
   if (config.bucket) {
     return new R2StorageAdapter(config.bucket);
@@ -50,22 +54,26 @@ export function createStorageAdapter(config: StorageConfig): StorageAdapter {
     return new LocalStorageAdapter(config.localPath);
   }
 
-  // Fallback to bundled content (demo mode)
-  return new BundledStorageAdapter();
+  // No storage configured - throw error
+  throw new StorageNotConfiguredError();
 }
 
 /**
  * Get storage adapter for the current request context
+ * In development, checks cookie first for instant switching without restart
  */
 export function getStorage(context: {
   cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket; STORAGE_ADAPTER?: string } };
-}): StorageAdapter {
+}, request?: Request): StorageAdapter {
   const bucket = context.cloudflare?.env?.CONTENT_BUCKET;
-  const adapterPreference = context.cloudflare?.env?.STORAGE_ADAPTER as StorageAdapterPreference | undefined;
   const localPath = process.cwd() + "/content";
   
-  // In development, respect the adapter preference
+  // In development, check cookie first for instant switching
   if (process.env.NODE_ENV === "development") {
+    const cookiePreference = request ? getAdapterFromCookie(request) : null;
+    const envPreference = context.cloudflare?.env?.STORAGE_ADAPTER;
+    const adapterPreference = cookiePreference || envPreference;
+    
     // If user explicitly wants R2 and it's available
     if (adapterPreference === "r2" && bucket) {
       return new R2StorageAdapter(bucket);
@@ -74,25 +82,40 @@ export function getStorage(context: {
     return new LocalStorageAdapter(localPath);
   }
   
-  // In production with R2 bucket, use R2
+  // In production, R2 is REQUIRED
   if (bucket) {
     return new R2StorageAdapter(bucket);
   }
 
-  // In production without R2, use demo mode (bundled content)
-  return new BundledStorageAdapter();
+  // No R2 in production = error (no demo mode fallback)
+  throw new StorageNotConfiguredError();
+}
+
+/**
+ * Get adapter preference from cookie (for development instant switching)
+ */
+function getAdapterFromCookie(request: Request): StorageAdapterPreference | null {
+  const cookieHeader = request.headers.get("Cookie");
+  if (!cookieHeader) return null;
+  
+  const match = cookieHeader.match(/storage_adapter=(local|r2)/);
+  return match ? (match[1] as StorageAdapterPreference) : null;
 }
 
 /**
  * Detect the current storage mode
+ * In development, checks cookie first for instant switching without restart
  */
 export function getStorageMode(context: {
   cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket; STORAGE_ADAPTER?: string } };
-}): StorageMode {
+}, request?: Request): StorageMode {
   const bucket = context.cloudflare?.env?.CONTENT_BUCKET;
-  const adapterPreference = context.cloudflare?.env?.STORAGE_ADAPTER as StorageAdapterPreference | undefined;
   
   if (process.env.NODE_ENV === "development") {
+    const cookiePreference = request ? getAdapterFromCookie(request) : null;
+    const envPreference = context.cloudflare?.env?.STORAGE_ADAPTER;
+    const adapterPreference = cookiePreference || envPreference;
+    
     // If user explicitly wants R2 and it's available
     if (adapterPreference === "r2" && bucket) {
       return "r2";
@@ -104,15 +127,24 @@ export function getStorageMode(context: {
     return "r2";
   }
 
-  return "demo";
+  // Production without R2 = unconfigured
+  return "unconfigured";
 }
 
 /**
  * Get the current adapter preference
+ * In development, checks cookie first for instant switching
  */
 export function getAdapterPreference(context: {
   cloudflare?: { env?: { STORAGE_ADAPTER?: string } };
-}): StorageAdapterPreference {
+}, request?: Request): StorageAdapterPreference {
+  // Check cookie first (for development instant switching)
+  if (request) {
+    const cookiePref = getAdapterFromCookie(request);
+    if (cookiePref) return cookiePref;
+  }
+  
+  // Fall back to environment variable
   const pref = context.cloudflare?.env?.STORAGE_ADAPTER;
   if (pref === "r2" || pref === "local") {
     return pref;
@@ -121,15 +153,28 @@ export function getAdapterPreference(context: {
 }
 
 /**
- * Check if the current storage is in demo mode (read-only)
- * Set FORCE_DEMO_MODE=true to test demo mode in development
+ * Check if storage is not configured (production without R2)
+ * @deprecated Demo mode has been removed. Use isStorageConfigured() instead.
  */
 export function isDemoMode(context: {
   cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket } };
 }): boolean {
-  // Uncomment the next line to test demo mode banner in development
-  // return true;
-  return getStorageMode(context) === "demo";
+  // Demo mode has been removed - R2 is required in production
+  return false;
+}
+
+/**
+ * Check if storage is properly configured
+ */
+export function isStorageConfigured(context: {
+  cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket } };
+}): boolean {
+  // In development, always configured (uses local)
+  if (isDevelopment()) {
+    return true;
+  }
+  // In production, R2 is required
+  return !!context.cloudflare?.env?.CONTENT_BUCKET;
 }
 
 /**
@@ -177,4 +222,3 @@ export function needsSetup(context: {
 
 export { R2StorageAdapter } from "./r2-adapter";
 export { LocalStorageAdapter } from "./local-adapter";
-export { BundledStorageAdapter } from "./bundled-adapter";

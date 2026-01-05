@@ -14,7 +14,7 @@ import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { scanGalleries, scanBlog, scanPages, getStorage, isDemoMode, getStorageMode, isDevelopment, getAdapterPreference } from "~/lib/content-engine";
 import type { StorageAdapterPreference } from "~/lib/content-engine";
 
-type StorageAdapterType = "local" | "r2" | "demo";
+type StorageAdapterType = "local" | "r2" | "unconfigured";
 
 interface StorageConfig {
   adapterType: StorageAdapterType;
@@ -44,7 +44,7 @@ interface StorageTestResult {
 export async function action({ request, context }: ActionFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
   
-  const storage = getStorage(context);
+  const storage = getStorage(context, request);
   const env = context.cloudflare?.env as Env | undefined;
   const isR2 = !!env?.CONTENT_BUCKET;
   
@@ -91,10 +91,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
   
   const username = getAdminUser(request);
-  const storage = getStorage(context);
+  const storage = getStorage(context, request);
   const env = context.cloudflare?.env as Env | undefined;
   const demoMode = isDemoMode(context);
-  const storageMode = getStorageMode(context);
+  const storageMode = getStorageMode(context, request);
   const isDevMode = isDevelopment();
   
   const [galleries, posts, pages] = await Promise.all([
@@ -105,8 +105,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   
   const totalPhotos = galleries.reduce((acc, g) => acc + g.photoCount, 0);
   
-  // Get adapter preference
-  const adapterPreference = getAdapterPreference(context);
+  // Get adapter preference (checks cookie first for instant switching)
+  const adapterPreference = getAdapterPreference(context, request);
   
   // Get storage configuration details
   const storageConfig: StorageConfig = {
@@ -435,17 +435,16 @@ export default function AdminSettings() {
               </>
             )}
 
-            {storageConfig.adapterType === "demo" && (
+            {storageConfig.adapterType === "unconfigured" && (
               <>
-                {/* Demo Mode Info */}
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                {/* Storage Not Configured Error */}
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                   <div className="flex gap-3">
-                    <WarningIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <WarningIcon className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                     <div className="text-sm">
-                      <p className="text-yellow-800 dark:text-yellow-200 font-medium">Read-Only Mode</p>
-                      <p className="text-yellow-700 dark:text-yellow-300 mt-1">
-                        The site is running with bundled sample content. This is a demonstration mode with limited functionality.
-                        Configure R2 storage to enable full content management.
+                      <p className="text-red-800 dark:text-red-200 font-medium">Storage Not Configured</p>
+                      <p className="text-red-700 dark:text-red-300 mt-1">
+                        R2 Storage is required for VictoPress to function. Please connect an R2 bucket to continue.
                       </p>
                     </div>
                   </div>
@@ -455,7 +454,7 @@ export default function AdminSettings() {
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                   <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Connect Storage</h4>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Configure R2 storage to enable full content management and uploads.
+                    Configure R2 storage to enable content management and uploads.
                   </p>
                   <button
                     onClick={() => setShowR2Config(true)}
@@ -1642,9 +1641,8 @@ function AdapterToggle({
   currentAdapter: StorageAdapterType;
   bucketName: string | null;
 }) {
-  const fetcher = useFetcher<{ success: boolean; message: string; needsRestart?: boolean }>();
+  const fetcher = useFetcher<{ success: boolean; message: string; adapter?: string }>();
   const isLoading = fetcher.state !== "idle";
-  const [showRestartMessage, setShowRestartMessage] = useState(false);
   
   const handleSwitch = (newAdapter: "local" | "r2") => {
     if (newAdapter === currentAdapter) return;
@@ -1655,10 +1653,13 @@ function AdapterToggle({
     );
   };
   
-  // Show restart message when switch is successful
+  // Reload page when switch is successful (cookie is set, instant effect!)
   React.useEffect(() => {
-    if (fetcher.data?.success && fetcher.data?.needsRestart) {
-      setShowRestartMessage(true);
+    if (fetcher.data?.success) {
+      // Small delay to ensure cookie is set, then reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     }
   }, [fetcher.data]);
   
@@ -1729,17 +1730,14 @@ function AdapterToggle({
         </div>
       )}
       
-      {/* Restart Required Message */}
-      {showRestartMessage && (
-        <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-          <div className="flex items-start gap-2">
-            <WarningIcon className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Restart Required</p>
-              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                Stop and restart the dev server (<code className="bg-amber-100 dark:bg-amber-800/50 px-1 rounded">bun run dev</code>) to apply the change.
-              </p>
-            </div>
+      {/* Switching indicator */}
+      {fetcher.data?.success && (
+        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div className="flex items-center gap-2">
+            <CheckIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <p className="text-sm text-green-700 dark:text-green-400">
+              {fetcher.data.message} Reloading...
+            </p>
           </div>
         </div>
       )}

@@ -347,74 +347,23 @@ async function handleSwitchAdapter(formData: FormData) {
     });
   }
   
-  try {
-    // Use dynamic import for Node.js fs module
-    const fs = await import("node:fs/promises");
-    const path = await import("node:path");
-    
-    const devVarsPath = path.join(process.cwd(), ".dev.vars");
-    
-    // Read existing .dev.vars content
-    let existingContent = "";
-    try {
-      existingContent = await fs.readFile(devVarsPath, "utf-8");
-    } catch {
-      // File doesn't exist, that's fine
-    }
-    
-    // Parse existing content
-    const lines = existingContent.split("\n");
-    const existingVars: Record<string, string> = {};
-    
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith("#")) {
-        const match = trimmed.match(/^([^=]+)=(.*)$/);
-        if (match) {
-          existingVars[match[1].trim()] = match[2].trim();
-        }
-      }
-    }
-    
-    // Update or add STORAGE_ADAPTER
-    existingVars["STORAGE_ADAPTER"] = adapter;
-    
-    // Build new content preserving comments
-    const comments: string[] = [];
-    for (const line of lines) {
-      if (line.trim().startsWith("#")) {
-        comments.push(line);
-      }
-    }
-    
-    // Check if we have the header comment
-    const hasHeaderComment = comments.some(c => c.includes("Admin credentials") || c.includes("Storage"));
-    
-    let newContent = "";
-    if (!hasHeaderComment) {
-      newContent = "# Admin credentials and storage configuration for local development\n";
-    } else {
-      newContent = comments.join("\n") + "\n";
-    }
-    
-    // Add all variables
-    for (const [key, value] of Object.entries(existingVars)) {
-      newContent += `${key}=${value}\n`;
-    }
-    
-    await fs.writeFile(devVarsPath, newContent);
-    
-    return json({
+  // Set cookie for instant switching (no restart needed!)
+  // Cookie expires in 1 year
+  const cookieValue = `storage_adapter=${adapter}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  
+  return json(
+    {
       success: true,
       message: `Switched to ${adapter === "r2" ? "R2 Storage" : "Local Storage"}`,
-      needsRestart: true,
-    });
-  } catch (error) {
-    return json({ 
-      success: false, 
-      message: error instanceof Error ? error.message : "Failed to switch adapter" 
-    });
-  }
+      adapter,
+      needsRestart: false, // No restart needed with cookie approach!
+    },
+    {
+      headers: {
+        "Set-Cookie": cookieValue,
+      },
+    }
+  );
 }
 
 function generateWranglerConfig(accountId: string, bucketName: string, publicUrl: string): string {
