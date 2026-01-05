@@ -66,9 +66,9 @@ export function OptimizedImage({
 
   // Normalize src path
   const normalizedSrc = src.startsWith("/") ? src : `/${src}`;
-  const isLocalPath = normalizedSrc.startsWith("/api/local-images/");
-  const imagePath = isLocalPath
-    ? normalizedSrc.replace("/api/local-images/", "")
+  const isApiPath = normalizedSrc.startsWith("/api/images/");
+  const imagePath = isApiPath
+    ? normalizedSrc.replace("/api/images/", "")
     : normalizedSrc;
 
   // Encode URL for srcset (spaces and special chars must be encoded)
@@ -89,7 +89,7 @@ export function OptimizedImage({
     }
 
     // Development / fallback: use original image
-    const url = isLocalPath ? normalizedSrc : `/api/local-images/${imagePath}`;
+    const url = isApiPath ? normalizedSrc : `/api/images/${imagePath}`;
     return forSrcset ? encodeForSrcset(url) : url;
   };
 
@@ -161,7 +161,7 @@ export function getOptimizedImageUrl(
 
   // For local development, return the original path
   if (typeof window !== "undefined" && window.location.hostname.includes("localhost")) {
-    return src.startsWith("/api/local-images/") ? src : `/api/local-images/${src}`;
+    return src.startsWith("/api/images/") ? src : `/api/images/${src}`;
   }
 
   // Cloudflare Image Resizing format

@@ -24,7 +24,7 @@ Disallow: /admin/
 Disallow: /api/
 
 # Allow image API for OG images (search engines may need these)
-Allow: /api/local-images/
+Allow: /api/images/
 `;
 
   return new Response(robotsTxt, {

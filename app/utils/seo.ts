@@ -165,7 +165,7 @@ export function buildImageUrl(
     return imagePath;
   }
 
-  // Build full URL using local image API
+  // Build full URL using image API
   const cleanPath = imagePath.startsWith("/") ? imagePath.slice(1) : imagePath;
-  return `${baseUrl}/api/local-images/${cleanPath}`;
+  return `${baseUrl}/api/images/${cleanPath}`;
 }

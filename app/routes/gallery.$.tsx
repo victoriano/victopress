@@ -229,7 +229,7 @@ export default function GalleryPage() {
         {gallery.photos.map((photo, index) => (
           <PhotoItem
             key={photo.id}
-            src={`/api/local-images/${photo.path}`}
+            src={`/api/images/${photo.path}`}
             alt={photo.title || photo.filename}
             href={`/photo/${(photo as any).gallerySlug}/${photo.filename}`}
             aspectRatio="auto"

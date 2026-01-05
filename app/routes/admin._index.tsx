@@ -113,7 +113,7 @@ export default function AdminDashboard() {
                     <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0">
                       {gallery.cover && (
                         <img
-                          src={`/api/local-images/${encodeImagePath(gallery.cover)}`}
+                          src={`/api/images/${encodeImagePath(gallery.cover)}`}
                           alt={gallery.title}
                           className="w-full h-full object-cover"
                         />

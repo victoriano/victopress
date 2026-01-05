@@ -92,7 +92,7 @@ function encodeImagePath(path: string): string {
 function GalleryCard({ gallery }: { gallery: any }) {
   // Build image URL with proper encoding
   const coverUrl = gallery.cover 
-    ? `/api/local-images/${encodeImagePath(gallery.cover)}`
+    ? `/api/images/${encodeImagePath(gallery.cover)}`
     : null;
 
   return (

@@ -96,7 +96,7 @@ export default function Index() {
         {photos.map((photo) => (
           <PhotoItem
             key={`${photo.gallerySlug}-${photo.id}-${photo.homeIndex}`}
-            src={`/api/local-images/${photo.path}`}
+            src={`/api/images/${photo.path}`}
             alt={photo.title || photo.filename}
             aspectRatio="auto"
             href={`/featured/${photo.homeIndex}`}

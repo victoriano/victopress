@@ -402,7 +402,7 @@ function PhotoCard({
   const [showInfo, setShowInfo] = useState(false);
   
   // Build image URL with proper encoding for paths with spaces
-  const imageUrl = `/api/local-images/${encodeImagePath(photo.path)}`;
+  const imageUrl = `/api/images/${encodeImagePath(photo.path)}`;
 
   return (
     <div

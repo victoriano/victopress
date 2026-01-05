@@ -129,7 +129,7 @@ export default function BlogIndex() {
                 {post.cover && (
                   <Link to={`/blog/${post.slug}`} className="block mt-6">
                     <img
-                      src={`/api/local-images/${post.cover}`}
+                      src={`/api/images/${post.cover}`}
                       alt={post.title}
                       className="w-full rounded-sm"
                       loading="lazy"

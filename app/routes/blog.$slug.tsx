@@ -138,7 +138,7 @@ export default function BlogPostPage() {
         {post.cover && (
           <figure className="mb-8">
             <img
-              src={`/api/local-images/${post.cover}`}
+              src={`/api/images/${post.cover}`}
               alt={post.title}
               className="w-full rounded-sm"
             />
@@ -195,7 +195,7 @@ function MarkdownContent({ content }: { content: string }) {
     /!\[([^\]]*)\]\(([^)]+)\)/g,
     (_, alt, src) => {
       // If it's a local path (not http/https), add the API prefix
-      const imageSrc = src.startsWith('http') ? src : `/api/local-images/${src}`;
+      const imageSrc = src.startsWith('http') ? src : `/api/images/${src}`;
       return `<figure class="my-8"><img src="${imageSrc}" alt="${alt}" class="w-full rounded-sm" />${alt ? `<figcaption class="text-center text-sm text-gray-500 mt-2">${alt}</figcaption>` : ''}</figure>`;
     }
   );
