@@ -3,18 +3,31 @@
  * 
  * GET /gallery/:slug (e.g., /gallery/humans/portraits)
  * GET /gallery/:slug?page=2 (pagination)
+ * 
+ * Uses pre-calculated content index for fast loading.
  */
 
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { scanGalleries, getStorage, getNavigationFromIndex } from "~/lib/content-engine";
+import { 
+  getStorage, 
+  getNavigationFromIndex, 
+  getAllGalleriesFromIndex,
+  type GalleryDataEntry,
+  type GalleryPhotoEntry,
+} from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
 import { PasswordProtectedGallery } from "~/components/PasswordProtectedGallery";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { isGalleryAuthenticated } from "~/utils/gallery-auth";
 
 const PHOTOS_PER_PAGE = 50;
+
+// Extended photo type with gallery reference
+interface PhotoWithGallery extends GalleryPhotoEntry {
+  gallerySlug: string;
+}
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.gallery) {
@@ -30,14 +43,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
     ];
   }
 
-  // Type guard - at this point, gallery has full properties
-  const gallery = data.gallery as {
-    title: string;
-    description?: string;
-    photoCount: number;
-    tags?: string[];
-  };
-
+  const gallery = data.gallery;
   const description =
     gallery.description ||
     `Photo gallery: ${gallery.title} (${gallery.photoCount} photos)`;
@@ -63,131 +69,117 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
   
-  // Load galleries for content and navigation from index in parallel
+  // Load all galleries from index and navigation in parallel (fast!)
   const [allGalleries, navigation] = await Promise.all([
-    scanGalleries(storage),
+    getAllGalleriesFromIndex(storage),
     getNavigationFromIndex(storage),
   ]);
   
-  // Filter galleries for navigation
+  // Filter public galleries
   const publicGalleries = allGalleries
-    .filter((g) => !g.private)
+    .filter((g) => !g.isProtected || g.photoCount > 0)
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
   // Find exact gallery match
-  let gallery = publicGalleries.find((g) => g.slug === slug);
+  let gallery: GalleryDataEntry | undefined = publicGalleries.find((g) => g.slug === slug);
   
   // Find child galleries for this slug
   const childGalleries = publicGalleries.filter(
     (g) => g.slug.startsWith(slug + "/")
   );
   
+  // Prepare photos with gallery reference
+  let allPhotos: PhotoWithGallery[] = [];
+  let displayGallery: {
+    slug: string;
+    title: string;
+    description?: string;
+    cover: string;
+    photoCount: number;
+    tags?: string[];
+    password?: string;
+  };
+  
   if (gallery) {
     // Exact match found - check if we should include nested photos
     const includeNested = gallery.includeNestedPhotos !== false; // default: true
     
+    // Get direct photos
+    const directPhotos: PhotoWithGallery[] = gallery.photos
+      .filter((p) => !p.hidden)
+      .map((p) => ({ ...p, gallerySlug: gallery!.slug }));
+    
     if (includeNested && childGalleries.length > 0) {
-      // Get direct photos (with gallerySlug set to current gallery)
-      const directPhotos = gallery.photos
-        .filter((p) => !p.hidden)
-        .map((p) => ({
-          ...p,
-          gallerySlug: gallery!.slug,
-        }));
-      
-      // Get nested photos from child galleries (recursively)
-      const nestedPhotos = childGalleries.flatMap((g) =>
-        g.photos.filter((p) => !p.hidden).map((p) => ({
-          ...p,
-          gallerySlug: g.slug,
-        }))
+      // Get nested photos from child galleries
+      const nestedPhotos: PhotoWithGallery[] = childGalleries.flatMap((g) =>
+        g.photos.filter((p) => !p.hidden).map((p) => ({ ...p, gallerySlug: g.slug }))
       );
-      
-      // Combine: direct photos first, then nested
-      gallery = {
-        ...gallery,
-        photos: [...directPhotos, ...nestedPhotos],
-        photoCount: directPhotos.length + nestedPhotos.length,
-      };
+      allPhotos = [...directPhotos, ...nestedPhotos];
+    } else {
+      allPhotos = directPhotos;
     }
+    
+    displayGallery = {
+      slug: gallery.slug,
+      title: gallery.title,
+      description: gallery.description,
+      cover: gallery.cover,
+      photoCount: allPhotos.length,
+      tags: gallery.tags,
+      password: gallery.password,
+    };
   } else if (childGalleries.length > 0) {
     // No exact match but has children - create virtual gallery
-    // Add gallerySlug to each photo for proper linking
-    const allPhotos = childGalleries.flatMap((g) =>
-      g.photos.filter((p) => !p.hidden).map((p) => ({
-        ...p,
-        gallerySlug: g.slug,
-      }))
+    allPhotos = childGalleries.flatMap((g) =>
+      g.photos.filter((p) => !p.hidden).map((p) => ({ ...p, gallerySlug: g.slug }))
     );
     
     // Get title from the category name
     const categoryName = slug.split("/").pop() || slug;
     const title = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
     
-    gallery = {
-      id: slug,
+    displayGallery = {
       slug: slug,
       title: title,
       description: `All photos from ${title}`,
-      path: `galleries/${slug}`,
       cover: allPhotos[0]?.path || "",
-      photos: allPhotos,
       photoCount: allPhotos.length,
-      date: new Date(),
-      lastModified: new Date(),
       tags: [],
-      category: undefined,
-      private: false,
-      password: undefined,
-      order: undefined,
-      hasCustomMetadata: false,
     };
-  }
-
-  if (!gallery) {
+  } else {
     throw new Response("Not Found", { status: 404 });
   }
 
-  // Navigation is loaded from index in parallel above
   const siteName = "Victoriano Izquierdo";
-  const canonicalUrl = `${baseUrl}/gallery/${gallery.slug}`;
-  const ogImage = buildImageUrl(baseUrl, gallery.cover);
+  const canonicalUrl = `${baseUrl}/gallery/${displayGallery.slug}`;
+  const ogImage = buildImageUrl(baseUrl, displayGallery.cover);
 
   // Check if gallery is password protected
-  const isProtected = !!gallery.password;
+  const isProtected = !!displayGallery.password;
   let isAuthenticated = false;
 
   if (isProtected) {
-    isAuthenticated = await isGalleryAuthenticated(request, gallery.slug);
+    isAuthenticated = await isGalleryAuthenticated(request, displayGallery.slug);
   }
 
-  // Filter out hidden photos and add gallerySlug for linking
-  const visiblePhotos = gallery.photos
-    .filter((p) => !p.hidden)
-    .map((p) => ({
-      ...p,
-      // Use existing gallerySlug (for virtual galleries) or current gallery slug
-      gallerySlug: (p as any).gallerySlug || gallery.slug,
-    }));
-
   // If protected and not authenticated, don't expose photos
-  const allPhotos = isProtected && !isAuthenticated ? [] : visiblePhotos;
+  const exposedPhotos = isProtected && !isAuthenticated ? [] : allPhotos;
   const exposedOgImage = isProtected && !isAuthenticated ? null : ogImage;
 
   // Pagination
   const url = new URL(request.url);
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
-  const totalPhotos = allPhotos.length;
+  const totalPhotos = exposedPhotos.length;
   const totalPages = Math.ceil(totalPhotos / PHOTOS_PER_PAGE);
   const startIndex = (page - 1) * PHOTOS_PER_PAGE;
   const endIndex = startIndex + PHOTOS_PER_PAGE;
-  const paginatedPhotos = allPhotos.slice(startIndex, endIndex);
+  const paginatedPhotos = exposedPhotos.slice(startIndex, endIndex);
 
   return json({
     isProtected,
     isAuthenticated,
     gallery: {
-      ...gallery,
+      ...displayGallery,
       photos: paginatedPhotos,
       photoCount: totalPhotos,
     },

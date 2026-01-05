@@ -16,7 +16,7 @@ import { buildNavigation } from "../../utils/navigation";
 import type { NavItem } from "../../components/Sidebar";
 
 const INDEX_FILE = "_content-index.json";
-const INDEX_VERSION = 2; // Bumped to include featuredPhotos
+const INDEX_VERSION = 3; // Bumped to include full gallery data
 
 /** Number of photos to store per gallery for home page */
 const PHOTOS_PER_GALLERY = 6;
@@ -48,12 +48,51 @@ export interface PhotoIndexEntry {
 }
 
 /**
+ * Full gallery data in index (includes all photos)
+ */
+export interface GalleryDataEntry {
+  slug: string;
+  title: string;
+  description?: string;
+  cover: string;
+  path: string;
+  photoCount: number;
+  isProtected: boolean;
+  password?: string;
+  order?: number;
+  category?: string;
+  tags?: string[];
+  hasChildren: boolean;
+  childCount: number;
+  includeNestedPhotos?: boolean;
+  /** All photos in this gallery */
+  photos: GalleryPhotoEntry[];
+}
+
+/**
+ * Photo data stored per-gallery in index
+ */
+export interface GalleryPhotoEntry {
+  id: string;
+  path: string;
+  filename: string;
+  title?: string;
+  description?: string;
+  hidden?: boolean;
+  order?: number;
+  year?: number;
+  tags?: string[];
+}
+
+/**
  * Cached content index structure
  */
 export interface ContentIndex {
   version: number;
   updatedAt: string;
   galleries: GalleryIndexEntry[];
+  /** Full gallery data including all photos */
+  galleryData: GalleryDataEntry[];
   posts: PostIndexEntry[];
   pages: PageIndexEntry[];
   parentMetadata: ParentMetadataEntry[];
@@ -159,7 +198,7 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
     scanParentMetadata(storage),
   ]);
   
-  // Convert to index entries (strip heavy data like full photo arrays)
+  // Convert to index entries (light version for navigation)
   const galleryEntries: GalleryIndexEntry[] = galleries.map(g => ({
     slug: g.slug,
     title: g.title,
@@ -174,6 +213,52 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
     hasChildren: (g.children?.length ?? 0) > 0,
     childCount: g.children?.length ?? 0,
   }));
+  
+  // Build full gallery data with all photos
+  const galleryDataEntries: GalleryDataEntry[] = galleries.map(g => {
+    // Convert photos to lightweight format
+    const photos: GalleryPhotoEntry[] = g.photos.map(p => {
+      // Extract year
+      let year: number | undefined;
+      if (p.dateTaken) {
+        const d = new Date(p.dateTaken);
+        if (!isNaN(d.getTime())) year = d.getFullYear();
+      } else if (p.exif?.dateTimeOriginal) {
+        const d = new Date(p.exif.dateTimeOriginal);
+        if (!isNaN(d.getTime())) year = d.getFullYear();
+      }
+      
+      return {
+        id: p.id,
+        path: p.path,
+        filename: p.filename,
+        title: p.title || p.exif?.title,
+        description: p.description || p.exif?.imageDescription,
+        hidden: p.hidden,
+        order: p.order,
+        year,
+        tags: p.tags,
+      };
+    });
+    
+    return {
+      slug: g.slug,
+      title: g.title,
+      description: g.description,
+      cover: g.cover,
+      path: g.path,
+      photoCount: g.photoCount,
+      isProtected: !!g.password,
+      password: g.password,
+      order: g.order,
+      category: g.category,
+      tags: g.tags,
+      hasChildren: (g.children?.length ?? 0) > 0,
+      childCount: g.children?.length ?? 0,
+      includeNestedPhotos: g.includeNestedPhotos,
+      photos,
+    };
+  });
   
   const postEntries: PostIndexEntry[] = posts.map(p => ({
     slug: p.slug,
@@ -245,6 +330,7 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
     version: INDEX_VERSION,
     updatedAt: new Date().toISOString(),
     galleries: galleryEntries,
+    galleryData: galleryDataEntries,
     posts: postEntries,
     pages: pageEntries,
     parentMetadata: parentMetadataEntries,
@@ -372,6 +458,66 @@ export async function getHomePhotosFromIndex(
   return index.featuredPhotos
     .filter(p => !p.hidden)
     .map((photo, idx) => ({ ...photo, homeIndex: idx }));
+}
+
+// ==================== Gallery Data Helpers ====================
+
+/**
+ * Get a specific gallery's full data from the index
+ * Much faster than scanGalleries for single gallery lookups
+ */
+export async function getGalleryFromIndex(
+  storage: StorageAdapter,
+  slug: string
+): Promise<GalleryDataEntry | null> {
+  const index = await getContentIndex(storage);
+  return index.galleryData.find(g => g.slug === slug) || null;
+}
+
+/**
+ * Get all galleries data from the index
+ * Use this instead of scanGalleries for gallery listing pages
+ */
+export async function getAllGalleriesFromIndex(
+  storage: StorageAdapter
+): Promise<GalleryDataEntry[]> {
+  const index = await getContentIndex(storage);
+  return index.galleryData;
+}
+
+/**
+ * Get gallery data for a path prefix (for virtual parent galleries)
+ * Returns all galleries that start with the given slug prefix
+ */
+export async function getGalleriesByPrefix(
+  storage: StorageAdapter,
+  slugPrefix: string
+): Promise<GalleryDataEntry[]> {
+  const index = await getContentIndex(storage);
+  return index.galleryData.filter(g => 
+    g.slug === slugPrefix || g.slug.startsWith(slugPrefix + "/")
+  );
+}
+
+/**
+ * Find a photo in the index by gallery slug and filename
+ */
+export async function getPhotoFromIndex(
+  storage: StorageAdapter,
+  gallerySlug: string,
+  filename: string
+): Promise<{ gallery: GalleryDataEntry; photo: GalleryPhotoEntry; photoIndex: number } | null> {
+  const gallery = await getGalleryFromIndex(storage, gallerySlug);
+  if (!gallery) return null;
+  
+  const photos = gallery.photos.filter(p => !p.hidden);
+  const photoIndex = photos.findIndex(
+    p => p.filename === filename || p.filename === decodeURIComponent(filename)
+  );
+  
+  if (photoIndex === -1) return null;
+  
+  return { gallery, photo: photos[photoIndex], photoIndex };
 }
 
 // ==================== Incremental Updates ====================

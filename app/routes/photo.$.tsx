@@ -3,12 +3,19 @@
  * 
  * GET /photo/:gallerySlug/:photoFilename
  * Displays a single photo with sidebar navigation
+ * 
+ * Uses pre-calculated content index for fast loading.
  */
 
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { scanGalleries, getStorage, getNavigationFromIndex } from "~/lib/content-engine";
+import { 
+  getStorage, 
+  getNavigationFromIndex, 
+  getGalleryFromIndex,
+  type GalleryPhotoEntry,
+} from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { useEffect, useCallback } from "react";
@@ -21,7 +28,6 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const photoTitle = data.photo.title || data.photo.filename;
   const description =
     data.photo.description ||
-    data.photo.exif?.imageDescription ||
     `Photo from ${data.gallery.title}`;
 
   return generateMetaTags({
@@ -54,14 +60,12 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const baseUrl = getBaseUrl(request);
   const storage = getStorage(context);
   
-  // Load galleries and navigation from index in parallel
-  const [allGalleries, navigation] = await Promise.all([
-    scanGalleries(storage),
+  // Load gallery from index and navigation in parallel (fast!)
+  const [gallery, navigation] = await Promise.all([
+    getGalleryFromIndex(storage, gallerySlug),
     getNavigationFromIndex(storage),
   ]);
 
-  // Find the gallery
-  const gallery = allGalleries.find((g) => g.slug === gallerySlug);
   if (!gallery) {
     throw new Response("Gallery Not Found", { status: 404 });
   }
@@ -83,7 +87,6 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   // Get signed URL for the photo
   const photoUrl = await storage.getSignedUrl(photo.path);
 
-  // Navigation is loaded from index in parallel above
   const siteName = "Victoriano Izquierdo";
   const canonicalUrl = `${baseUrl}/photo/${gallerySlug}/${photoFilename}`;
   const ogImage = buildImageUrl(baseUrl, photo.path);
@@ -91,7 +94,10 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   return json({
     photo,
     photoUrl,
-    gallery,
+    gallery: {
+      slug: gallery.slug,
+      title: gallery.title,
+    },
     gallerySlug,
     prevPhoto,
     nextPhoto,
