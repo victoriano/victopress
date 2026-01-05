@@ -12,7 +12,7 @@
  * - Loading placeholder
  */
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface OptimizedImageProps {
   /** Image source path (relative to content folder) */
@@ -63,6 +63,15 @@ export function OptimizedImage({
 }: OptimizedImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Check if image is already loaded (cached) on mount
+  // This handles the case where image loads before React hydrates
+  useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current?.naturalHeight > 0) {
+      setIsLoaded(true);
+    }
+  }, []);
 
   // Normalize src path
   const normalizedSrc = src.startsWith("/") ? src : `/${src}`;
@@ -79,16 +88,11 @@ export function OptimizedImage({
   };
 
   // Generate URLs for different sizes
+  // Note: We always use /api/images/ for consistent server/client rendering
+  // This avoids hydration mismatches between SSR and client-side navigation
   const generateUrl = (targetWidth: number, forSrcset = false): string => {
-    if (useCloudflare && typeof window !== "undefined" && !window.location.hostname.includes("localhost")) {
-      // Cloudflare Image Resizing URL format
-      // https://developers.cloudflare.com/images/image-resizing/url-format/
-      const cfOptions = [`width=${targetWidth}`, `quality=${quality}`, "format=auto"];
-      const url = `/cdn-cgi/image/${cfOptions.join(",")}${normalizedSrc}`;
-      return forSrcset ? encodeForSrcset(url) : url;
-    }
-
-    // Development / fallback: use original image
+    // Always use /api/images/ for consistent behavior
+    // Cloudflare Image Resizing can be added later via CDN configuration
     const url = isApiPath ? normalizedSrc : `/api/images/${imagePath}`;
     return forSrcset ? encodeForSrcset(url) : url;
   };
@@ -123,6 +127,7 @@ export function OptimizedImage({
       )}
 
       <img
+        ref={imgRef}
         src={defaultSrc}
         srcSet={srcSet}
         sizes={sizes}
@@ -147,6 +152,9 @@ export function OptimizedImage({
 /**
  * Generate optimized image URL for a specific width
  * Useful for OG images or other server-side usage
+ * 
+ * Note: We use /api/images/ for consistency. Cloudflare Image Resizing
+ * can be configured separately at the CDN level if needed.
  */
 export function getOptimizedImageUrl(
   src: string,
@@ -157,23 +165,23 @@ export function getOptimizedImageUrl(
     format?: "auto" | "webp" | "avif" | "json";
   } = {}
 ): string {
-  const { width = 1200, quality = 80, format = "auto" } = options;
-
-  // For local development, return the original path
-  if (typeof window !== "undefined" && window.location.hostname.includes("localhost")) {
-    return src.startsWith("/api/images/") ? src : `/api/images/${src}`;
-  }
-
-  // Cloudflare Image Resizing format
-  const cfOptions = [`width=${width}`, `quality=${quality}`, `format=${format}`];
+  // Always use /api/images/ for consistent server/client behavior
   const normalizedSrc = src.startsWith("/") ? src : `/${src}`;
-
-  return `/cdn-cgi/image/${cfOptions.join(",")}${normalizedSrc}`;
+  
+  if (normalizedSrc.startsWith("/api/images/")) {
+    return normalizedSrc;
+  }
+  
+  return `/api/images/${src}`;
 }
 
 /**
  * Picture component with WebP/AVIF support
  * Provides better browser format negotiation
+ * 
+ * Note: This component is currently disabled for consistent rendering.
+ * Cloudflare Image Resizing can cause hydration mismatches.
+ * Use OptimizedImage instead.
  */
 export function OptimizedPicture({
   src,
@@ -183,52 +191,16 @@ export function OptimizedPicture({
   loading = "lazy",
   priority = false,
 }: Omit<OptimizedImageProps, "useCloudflare" | "quality">) {
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  const normalizedSrc = src.startsWith("/") ? src : `/${src}`;
-  
-  // Encode URL for srcset (spaces and special chars must be encoded)
-  const encodeForSrcset = (url: string): string => {
-    return url.split('/').map(segment => encodeURIComponent(segment)).join('/');
-  };
-
-  // Generate srcset for different formats
-  const generateSrcSet = (format: string) =>
-    SRCSET_WIDTHS.map((w) => {
-      const url = `/cdn-cgi/image/width=${w},quality=80,format=${format}${normalizedSrc}`;
-      return `${encodeForSrcset(url)} ${w}w`;
-    }).join(", ");
-
-  // Fallback srcset (original format)
-  const fallbackSrcSet = SRCSET_WIDTHS.map((w) => {
-    const url = `/cdn-cgi/image/width=${w},quality=80${normalizedSrc}`;
-    return `${encodeForSrcset(url)} ${w}w`;
-  }).join(", ");
-
+  // For consistent server/client rendering, we use the standard OptimizedImage approach
   return (
-    <picture className={className}>
-      {/* AVIF - best compression, newest format */}
-      <source type="image/avif" srcSet={generateSrcSet("avif")} sizes={sizes} />
-
-      {/* WebP - good compression, wide support */}
-      <source type="image/webp" srcSet={generateSrcSet("webp")} sizes={sizes} />
-
-      {/* Fallback - original format or JPEG */}
-      <img
-        src={`/cdn-cgi/image/width=1200,quality=80${normalizedSrc}`}
-        srcSet={fallbackSrcSet}
-        sizes={sizes}
-        alt={alt}
-        loading={priority ? "eager" : loading}
-        decoding={priority ? "sync" : "async"}
-        // @ts-expect-error - React types use fetchPriority but DOM expects lowercase
-        fetchpriority={priority ? "high" : undefined}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${
-          isLoaded ? "opacity-100" : "opacity-0"
-        }`}
-        onLoad={() => setIsLoaded(true)}
-      />
-    </picture>
+    <OptimizedImage
+      src={src}
+      alt={alt}
+      className={className}
+      sizes={sizes}
+      loading={loading}
+      priority={priority}
+    />
   );
 }
 
