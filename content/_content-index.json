@@ -1,6 +1,6 @@
 {
   "version": 6,
-  "updatedAt": "2026-01-06T10:57:56.216Z",
+  "updatedAt": "2026-01-06T11:03:16.856Z",
   "galleries": [
     {
       "slug": "geographies",
@@ -2988,20 +2988,6 @@
       "isParentGallery": false,
       "photos": [
         {
-          "id": "31502363611_faae72190e_o",
-          "path": "galleries/geographies/europe/spain/south of spain/granada/31502363611_faae72190e_o.jpg",
-          "filename": "31502363611_faae72190e_o.jpg",
-          "hidden": false,
-          "year": 2011,
-          "lastModified": "2026-01-03T13:09:11.807Z",
-          "exif": {
-            "dateTaken": "2011-02-06T17:12:09.000Z",
-            "camera": "Canon Canon EOS 40D",
-            "focalLength": 90,
-            "iso": 400
-          }
-        },
-        {
           "id": "alhambra_pano",
           "path": "galleries/geographies/europe/spain/south of spain/granada/alhambra_pano.jpg",
           "filename": "alhambra_pano.jpg",
@@ -3014,52 +3000,8 @@
             "lens": "LUMIX G 20/F1.7 II",
             "focalLength": 20,
             "iso": 200
-          }
-        },
-        {
-          "id": "IMG_0146_1",
-          "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_0146_1.jpg",
-          "filename": "IMG_0146_1.jpg",
-          "hidden": false,
-          "year": 2013,
-          "lastModified": "2026-01-03T13:09:11.847Z",
-          "exif": {
-            "dateTaken": "2013-07-14T16:36:13.000Z",
-            "camera": "Canon Canon EOS 5D Mark II",
-            "lens": "EF24-105mm f/4L IS USM",
-            "focalLength": 24,
-            "iso": 250
-          }
-        },
-        {
-          "id": "IMG_0309_best",
-          "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_0309_best.jpg",
-          "filename": "IMG_0309_best.jpg",
-          "hidden": false,
-          "year": 2013,
-          "lastModified": "2026-01-03T13:09:11.812Z",
-          "exif": {
-            "dateTaken": "2013-07-14T18:03:42.000Z",
-            "camera": "Canon Canon EOS 5D Mark II",
-            "lens": "EF24-105mm f/4L IS USM",
-            "focalLength": 40,
-            "iso": 320
-          }
-        },
-        {
-          "id": "IMG_0314",
-          "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_0314.jpg",
-          "filename": "IMG_0314.jpg",
-          "hidden": false,
-          "year": 2013,
-          "lastModified": "2026-01-03T13:09:11.798Z",
-          "exif": {
-            "dateTaken": "2013-07-14T19:05:41.000Z",
-            "camera": "Canon Canon EOS 5D Mark II",
-            "lens": "EF24-105mm f/4L IS USM",
-            "focalLength": 47,
-            "iso": 640
-          }
+          },
+          "order": 1
         },
         {
           "id": "IMG_4851_2",
@@ -3074,7 +3016,71 @@
             "lens": "EF24-105mm f/4L IS USM",
             "focalLength": 105,
             "iso": 500
-          }
+          },
+          "order": 2
+        },
+        {
+          "id": "31502363611_faae72190e_o",
+          "path": "galleries/geographies/europe/spain/south of spain/granada/31502363611_faae72190e_o.jpg",
+          "filename": "31502363611_faae72190e_o.jpg",
+          "hidden": false,
+          "year": 2011,
+          "lastModified": "2026-01-03T13:09:11.807Z",
+          "exif": {
+            "dateTaken": "2011-02-06T17:12:09.000Z",
+            "camera": "Canon Canon EOS 40D",
+            "focalLength": 90,
+            "iso": 400
+          },
+          "order": 3
+        },
+        {
+          "id": "IMG_0146_1",
+          "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_0146_1.jpg",
+          "filename": "IMG_0146_1.jpg",
+          "hidden": false,
+          "year": 2013,
+          "lastModified": "2026-01-03T13:09:11.847Z",
+          "exif": {
+            "dateTaken": "2013-07-14T16:36:13.000Z",
+            "camera": "Canon Canon EOS 5D Mark II",
+            "lens": "EF24-105mm f/4L IS USM",
+            "focalLength": 24,
+            "iso": 250
+          },
+          "order": 4
+        },
+        {
+          "id": "IMG_0309_best",
+          "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_0309_best.jpg",
+          "filename": "IMG_0309_best.jpg",
+          "hidden": false,
+          "year": 2013,
+          "lastModified": "2026-01-03T13:09:11.812Z",
+          "exif": {
+            "dateTaken": "2013-07-14T18:03:42.000Z",
+            "camera": "Canon Canon EOS 5D Mark II",
+            "lens": "EF24-105mm f/4L IS USM",
+            "focalLength": 40,
+            "iso": 320
+          },
+          "order": 5
+        },
+        {
+          "id": "IMG_0314",
+          "path": "galleries/geographies/europe/spain/south of spain/granada/IMG_0314.jpg",
+          "filename": "IMG_0314.jpg",
+          "hidden": false,
+          "year": 2013,
+          "lastModified": "2026-01-03T13:09:11.798Z",
+          "exif": {
+            "dateTaken": "2013-07-14T19:05:41.000Z",
+            "camera": "Canon Canon EOS 5D Mark II",
+            "lens": "EF24-105mm f/4L IS USM",
+            "focalLength": 47,
+            "iso": 640
+          },
+          "order": 6
         },
         {
           "id": "IMG_5627",
@@ -3089,7 +3095,8 @@
             "lens": "EF24-105mm f/4L IS USM",
             "focalLength": 105,
             "iso": 500
-          }
+          },
+          "order": 7
         },
         {
           "id": "IMG_6302",
@@ -3103,7 +3110,8 @@
             "camera": "Canon Canon EOS 5D Mark II",
             "focalLength": 24,
             "iso": 400
-          }
+          },
+          "order": 8
         },
         {
           "id": "IMG_6322",
@@ -3117,7 +3125,8 @@
             "camera": "Canon Canon EOS 5D Mark II",
             "focalLength": 28,
             "iso": 100
-          }
+          },
+          "order": 9
         },
         {
           "id": "IMG_7204",
@@ -3132,7 +3141,8 @@
             "lens": "EF24-105mm f/4L IS USM",
             "focalLength": 105,
             "iso": 640
-          }
+          },
+          "order": 10
         },
         {
           "id": "IMG_7303",
@@ -3147,7 +3157,8 @@
             "lens": "EF24-105mm f/4L IS USM",
             "focalLength": 28,
             "iso": 1000
-          }
+          },
+          "order": 11
         },
         {
           "id": "IMG_8329",
@@ -3162,7 +3173,8 @@
             "lens": "10-20mm",
             "focalLength": 20,
             "iso": 320
-          }
+          },
+          "order": 12
         },
         {
           "id": "IMG_9176",
@@ -3176,7 +3188,8 @@
             "camera": "Canon Canon EOS 5D Mark II",
             "focalLength": 24,
             "iso": 200
-          }
+          },
+          "order": 13
         },
         {
           "id": "IMG_9210",
@@ -3190,7 +3203,8 @@
             "camera": "Canon Canon EOS 5D Mark II",
             "focalLength": 24,
             "iso": 200
-          }
+          },
+          "order": 14
         },
         {
           "id": "IMG_9218-best",
@@ -3204,7 +3218,8 @@
             "camera": "Canon Canon EOS 5D Mark II",
             "focalLength": 40,
             "iso": 200
-          }
+          },
+          "order": 15
         },
         {
           "id": "P1280427_1",
@@ -3219,7 +3234,8 @@
             "lens": "LUMIX G 20/F1.7 II",
             "focalLength": 20,
             "iso": 200
-          }
+          },
+          "order": 16
         },
         {
           "id": "P1280672",
@@ -3234,7 +3250,8 @@
             "lens": "LUMIX G 20/F1.7 II",
             "focalLength": 20,
             "iso": 200
-          }
+          },
+          "order": 17
         },
         {
           "id": "P1400668_1",
@@ -3249,7 +3266,8 @@
             "lens": "LUMIX G 20/F1.7 II",
             "focalLength": 20,
             "iso": 200
-          }
+          },
+          "order": 18
         },
         {
           "id": "P1400670",
@@ -3264,7 +3282,8 @@
             "lens": "LUMIX G 20/F1.7 II",
             "focalLength": 20,
             "iso": 200
-          }
+          },
+          "order": 19
         }
       ]
     },
@@ -5503,7 +5522,7 @@
   ],
   "stats": {
     "totalGalleries": 27,
-    "totalPhotos": 247,
+    "totalPhotos": 248,
     "totalPosts": 2,
     "totalPages": 2
   }

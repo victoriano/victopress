@@ -116,6 +116,86 @@ Your markdown content here...
 - **Deploy:** Cloudflare Pages
 - **Package Manager:** Bun
 
+## 🏗️ Architecture
+
+### Storage Adapter Pattern
+
+VictoPress uses an abstract storage layer that works with both local filesystem (development) and Cloudflare R2 (production):
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     Content Engine Layer                                 │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐          │
+│  │ gallery-scanner │  │ content-index   │  │ api.admin.*     │          │
+│  │  (EXIF cache)   │  │ (partial update)│  │  (uses both)    │          │
+│  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘          │
+│           │                    │                    │                    │
+│           └──────────┬─────────┴────────────────────┘                    │
+│                      │                                                   │
+│              ┌───────▼───────┐                                           │
+│              │ StorageAdapter │  ← Abstract interface                    │
+│              └───────┬───────┘                                           │
+└──────────────────────┼───────────────────────────────────────────────────┘
+                       │
+         ┌─────────────┴─────────────┐
+         │                           │
+    ┌────▼────┐                 ┌────▼────┐
+    │  Local  │                 │   R2    │
+    │ Adapter │                 │ Adapter │
+    │  (dev)  │                 │ (prod)  │
+    └────┬────┘                 └────┬────┘
+         │                           │
+    ┌────▼────┐                 ┌────▼────┐
+    │./content│                 │R2 Bucket│
+    └─────────┘                 └─────────┘
+```
+
+### StorageAdapter Interface
+
+Both adapters implement this interface (`app/lib/content-engine/types.ts`):
+
+```typescript
+interface StorageAdapter {
+  list(prefix: string): Promise<FileInfo[]>;      // List files in folder
+  listRecursive(prefix: string): Promise<FileInfo[]>; // List all recursively
+  get(key: string): Promise<ArrayBuffer | null>;  // Read binary (images)
+  getText(key: string): Promise<string | null>;   // Read text (YAML)
+  put(key: string, data: ArrayBuffer | string): Promise<void>; // Write
+  delete(key: string): Promise<void>;             // Delete file
+  exists(key: string): Promise<boolean>;          // Check existence
+  move(from: string, to: string): Promise<void>;  // Move/rename
+  copy(from: string, to: string): Promise<void>;  // Copy file
+  getSignedUrl(key: string): Promise<string>;     // Get URL for image
+}
+```
+
+### Adapter Implementations
+
+| Method | LocalStorageAdapter | R2StorageAdapter |
+|--------|---------------------|------------------|
+| `list()` | `fs.readdir()` | `bucket.list({ delimiter: "/" })` |
+| `get()` | `fs.readFile()` → Buffer | `bucket.get()` → `arrayBuffer()` |
+| `put()` | `fs.mkdir()` + `fs.writeFile()` | `bucket.put()` with MIME detection |
+| `delete()` | `fs.unlink()` | `bucket.delete()` |
+| `move()` | `fs.rename()` (atomic) | `copy()` + `delete()` (2 ops) |
+| `exists()` | `fs.access()` | `bucket.head()` |
+
+### EXIF Caching & Incremental Updates
+
+To optimize performance, especially with R2 where each file read is a network request:
+
+```
+Full rebuild WITHOUT cache:        Full rebuild WITH cache:
+  Local:  ~400-500ms                 Local:  ~40ms
+  R2:     10-30 seconds              R2:     ~200-500ms
+
+Partial update (reorder/hide/edit):
+  Local:  ~15ms
+  R2:     ~50-100ms
+```
+
+The content index stores EXIF data and `lastModified` timestamps. On rebuild, if a photo hasn't changed, its cached EXIF is reused instead of re-reading the image file.
+
 ## 📚 API Endpoints
 
 | Endpoint | Description |
