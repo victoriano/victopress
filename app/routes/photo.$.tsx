@@ -18,7 +18,9 @@ import {
 } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
+import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
+import { getOptimizedImageUrl } from "~/utils/image-optimization";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.photo) {
@@ -84,8 +86,22 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const prevPhoto = photoIndex > 0 ? photos[photoIndex - 1] : null;
   const nextPhoto = photoIndex < photos.length - 1 ? photos[photoIndex + 1] : null;
 
-  // Get signed URL for the photo
-  const photoUrl = await storage.getSignedUrl(photo.path);
+  // Generate optimized image URLs using Cloudflare Image Resizing
+  // Main image: high quality, responsive width
+  const photoUrl = getOptimizedImageUrl(photo.path, {
+    width: 1600,
+    quality: 85,
+    format: "auto",
+    fit: "scale-down",
+  });
+  
+  // Preload URLs for adjacent photos
+  const prevPhotoUrl = prevPhoto 
+    ? getOptimizedImageUrl(prevPhoto.path, { width: 1600, quality: 80, format: "auto" })
+    : null;
+  const nextPhotoUrl = nextPhoto
+    ? getOptimizedImageUrl(nextPhoto.path, { width: 1600, quality: 80, format: "auto" })
+    : null;
 
   const siteName = "Victoriano Izquierdo";
   const canonicalUrl = `${baseUrl}/photo/${gallerySlug}/${photoFilename}`;
@@ -94,6 +110,8 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   return json({
     photo,
     photoUrl,
+    prevPhotoUrl,
+    nextPhotoUrl,
     gallery: {
       slug: gallery.slug,
       title: gallery.title,
@@ -120,6 +138,8 @@ export default function PhotoPage() {
   const {
     photo,
     photoUrl,
+    prevPhotoUrl,
+    nextPhotoUrl,
     gallery,
     gallerySlug,
     prevPhoto,
@@ -132,19 +152,46 @@ export default function PhotoPage() {
   } = useLoaderData<typeof loader>();
 
   const navigate = useNavigate();
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const previousPhotoUrl = useRef(photoUrl);
+
+  // Preload adjacent photos
+  usePhotoPreloading([prevPhotoUrl, nextPhotoUrl]);
+
+  // Handle image loading state
+  useEffect(() => {
+    if (photoUrl !== previousPhotoUrl.current) {
+      setIsImageLoaded(false);
+      previousPhotoUrl.current = photoUrl;
+    }
+  }, [photoUrl]);
+
+  // Navigation with transition
+  const navigateWithTransition = useCallback(
+    (url: string) => {
+      setIsTransitioning(true);
+      // Small delay for fade-out animation
+      setTimeout(() => {
+        navigate(url);
+        setIsTransitioning(false);
+      }, 150);
+    },
+    [navigate]
+  );
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft" && prevPhoto) {
-        navigate(`/photo/${gallerySlug}/${prevPhoto.filename}`);
+        navigateWithTransition(`/photo/${gallerySlug}/${prevPhoto.filename}`);
       } else if (e.key === "ArrowRight" && nextPhoto) {
-        navigate(`/photo/${gallerySlug}/${nextPhoto.filename}`);
+        navigateWithTransition(`/photo/${gallerySlug}/${nextPhoto.filename}`);
       } else if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Escape") {
         navigate(`/gallery/${gallerySlug}`);
       }
     },
-    [navigate, gallerySlug, prevPhoto, nextPhoto]
+    [navigate, navigateWithTransition, gallerySlug, prevPhoto, nextPhoto]
   );
 
   useEffect(() => {
@@ -179,37 +226,34 @@ export default function PhotoPage() {
     >
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
-        {/* Photo with navigation buttons overlaid */}
-        <div className="relative">
+        {/* Photo with invisible tap zones for navigation */}
+        <div className="relative bg-gray-100 dark:bg-gray-900 min-h-[40vh]">
+          {/* Loading spinner */}
+          {!isImageLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center z-0">
+              <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
+            </div>
+          )}
           <img
             src={photoUrl}
             alt={photo.title || photo.filename}
-            className="w-full object-contain select-none"
+            className={`w-full object-contain select-none transition-opacity duration-300 ease-out ${
+              isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
+            }`}
+            onLoad={() => setIsImageLoaded(true)}
           />
-          {/* Navigation buttons over the image */}
-          <div className="absolute inset-0 z-20 flex pointer-events-auto">
-            {/* Left half - Previous */}
-            <button
-              type="button"
-              onClick={() => {
-                if (prevPhoto) {
-                  navigate(`/photo/${gallerySlug}/${prevPhoto.filename}`);
-                }
-              }}
-              disabled={!prevPhoto}
-              className="w-1/2 h-full border-0 cursor-pointer disabled:cursor-default bg-transparent active:bg-black/10"
+          {/* Invisible tap zones - left half = prev, right half = next */}
+          <div className="absolute inset-0 flex z-10">
+            <Link
+              to={prevPhoto ? `/photo/${gallerySlug}/${prevPhoto.filename}` : "#"}
+              onClick={(e) => !prevPhoto && e.preventDefault()}
+              className={`w-1/2 h-full ${!prevPhoto ? "pointer-events-none" : ""}`}
               aria-label="Previous photo"
             />
-            {/* Right half - Next */}
-            <button
-              type="button"
-              onClick={() => {
-                if (nextPhoto) {
-                  navigate(`/photo/${gallerySlug}/${nextPhoto.filename}`);
-                }
-              }}
-              disabled={!nextPhoto}
-              className="w-1/2 h-full border-0 cursor-pointer disabled:cursor-default bg-transparent active:bg-black/10"
+            <Link
+              to={nextPhoto ? `/photo/${gallerySlug}/${nextPhoto.filename}` : "#"}
+              onClick={(e) => !nextPhoto && e.preventDefault()}
+              className={`w-1/2 h-full ${!nextPhoto ? "pointer-events-none" : ""}`}
               aria-label="Next photo"
             />
           </div>
@@ -280,20 +324,30 @@ export default function PhotoPage() {
 
       {/* Desktop layout - centered with clickable zones */}
       <div className="hidden lg:flex lg:flex-col lg:h-screen">
-        <div className="flex-1 flex items-center justify-center overflow-hidden pt-8 pb-8 px-8 relative">
+        <div className="flex-1 flex items-center justify-center overflow-hidden pt-8 pb-8 px-8 relative bg-white dark:bg-black">
+          {/* Loading indicator */}
+          {!isImageLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-10 h-10 border-2 border-gray-200 dark:border-gray-700 border-t-gray-500 dark:border-t-gray-400 rounded-full animate-spin" />
+            </div>
+          )}
           <img
             src={photoUrl}
             alt={photo.title || photo.filename}
-            className="max-h-full max-w-full object-contain pointer-events-none select-none"
+            className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-opacity duration-300 ease-out ${
+              isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
+            }`}
+            onLoad={() => setIsImageLoaded(true)}
           />
           
           {/* Clickable overlay zones */}
           <div className="absolute inset-0 flex">
             {/* Left zone - Previous */}
             {prevPhoto ? (
-              <Link
-                to={`/photo/${gallerySlug}/${prevPhoto.filename}`}
-                className="w-1/3 h-full cursor-prev"
+              <button
+                type="button"
+                onClick={() => navigateWithTransition(`/photo/${gallerySlug}/${prevPhoto.filename}`)}
+                className="w-1/3 h-full cursor-prev bg-transparent border-0"
                 aria-label="Previous photo"
               />
             ) : (
@@ -309,9 +363,10 @@ export default function PhotoPage() {
             
             {/* Right zone - Next */}
             {nextPhoto ? (
-              <Link
-                to={`/photo/${gallerySlug}/${nextPhoto.filename}`}
-                className="w-1/3 h-full cursor-next"
+              <button
+                type="button"
+                onClick={() => navigateWithTransition(`/photo/${gallerySlug}/${nextPhoto.filename}`)}
+                className="w-1/3 h-full cursor-next bg-transparent border-0"
                 aria-label="Next photo"
               />
             ) : (
