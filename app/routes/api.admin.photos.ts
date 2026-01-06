@@ -18,6 +18,7 @@ import {
   addPhotosToGalleryIndex,
   type GalleryPhotoEntry,
 } from "~/lib/content-engine";
+import { getAllVariantFilenames, isVariantFile } from "~/lib/image-optimizer.server";
 import * as yaml from "yaml";
 
 // Must match PhotoYamlEntry in gallery-scanner.ts
@@ -57,7 +58,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 }
 
 /**
- * Delete one or more photos
+ * Delete one or more photos (and their WebP variants)
  */
 async function handleDelete(
   formData: FormData,
@@ -75,8 +76,8 @@ async function handleDelete(
   
   const storage = getStorage(context);
   
-  // Delete each photo
-  const results: Array<{ path: string; success: boolean; error?: string }> = [];
+  // Delete each photo and its variants
+  const results: Array<{ path: string; success: boolean; error?: string; variantsDeleted?: number }> = [];
   
   for (const photoPath of photoPaths) {
     try {
@@ -86,8 +87,32 @@ async function handleDelete(
         continue;
       }
       
+      // Delete the original
       await storage.delete(photoPath);
-      results.push({ path: photoPath, success: true });
+      
+      // Delete WebP variants (photo_400w.webp, photo_800w.webp, etc.)
+      const filename = photoPath.split("/").pop()!;
+      
+      // Skip if this is already a variant file
+      if (!isVariantFile(filename)) {
+        const variantFilenames = getAllVariantFilenames(filename);
+        const dir = photoPath.substring(0, photoPath.lastIndexOf("/"));
+        let variantsDeleted = 0;
+        
+        for (const variantFilename of variantFilenames) {
+          const variantPath = `${dir}/${variantFilename}`;
+          try {
+            await storage.delete(variantPath);
+            variantsDeleted++;
+          } catch {
+            // Variant might not exist, that's fine
+          }
+        }
+        
+        results.push({ path: photoPath, success: true, variantsDeleted });
+      } else {
+        results.push({ path: photoPath, success: true });
+      }
     } catch (err) {
       results.push({ 
         path: photoPath, 
@@ -109,10 +134,11 @@ async function handleDelete(
   });
   
   const successCount = results.filter(r => r.success).length;
+  const totalVariantsDeleted = results.reduce((sum, r) => sum + (r.variantsDeleted || 0), 0);
   
   return json({
     success: successCount > 0,
-    message: `Deleted ${successCount} of ${photoPaths.length} photos`,
+    message: `Deleted ${successCount} photo${successCount !== 1 ? 's' : ''}${totalVariantsDeleted > 0 ? ` (+ ${totalVariantsDeleted} variants)` : ''}`,
     results,
   });
 }

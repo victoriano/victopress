@@ -1,17 +1,15 @@
 /**
  * OptimizedImage Component
  *
- * Responsive image component with Cloudflare Image Resizing.
+ * Responsive image component using pre-generated WebP variants.
  * 
  * Features:
- * - Automatic srcset with CFI for responsive images
- * - Multiple sizes: 400w (thumb), 800w (mobile), 1200w (tablet), 1600w (desktop)
- * - Automatic WebP/AVIF format via Cloudflare
+ * - Automatic srcset using pre-generated WebP variants (400w, 800w, 1200w, 1600w)
  * - Native lazy loading
- * - Loading placeholder
+ * - Loading placeholder with smooth fade-in
+ * - Fallback to original image if variants don't exist
  * 
- * In production: Images are resized/optimized at Cloudflare's edge
- * In development: Falls back to original images (CFI not available on localhost)
+ * Pre-requisite: Run `bun run optimize-images` to generate WebP variants
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -33,38 +31,22 @@ interface OptimizedImageProps {
   sizes?: string;
   /** Aspect ratio for placeholder (e.g., "16/9", "4/3", "1/1") */
   aspectRatio?: string;
-  /** Whether to use Cloudflare Image Resizing (default: true) */
-  useCloudflare?: boolean;
-  /** Quality (1-100), default: 80 */
-  quality?: number;
   /** Priority loading (for above-the-fold images) */
   priority?: boolean;
   /** On click handler */
   onClick?: () => void;
 }
 
-// Standard breakpoint widths for srcset
+// Standard breakpoint widths for srcset (must match optimize-images.ts)
 const SRCSET_WIDTHS = [400, 800, 1200, 1600];
 
 // Default sizes attribute (can be overridden)
 const DEFAULT_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 
 /**
- * CFI Toggle
- * 
- * Set to true when:
- * - You have a custom domain (not .pages.dev)
- * - Cloudflare Image Resizing is enabled for your zone
- * 
- * Set to false to use direct /api/images/ URLs (works everywhere)
- */
-const USE_CFI = true; // Enabled - requires custom domain (photos.victoriano.me)
-
-/**
  * Encode a path for use in URLs (handles spaces and special chars)
  */
 function encodeImagePath(path: string): string {
-  // Split by / and encode each segment, then rejoin
   return path
     .split("/")
     .map((segment) => encodeURIComponent(segment))
@@ -72,34 +54,45 @@ function encodeImagePath(path: string): string {
 }
 
 /**
- * Generate an image URL - either CFI or direct based on configuration
+ * Generate URL for a pre-generated WebP variant
+ * Example: photo.jpg → photo_800w.webp
  */
-function generateImageUrl(
-  imagePath: string,
-  targetWidth: number,
-  quality: number
-): string {
-  // Normalize and encode the image path
+function getVariantUrl(imagePath: string, width: number): string {
+  // Remove /api/images/ prefix if present
   let basePath = imagePath;
-  
-  // Remove /api/images/ prefix if present, we'll add it back encoded
   if (basePath.startsWith("/api/images/")) {
     basePath = basePath.substring("/api/images/".length);
   } else if (basePath.startsWith("/")) {
     basePath = basePath.substring(1);
   }
   
-  // Encode the path (handles spaces in folder names like "new york")
-  const encodedPath = encodeImagePath(basePath);
+  // Get path parts
+  const lastSlash = basePath.lastIndexOf("/");
+  const dir = lastSlash >= 0 ? basePath.substring(0, lastSlash + 1) : "";
+  const filename = lastSlash >= 0 ? basePath.substring(lastSlash + 1) : basePath;
   
-  if (USE_CFI) {
-    // Build CFI URL for Cloudflare Image Resizing
-    const cfiOptions = `width=${targetWidth},quality=${quality},format=auto,fit=scale-down`;
-    return `/cdn-cgi/image/${cfiOptions}/api/images/${encodedPath}`;
+  // Remove extension and add variant suffix
+  const dotIndex = filename.lastIndexOf(".");
+  const nameWithoutExt = dotIndex >= 0 ? filename.substring(0, dotIndex) : filename;
+  
+  // Construct variant path: photo.jpg → photo_800w.webp
+  const variantPath = `${dir}${nameWithoutExt}_${width}w.webp`;
+  
+  // Encode and return full URL
+  return `/api/images/${encodeImagePath(variantPath)}`;
+}
+
+/**
+ * Get the original image URL (encoded)
+ */
+function getOriginalUrl(imagePath: string): string {
+  let basePath = imagePath;
+  if (basePath.startsWith("/api/images/")) {
+    basePath = basePath.substring("/api/images/".length);
+  } else if (basePath.startsWith("/")) {
+    basePath = basePath.substring(1);
   }
-  
-  // Direct URL - no resizing, but works everywhere
-  return `/api/images/${encodedPath}`;
+  return `/api/images/${encodeImagePath(basePath)}`;
 }
 
 export function OptimizedImage({
@@ -111,13 +104,12 @@ export function OptimizedImage({
   loading = "lazy",
   sizes = DEFAULT_SIZES,
   aspectRatio,
-  useCloudflare = true,
-  quality = 80,
   priority = false,
   onClick,
 }: OptimizedImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [useOriginal, setUseOriginal] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   // Check if image is already loaded (cached) on mount
@@ -127,24 +119,44 @@ export function OptimizedImage({
     }
   }, []);
 
-  // Normalize src path - remove /api/images/ prefix if present
+  // Reset state when src changes
+  useEffect(() => {
+    setIsLoaded(false);
+    setHasError(false);
+    setUseOriginal(false);
+  }, [src]);
+
+  // Normalize src path
   const normalizedSrc = src.startsWith("/") ? src : `/${src}`;
   const imagePath = normalizedSrc.startsWith("/api/images/")
     ? normalizedSrc
     : `/api/images/${normalizedSrc.replace(/^\//, "")}`;
 
-  // Generate srcset for each width (CFI or direct based on config)
-  const srcSet = USE_CFI
-    ? SRCSET_WIDTHS.map((w) => `${generateImageUrl(imagePath, w, quality)} ${w}w`).join(", ")
-    : undefined; // No srcset needed for direct URLs (browser handles it)
+  // Generate srcset with WebP variants
+  const srcSet = !useOriginal
+    ? SRCSET_WIDTHS.map((w) => `${getVariantUrl(imagePath, w)} ${w}w`).join(", ")
+    : undefined;
 
-  // Default src
-  const defaultSrc = generateImageUrl(imagePath, 1200, quality);
+  // Default src - use 1200w variant or original
+  const defaultSrc = useOriginal 
+    ? getOriginalUrl(imagePath)
+    : getVariantUrl(imagePath, 1200);
 
   // Placeholder styles
   const placeholderStyles = aspectRatio
     ? { aspectRatio, backgroundColor: "#f3f4f6" }
     : undefined;
+
+  const handleError = () => {
+    if (!useOriginal) {
+      // WebP variant failed, fall back to original
+      console.log(`[OptimizedImage] Variant not found, falling back to original: ${src}`);
+      setUseOriginal(true);
+    } else {
+      // Original also failed
+      setHasError(true);
+    }
+  };
 
   if (hasError) {
     return (
@@ -180,7 +192,7 @@ export function OptimizedImage({
           isLoaded ? "opacity-100" : "opacity-0"
         }`}
         onLoad={() => setIsLoaded(true)}
-        onError={() => setHasError(true)}
+        onError={handleError}
         onClick={onClick}
       />
     </div>
@@ -188,18 +200,17 @@ export function OptimizedImage({
 }
 
 /**
- * Generate optimized image URL for a specific width
- * Uses Cloudflare Image Resizing for automatic optimization
+ * Generate URL for a pre-generated WebP variant
+ * For use outside the component (e.g., meta tags, preloading)
  */
 export function getOptimizedImageUrl(
   src: string,
   options: {
     width?: number;
-    height?: number;
-    quality?: number;
-    format?: "auto" | "webp" | "avif";
   } = {}
 ): string {
+  const width = options.width || 1200;
+  
   // Normalize the path
   let basePath = src;
   if (basePath.startsWith("/api/images/")) {
@@ -208,47 +219,32 @@ export function getOptimizedImageUrl(
     basePath = basePath.substring(1);
   }
   
-  // Encode the path (handles spaces in folder names)
-  const encodedPath = encodeImagePath(basePath);
+  // Get path parts
+  const lastSlash = basePath.lastIndexOf("/");
+  const dir = lastSlash >= 0 ? basePath.substring(0, lastSlash + 1) : "";
+  const filename = lastSlash >= 0 ? basePath.substring(lastSlash + 1) : basePath;
   
-  // Build CFI options
-  const cfiParts: string[] = [];
-  if (options.width) cfiParts.push(`width=${options.width}`);
-  if (options.height) cfiParts.push(`height=${options.height}`);
-  cfiParts.push(`quality=${options.quality || 80}`);
-  cfiParts.push(`format=${options.format || "auto"}`);
-  cfiParts.push("fit=scale-down");
+  // Remove extension and add variant suffix
+  const dotIndex = filename.lastIndexOf(".");
+  const nameWithoutExt = dotIndex >= 0 ? filename.substring(0, dotIndex) : filename;
   
-  return `/cdn-cgi/image/${cfiParts.join(",")}/api/images/${encodedPath}`;
+  // Construct variant path
+  const variantPath = `${dir}${nameWithoutExt}_${width}w.webp`;
+  
+  return `/api/images/${encodeImagePath(variantPath)}`;
 }
 
 /**
- * Picture component with WebP/AVIF support
- * Provides better browser format negotiation
- * 
- * Note: This component is currently disabled for consistent rendering.
- * Cloudflare Image Resizing can cause hydration mismatches.
- * Use OptimizedImage instead.
+ * Get the original (non-optimized) image URL
  */
-export function OptimizedPicture({
-  src,
-  alt,
-  className = "",
-  sizes = DEFAULT_SIZES,
-  loading = "lazy",
-  priority = false,
-}: Omit<OptimizedImageProps, "useCloudflare" | "quality">) {
-  // For consistent server/client rendering, we use the standard OptimizedImage approach
-  return (
-    <OptimizedImage
-      src={src}
-      alt={alt}
-      className={className}
-      sizes={sizes}
-      loading={loading}
-      priority={priority}
-    />
-  );
+export function getOriginalImageUrl(src: string): string {
+  let basePath = src;
+  if (basePath.startsWith("/api/images/")) {
+    basePath = basePath.substring("/api/images/".length);
+  } else if (basePath.startsWith("/")) {
+    basePath = basePath.substring(1);
+  }
+  return `/api/images/${encodeImagePath(basePath)}`;
 }
 
 export default OptimizedImage;

@@ -658,28 +658,7 @@ export default function AdminSettings() {
 
         {/* Image Optimization */}
         <Section title="Image Optimization" icon={<ImageIcon />}>
-          <InfoRow 
-            label="Provider" 
-            value={
-              storageConfig.imageProvider === "cloudflare" ? "Cloudflare Image Resizing" :
-              storageConfig.imageProvider === "sharp" ? "Sharp (Self-hosted)" :
-              "None (Original images)"
-            } 
-            status={storageConfig.imageProvider !== "none" ? "success" : "info"}
-          />
-          {storageConfig.imageCdnUrl && (
-            <InfoRow 
-              label="CDN URL" 
-              value={storageConfig.imageCdnUrl} 
-              copyable={storageConfig.imageCdnUrl}
-            />
-          )}
-          {storageConfig.imageProvider === "cloudflare" && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              Images are automatically resized using Cloudflare's edge network. 
-              Use <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">/cdn-cgi/image/</code> URL prefix.
-            </div>
-          )}
+          <ImageOptimizationPanel />
         </Section>
 
         {/* Environment Variables */}
@@ -1780,6 +1759,197 @@ function InfoIcon({ className }: { className?: string }) {
     <svg className={className || "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
     </svg>
+  );
+}
+
+// Image Optimization Panel Component
+function ImageOptimizationPanel() {
+  const fetcher = useFetcher<{
+    totalImages?: number;
+    imagesWithVariants?: number;
+    imagesNeedingOptimization?: number;
+    percentOptimized?: number;
+    success?: boolean;
+    message?: string;
+    stats?: {
+      processed: number;
+      skipped: number;
+      failed: number;
+      variantsCreated: number;
+    };
+  }>();
+  
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizeProgress, setOptimizeProgress] = useState<{
+    processed: number;
+    skipped: number;
+    failed: number;
+    variantsCreated: number;
+  } | null>(null);
+  
+  // Fetch optimization status on mount
+  React.useEffect(() => {
+    fetcher.load("/api/admin/optimize");
+  }, []);
+  
+  const handleOptimizeAll = async () => {
+    setIsOptimizing(true);
+    setOptimizeProgress(null);
+    
+    try {
+      const response = await fetch("/api/admin/optimize", {
+        method: "POST",
+        body: new URLSearchParams({ action: "optimize-all" }),
+        credentials: "include",
+      });
+      
+      const result = await response.json() as {
+        success: boolean;
+        message: string;
+        stats?: {
+          processed: number;
+          skipped: number;
+          failed: number;
+          variantsCreated: number;
+        };
+      };
+      
+      if (result.stats) {
+        setOptimizeProgress(result.stats);
+      }
+      
+      // Refresh status
+      fetcher.load("/api/admin/optimize");
+    } catch (error) {
+      console.error("Optimization failed:", error);
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+  
+  const status = fetcher.data;
+  const isLoading = fetcher.state === "loading";
+  
+  return (
+    <div className="space-y-4">
+      {/* How it works */}
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-100 dark:bg-purple-800/50 rounded-lg">
+            <ImageIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              WebP Variant Generation
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Uses @cf-wasm/photon to generate optimized WebP variants (400, 800, 1200, 1600px) server-side
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Status */}
+      {status && !isLoading && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Total Images</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{status.totalImages}</p>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Optimized</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{status.percentOptimized}%</p>
+              <p className="text-xs text-gray-500">({status.imagesWithVariants}/{status.totalImages})</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Progress Bar */}
+      {status && status.percentOptimized !== undefined && status.percentOptimized < 100 && (
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span>{status.imagesNeedingOptimization} images need optimization</span>
+            <span>{status.percentOptimized}% complete</span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div 
+              className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
+              style={{ width: `${status.percentOptimized}%` }}
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* Optimize All Button */}
+      <div className="pt-2">
+        <button
+          onClick={handleOptimizeAll}
+          disabled={isOptimizing || isLoading || (status?.percentOptimized === 100)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 disabled:shadow-none"
+        >
+          {isOptimizing ? (
+            <>
+              <LoadingSpinner />
+              Optimizing Images...
+            </>
+          ) : status?.percentOptimized === 100 ? (
+            <>
+              <CheckIcon className="w-5 h-5" />
+              All Images Optimized
+            </>
+          ) : (
+            <>
+              <ImageIcon className="w-5 h-5" />
+              Optimize All Images
+            </>
+          )}
+        </button>
+        
+        {status?.percentOptimized === 100 && (
+          <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+            All images have WebP variants. New uploads are optimized automatically.
+          </p>
+        )}
+      </div>
+      
+      {/* Results */}
+      {optimizeProgress && (
+        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <CheckIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-green-800 dark:text-green-200 font-medium">Optimization Complete</p>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                <div className="text-green-700 dark:text-green-300">
+                  <span className="font-semibold">{optimizeProgress.processed}</span> processed
+                </div>
+                <div className="text-green-700 dark:text-green-300">
+                  <span className="font-semibold">{optimizeProgress.variantsCreated}</span> variants created
+                </div>
+                {optimizeProgress.skipped > 0 && (
+                  <div className="text-gray-600 dark:text-gray-400">
+                    <span className="font-semibold">{optimizeProgress.skipped}</span> skipped
+                  </div>
+                )}
+                {optimizeProgress.failed > 0 && (
+                  <div className="text-red-600 dark:text-red-400">
+                    <span className="font-semibold">{optimizeProgress.failed}</span> failed
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Info about auto-optimization */}
+      <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+        <p><strong>Auto-optimization:</strong> New uploads automatically generate WebP variants</p>
+        <p><strong>Deletion:</strong> Variants are automatically deleted when original is removed</p>
+      </div>
+    </div>
   );
 }
 

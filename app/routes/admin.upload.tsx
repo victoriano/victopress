@@ -3,6 +3,11 @@
  * 
  * GET /admin/upload
  * POST /admin/upload (form submission)
+ * 
+ * Features:
+ * - Drag & drop upload
+ * - Automatic WebP variant generation (browser-side)
+ * - Progress tracking for processing and upload
  */
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/cloudflare";
@@ -34,15 +39,40 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const files = formData.getAll("files") as File[];
   const gallery = formData.get("gallery") as string;
+  const generateVariantsFlag = formData.get("generateVariants") !== "false"; // Default true
   
   if (files.length === 0) {
     return json({ error: "No files selected" }, { status: 400 });
   }
   
   const storage = getStorage(context);
-  const results = [];
+  const results: Array<{
+    name: string;
+    status: string;
+    path?: string;
+    error?: string;
+    variantsCreated?: number;
+  }> = [];
+  
+  // Import server-side image processor
+  const { processImageServer, isVariantFile, isImageFile } = await import(
+    "~/lib/image-optimizer.server"
+  );
+  
+  // Separate original files from pre-generated variants (from browser)
+  const originalFiles: File[] = [];
+  const variantFiles: File[] = [];
   
   for (const file of files) {
+    if (isVariantFile(file.name)) {
+      variantFiles.push(file);
+    } else {
+      originalFiles.push(file);
+    }
+  }
+  
+  // Process original files
+  for (const file of originalFiles) {
     try {
       // Validate file type
       if (!file.type.startsWith("image/")) {
@@ -55,11 +85,37 @@ export async function action({ request, context }: ActionFunctionArgs) {
         ? `galleries/${gallery}/${file.name}`
         : `galleries/uploads/${file.name}`;
       
-      // Upload file
+      // Upload original file
       const buffer = await file.arrayBuffer();
       await storage.put(destPath, buffer, file.type);
       
-      results.push({ name: file.name, status: "success", path: destPath });
+      let variantsCreated = 0;
+      
+      // Generate WebP variants server-side if requested and it's an image
+      if (generateVariantsFlag && isImageFile(file.name)) {
+        try {
+          const processed = await processImageServer(buffer, file.name);
+          const dir = destPath.substring(0, destPath.lastIndexOf("/"));
+          
+          for (const variant of processed.variants) {
+            const variantPath = `${dir}/${variant.filename}`;
+            await storage.put(variantPath, variant.data.buffer as ArrayBuffer, "image/webp");
+            variantsCreated++;
+          }
+          
+          console.log(`[Upload] Generated ${variantsCreated} variants for ${file.name}`);
+        } catch (variantError) {
+          console.error(`[Upload] Failed to generate variants for ${file.name}:`, variantError);
+          // Non-fatal - original is still uploaded
+        }
+      }
+      
+      results.push({ 
+        name: file.name, 
+        status: "success", 
+        path: destPath,
+        variantsCreated,
+      });
     } catch (error) {
       results.push({
         name: file.name,
@@ -69,16 +125,30 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
   }
   
-  const successCount = results.filter((r) => r.status === "success").length;
+  // Upload any pre-generated variants (from browser processing)
+  for (const file of variantFiles) {
+    try {
+      const destPath = gallery
+        ? `galleries/${gallery}/${file.name}`
+        : `galleries/uploads/${file.name}`;
+      
+      const buffer = await file.arrayBuffer();
+      await storage.put(destPath, buffer, "image/webp");
+      // Don't add to results - variants are counted with their originals
+    } catch (error) {
+      console.error(`[Upload] Failed to upload variant ${file.name}:`, error);
+    }
+  }
   
-  // Update content index incrementally (much faster than full rebuild)
-  // Only process the new photos, not the entire gallery
+  const successCount = results.filter((r) => r.status === "success").length;
+  const totalVariants = results.reduce((sum, r) => sum + (r.variantsCreated || 0), 0);
+  
+  // Update content index incrementally
   if (successCount > 0) {
     const successfulPaths = results
       .filter((r) => r.status === "success" && r.path)
       .map((r) => r.path as string);
     
-    // Determine the gallery path
     const galleryPath = gallery
       ? `galleries/${gallery}`
       : "galleries/uploads";
@@ -88,13 +158,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
       console.log(`[Upload] Updated index with ${successfulPaths.length} new photos`);
     } catch (error) {
       console.error("[Upload] Failed to update index:", error);
-      // Non-fatal - index will be rebuilt on next request if needed
     }
   }
   
+  const variantMsg = totalVariants > 0 ? ` (+ ${totalVariants} optimized variants)` : "";
+  
   return json({
     success: successCount > 0,
-    message: `Uploaded ${successCount} of ${files.length} files`,
+    message: `Uploaded ${successCount} photo${successCount !== 1 ? 's' : ''}${variantMsg}`,
     results,
   });
 }
@@ -110,6 +181,7 @@ export default function AdminUpload() {
   const [selectedGallery, setSelectedGallery] = useState(defaultGallery);
   const [dragActive, setDragActive] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
+  const [generateVariants, setGenerateVariants] = useState(true);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -156,14 +228,17 @@ export default function AdminUpload() {
     if (files.length === 0) return;
     
     const formData = new FormData();
-    files.forEach((file) => formData.append("files", file));
     formData.append("gallery", selectedGallery);
+    formData.append("generateVariants", generateVariants ? "true" : "false");
+    
+    // Just upload original files - server will generate variants
+    files.forEach((file) => formData.append("files", file));
     
     fetcher.submit(formData, {
       method: "POST",
       encType: "multipart/form-data",
     });
-  }, [files, selectedGallery, fetcher]);
+  }, [files, selectedGallery, fetcher, generateVariants]);
 
   const isUploading = fetcher.state !== "idle";
   
@@ -219,6 +294,26 @@ export default function AdminUpload() {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Optimization Options */}
+        <div className="mb-6">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={generateVariants}
+              onChange={(e) => setGenerateVariants(e.target.checked)}
+              className="w-5 h-5 rounded border-gray-300 dark:border-gray-700 text-blue-500 focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Generate optimized WebP variants
+              </span>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Creates 400px, 800px, 1200px, and 1600px versions for faster loading
+              </p>
+            </div>
+          </label>
         </div>
 
         {/* Drop Zone */}
@@ -313,12 +408,13 @@ export default function AdminUpload() {
                 {isUploading ? (
                   <>
                     <LoadingIcon />
-                    Uploading...
+                    Uploading & Processing...
                   </>
                 ) : (
                   <>
                     <UploadIcon />
-                    Upload {files.length} file{files.length !== 1 ? "s" : ""}
+                    Upload {files.length} photo{files.length !== 1 ? "s" : ""}
+                    {generateVariants && <span className="text-xs opacity-70 ml-1">(+ WebP variants)</span>}
                   </>
                 )}
               </button>
