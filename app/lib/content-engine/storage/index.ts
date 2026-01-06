@@ -91,10 +91,14 @@ export function getStorage(context: {
   if (process.env.NODE_ENV === "development") {
     const adapterPreference = env?.STORAGE_ADAPTER;
     
+    // Debug: Check what's available in env vs process.env
+    console.log(`[Storage DEBUG] env.R2_ACCESS_KEY_ID: ${env?.R2_ACCESS_KEY_ID ? 'SET' : 'MISSING'}`);
+    console.log(`[Storage DEBUG] process.env.R2_ACCESS_KEY_ID: ${process.env.R2_ACCESS_KEY_ID ? 'SET' : 'MISSING'}`);
+    
     // If user explicitly wants R2
     if (adapterPreference === "r2") {
-      // Check for R2 API credentials (direct connection to REAL R2)
-      const r2Config = getR2ApiConfig(env);
+      // Check for R2 API credentials - try both env (Cloudflare context) and process.env (.dev.vars)
+      const r2Config = getR2ApiConfig(env) || getR2ApiConfigFromProcessEnv();
       
       if (r2Config) {
         // Use direct R2 API connection (REAL bucket, not emulation!)
@@ -134,7 +138,7 @@ export function getStorage(context: {
 }
 
 /**
- * Extract R2 API config from environment variables
+ * Extract R2 API config from Cloudflare context environment
  */
 function getR2ApiConfig(env?: {
   R2_ACCOUNT_ID?: string;
@@ -146,6 +150,23 @@ function getR2ApiConfig(env?: {
   const accessKeyId = env?.R2_ACCESS_KEY_ID;
   const secretAccessKey = env?.R2_SECRET_ACCESS_KEY;
   const bucketName = env?.R2_BUCKET_NAME || "victopress-content";
+  
+  if (accountId && accessKeyId && secretAccessKey) {
+    return { accountId, accessKeyId, secretAccessKey, bucketName };
+  }
+  
+  return null;
+}
+
+/**
+ * Extract R2 API config from process.env (for .dev.vars in development)
+ * Wrangler loads .dev.vars but sometimes they're in process.env not context.env
+ */
+function getR2ApiConfigFromProcessEnv(): R2ApiConfig | null {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const bucketName = process.env.R2_BUCKET_NAME || "victopress-content";
   
   if (accountId && accessKeyId && secretAccessKey) {
     return { accountId, accessKeyId, secretAccessKey, bucketName };
