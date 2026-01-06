@@ -1796,6 +1796,11 @@ function ImageOptimizationPanel() {
     setIsOptimizing(true);
     setOptimizeProgress(null);
     
+    // Start polling for progress updates every 2 seconds
+    const pollInterval = setInterval(() => {
+      fetcher.load("/api/admin/optimize");
+    }, 2000);
+    
     try {
       const response = await fetch("/api/admin/optimize", {
         method: "POST",
@@ -1818,11 +1823,12 @@ function ImageOptimizationPanel() {
         setOptimizeProgress(result.stats);
       }
       
-      // Refresh status
+      // Final refresh
       fetcher.load("/api/admin/optimize");
     } catch (error) {
       console.error("Optimization failed:", error);
     } finally {
+      clearInterval(pollInterval);
       setIsOptimizing(false);
     }
   };
@@ -1893,7 +1899,7 @@ function ImageOptimizationPanel() {
           {isOptimizing ? (
             <>
               <LoadingSpinner />
-              Optimizing Images...
+              Optimizing... {status?.imagesWithVariants || 0}/{status?.totalImages || '?'} done
             </>
           ) : isLoading ? (
             <>
