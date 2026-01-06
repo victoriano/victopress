@@ -172,8 +172,21 @@ export class R2StorageAdapter implements StorageAdapter {
   }
 
   async exists(key: string): Promise<boolean> {
+    // First, check if it's an actual object
     const head = await this.bucket.head(key);
-    return head !== null;
+    if (head !== null) {
+      return true;
+    }
+    
+    // In S3/R2, directories don't exist as objects - they're just prefixes.
+    // Check if any objects exist with this prefix (i.e., it's a "directory")
+    const normalizedPrefix = key.endsWith("/") ? key : `${key}/`;
+    const listed = await this.bucket.list({
+      prefix: normalizedPrefix,
+      limit: 1, // We only need to know if at least one exists
+    });
+    
+    return listed.objects.length > 0 || (listed.delimitedPrefixes?.length ?? 0) > 0;
   }
 
   async move(from: string, to: string): Promise<void> {

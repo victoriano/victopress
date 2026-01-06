@@ -231,6 +231,7 @@ export class R2ApiAdapter implements StorageAdapter {
   }
 
   async exists(key: string): Promise<boolean> {
+    // First, check if it's an actual object
     try {
       const command = new HeadObjectCommand({
         Bucket: this.bucketName,
@@ -238,6 +239,22 @@ export class R2ApiAdapter implements StorageAdapter {
       });
       await this.client.send(command);
       return true;
+    } catch {
+      // Object doesn't exist, but it might be a "directory" prefix
+    }
+    
+    // In S3/R2, directories don't exist as objects - they're just prefixes.
+    // Check if any objects exist with this prefix (i.e., it's a "directory")
+    const normalizedPrefix = key.endsWith("/") ? key : `${key}/`;
+    const listCommand = new ListObjectsV2Command({
+      Bucket: this.bucketName,
+      Prefix: normalizedPrefix,
+      MaxKeys: 1, // We only need to know if at least one exists
+    });
+    
+    try {
+      const response = await this.client.send(listCommand);
+      return (response.Contents?.length ?? 0) > 0 || (response.CommonPrefixes?.length ?? 0) > 0;
     } catch {
       return false;
     }
