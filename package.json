@@ -9,7 +9,7 @@
     "prebuild": "bun run scripts/generate-sample-content.ts && bun run scripts/generate-content-manifest.ts",
     "build": "remix vite:build",
     "dev": "remix vite:dev",
-    "dev:workers": "bun run build && wrangler pages dev ./build/client",
+    "dev:workers": "bun run build && bunx wrangler pages dev ./build/client",
     "start": "wrangler pages dev ./build/client",
     "typecheck": "tsc",
     "preview": "wrangler pages dev ./build/client",

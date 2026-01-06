@@ -88,8 +88,9 @@ async function loadPhoton(): Promise<{
   photonLoadAttempted = true;
   
   try {
-    // Direct dynamic import - works in Workers runtime
-    const mod = await import("@cf-wasm/photon");
+    // Import explicitly from workerd subpath for Workers runtime
+    // This ensures the correct WASM version is used
+    const mod = await import("@cf-wasm/photon/workerd");
     photonModule = {
       PhotonImage: mod.PhotonImage,
       resize: mod.resize,
@@ -100,7 +101,9 @@ async function loadPhoton(): Promise<{
   } catch (error) {
     console.warn("[Image Optimizer] ⚠️ @cf-wasm/photon not available");
     console.warn("[Image Optimizer] Use 'bun run dev:workers' for image optimization");
-    console.warn("[Image Optimizer] Error:", error);
+    if (error instanceof Error) {
+      console.warn("[Image Optimizer] Error:", error.message);
+    }
     return null;
   }
 }
