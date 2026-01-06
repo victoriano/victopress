@@ -16,6 +16,8 @@ export class R2StorageAdapter implements StorageAdapter {
   async list(prefix: string): Promise<FileInfo[]> {
     const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
     
+    console.log(`[R2Storage] 📂 LIST prefix="${normalizedPrefix}"`);
+    
     const listed = await this.bucket.list({
       prefix: normalizedPrefix,
       delimiter: "/",
@@ -49,6 +51,14 @@ export class R2StorageAdapter implements StorageAdapter {
           isDirectory: false,
         });
       }
+    }
+
+    console.log(`[R2Storage] 📂 LIST result for "${normalizedPrefix}": ${listed.delimitedPrefixes?.length || 0} dirs, ${listed.objects.length} files → ${files.length} items returned`);
+    
+    // If looking at galleries/geographies/europe specifically, log all files found
+    if (normalizedPrefix.includes("europe") && !normalizedPrefix.includes("spain") && !normalizedPrefix.includes("kingdom")) {
+      console.log(`[R2Storage] 📂 EUROPE DEBUG - Raw objects:`, listed.objects.map(o => o.key));
+      console.log(`[R2Storage] 📂 EUROPE DEBUG - Parsed files:`, files.map(f => f.name));
     }
 
     return files;

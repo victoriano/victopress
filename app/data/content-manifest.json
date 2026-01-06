@@ -1,10 +1,15 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-01-03T20:03:29.471Z",
+  "generatedAt": "2026-01-06T11:52:34.674Z",
   "repo": "victoriano/victopress",
   "branch": "main",
   "contentPath": "content",
   "files": [
+    {
+      "path": "_content-index.json",
+      "size": 177653,
+      "type": "text"
+    },
     {
       "path": "blog/getting-started/index.md",
       "size": 1712,
@@ -122,7 +127,7 @@
     },
     {
       "path": "galleries/geographies/america/usa/new york/photos.yaml",
-      "size": 353,
+      "size": 145,
       "type": "text"
     },
     {
@@ -358,11 +363,6 @@
     {
       "path": "galleries/geographies/asia/japan/DSC00003_1.jpg",
       "size": 574134,
-      "type": "binary"
-    },
-    {
-      "path": "galleries/geographies/asia/japan/DSC00117.jpg",
-      "size": 843736,
       "type": "binary"
     },
     {
@@ -622,7 +622,7 @@
     },
     {
       "path": "galleries/geographies/asia/japan/gallery.yaml",
-      "size": 62,
+      "size": 58,
       "type": "text"
     },
     {
@@ -989,6 +989,11 @@
       "path": "galleries/geographies/europe/spain/south of spain/granada/P1400670.jpg",
       "size": 1310423,
       "type": "binary"
+    },
+    {
+      "path": "galleries/geographies/europe/spain/south of spain/granada/photos.yaml",
+      "size": 766,
+      "type": "text"
     },
     {
       "path": "galleries/geographies/europe/united kingdom/3104173507_74b2ab0db7_o47230.jpg",
@@ -1436,6 +1441,6 @@
       "type": "text"
     }
   ],
-  "totalSize": 229180608,
-  "totalFiles": 286
+  "totalSize": 228515079,
+  "totalFiles": 287
 }

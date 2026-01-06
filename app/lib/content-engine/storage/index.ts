@@ -2,12 +2,13 @@
  * Storage Factory
  * 
  * Automatically selects the right storage adapter based on environment.
- * - Development: Local filesystem (default) or R2 if STORAGE_ADAPTER=r2
- * - Production: Cloudflare R2 (REQUIRED - no fallback)
+ * - Development: Local filesystem (default) or REAL R2 if STORAGE_ADAPTER=r2 with credentials
+ * - Production: Cloudflare R2 binding (REQUIRED - no fallback)
  */
 
 import type { StorageAdapter } from "../types";
 import { R2StorageAdapter } from "./r2-adapter";
+import { R2ApiAdapter, type R2ApiConfig } from "./r2-api-adapter";
 import { LocalStorageAdapter } from "./local-adapter";
 
 export interface StorageConfig {
@@ -58,15 +59,29 @@ export function createStorageAdapter(config: StorageConfig): StorageAdapter {
   throw new StorageNotConfiguredError();
 }
 
+// Singleton for R2 API adapter to avoid creating multiple clients
+let r2ApiAdapterInstance: R2ApiAdapter | null = null;
+
 /**
  * Get storage adapter for the current request context
- * In development, uses STORAGE_ADAPTER from .dev.vars (requires restart to change)
- * In production, R2 is required
+ * In development:
+ *   - STORAGE_ADAPTER=local → Local filesystem
+ *   - STORAGE_ADAPTER=r2 + R2 credentials → REAL R2 via S3 API (direct connection!)
+ *   - STORAGE_ADAPTER=r2 without credentials → Wrangler R2 binding (local emulation)
+ * In production: R2 binding is required
  */
 export function getStorage(context: {
-  cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket; STORAGE_ADAPTER?: string } };
+  cloudflare?: { env?: { 
+    CONTENT_BUCKET?: R2Bucket; 
+    STORAGE_ADAPTER?: string;
+    R2_ACCOUNT_ID?: string;
+    R2_ACCESS_KEY_ID?: string;
+    R2_SECRET_ACCESS_KEY?: string;
+    R2_BUCKET_NAME?: string;
+  } };
 }, request?: Request): StorageAdapter {
-  const bucket = context.cloudflare?.env?.CONTENT_BUCKET;
+  const env = context.cloudflare?.env;
+  const bucket = env?.CONTENT_BUCKET;
   const localPath = process.cwd() + "/content";
   
   // Extract request info for logging
@@ -74,25 +89,41 @@ export function getStorage(context: {
   
   // In development, use STORAGE_ADAPTER from .dev.vars
   if (process.env.NODE_ENV === "development") {
-    const adapterPreference = context.cloudflare?.env?.STORAGE_ADAPTER;
+    const adapterPreference = env?.STORAGE_ADAPTER;
     
-    // If user explicitly wants R2 and it's available
-    if (adapterPreference === "r2" && bucket) {
-      console.log(`[Storage] ☁️  R2 adapter | route: ${requestUrl} | .dev.vars: STORAGE_ADAPTER=r2`);
-      return new R2StorageAdapter(bucket);
+    // If user explicitly wants R2
+    if (adapterPreference === "r2") {
+      // Check for R2 API credentials (direct connection to REAL R2)
+      const r2Config = getR2ApiConfig(env);
+      
+      if (r2Config) {
+        // Use direct R2 API connection (REAL bucket, not emulation!)
+        if (!r2ApiAdapterInstance) {
+          r2ApiAdapterInstance = new R2ApiAdapter(r2Config);
+        }
+        console.log(`[Storage] 🌐 R2 DIRECT API | route: ${requestUrl} | bucket: ${r2Config.bucketName}`);
+        return r2ApiAdapterInstance;
+      }
+      
+      // Fallback to Wrangler binding (local emulation - NOT recommended)
+      if (bucket) {
+        console.log(`[Storage] ⚠️  R2 EMULATION (add R2_ACCESS_KEY_ID to .dev.vars for real R2) | route: ${requestUrl}`);
+        return new R2StorageAdapter(bucket);
+      }
+      
+      // R2 requested but no credentials or binding
+      console.warn(`[Storage] ⚠️  R2 requested but not configured. Add R2 credentials to .dev.vars. Falling back to local.`);
     }
     
     // Default to local in development
     const reason = adapterPreference === "local" 
       ? ".dev.vars: STORAGE_ADAPTER=local" 
-      : adapterPreference === "r2" && !bucket 
-        ? "R2 requested but bucket not configured" 
-        : "default (STORAGE_ADAPTER not set)";
+      : "default (STORAGE_ADAPTER not set or R2 not configured)";
     console.log(`[Storage] 📁 LOCAL adapter | route: ${requestUrl} | ${reason}`);
     return new LocalStorageAdapter(localPath);
   }
   
-  // In production, R2 is REQUIRED
+  // In production, R2 binding is REQUIRED
   if (bucket) {
     console.log(`[Storage] ☁️  R2 adapter | route: ${requestUrl} | production mode`);
     return new R2StorageAdapter(bucket);
@@ -103,20 +134,52 @@ export function getStorage(context: {
 }
 
 /**
+ * Extract R2 API config from environment variables
+ */
+function getR2ApiConfig(env?: {
+  R2_ACCOUNT_ID?: string;
+  R2_ACCESS_KEY_ID?: string;
+  R2_SECRET_ACCESS_KEY?: string;
+  R2_BUCKET_NAME?: string;
+}): R2ApiConfig | null {
+  const accountId = env?.R2_ACCOUNT_ID;
+  const accessKeyId = env?.R2_ACCESS_KEY_ID;
+  const secretAccessKey = env?.R2_SECRET_ACCESS_KEY;
+  const bucketName = env?.R2_BUCKET_NAME || "victopress-content";
+  
+  if (accountId && accessKeyId && secretAccessKey) {
+    return { accountId, accessKeyId, secretAccessKey, bucketName };
+  }
+  
+  return null;
+}
+
+/**
  * Detect the current storage mode
  * Uses STORAGE_ADAPTER from .dev.vars in development
  */
 export function getStorageMode(context: {
-  cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket; STORAGE_ADAPTER?: string } };
+  cloudflare?: { env?: { 
+    CONTENT_BUCKET?: R2Bucket; 
+    STORAGE_ADAPTER?: string;
+    R2_ACCOUNT_ID?: string;
+    R2_ACCESS_KEY_ID?: string;
+    R2_SECRET_ACCESS_KEY?: string;
+  } };
 }): StorageMode {
-  const bucket = context.cloudflare?.env?.CONTENT_BUCKET;
+  const env = context.cloudflare?.env;
+  const bucket = env?.CONTENT_BUCKET;
   
   if (process.env.NODE_ENV === "development") {
-    const adapterPreference = context.cloudflare?.env?.STORAGE_ADAPTER;
+    const adapterPreference = env?.STORAGE_ADAPTER;
     
-    // If user explicitly wants R2 and it's available
-    if (adapterPreference === "r2" && bucket) {
-      return "r2";
+    // If user explicitly wants R2
+    if (adapterPreference === "r2") {
+      // Check for direct R2 API credentials
+      const hasR2Credentials = env?.R2_ACCOUNT_ID && env?.R2_ACCESS_KEY_ID && env?.R2_SECRET_ACCESS_KEY;
+      if (hasR2Credentials || bucket) {
+        return "r2";
+      }
     }
     return "local";
   }
@@ -211,4 +274,5 @@ export function needsSetup(context: {
 }
 
 export { R2StorageAdapter } from "./r2-adapter";
+export { R2ApiAdapter } from "./r2-api-adapter";
 export { LocalStorageAdapter } from "./local-adapter";
