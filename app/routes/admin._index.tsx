@@ -158,7 +158,7 @@ export default function AdminDashboard() {
                       <p className="font-medium text-gray-900 dark:text-white truncate">
                         {post.title}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-sm text-gray-500 dark:text-gray-400" suppressHydrationWarning>
                         {post.date ? new Date(post.date).toLocaleDateString() : "No date"}
                       </p>
                     </div>

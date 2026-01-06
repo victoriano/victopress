@@ -142,7 +142,7 @@ export default function AdminBlog() {
                       </div>
                     </td>
                     <td className="px-4 py-4 hidden sm:table-cell">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="text-sm text-gray-500 dark:text-gray-400" suppressHydrationWarning>
                         {post.date
                           ? new Date(post.date).toLocaleDateString()
                           : "No date"}

@@ -1356,7 +1356,7 @@ function R2ConfigModal({
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium text-gray-900 dark:text-white font-mono">{bucket.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-gray-500 dark:text-gray-400" suppressHydrationWarning>
                               Created: {new Date(bucket.creation_date).toLocaleDateString()}
                             </p>
                           </div>
@@ -1792,23 +1792,31 @@ function ContentIndexPanel({
   const fetcher = useFetcher<{ success: boolean; message: string; rebuildTime?: number; fullRebuild?: boolean }>();
   const isRebuilding = fetcher.state !== "idle";
   
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleString();
-  };
+  // State for client-side date rendering to avoid hydration mismatch
+  const [formattedDate, setFormattedDate] = React.useState<string | null>(null);
+  const [timeSince, setTimeSince] = React.useState<string | null>(null);
   
-  const getTimeSince = (isoString: string) => {
-    const ms = Date.now() - new Date(isoString).getTime();
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    
-    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    return 'just now';
-  };
+  // Format date only on client to avoid hydration mismatch
+  React.useEffect(() => {
+    if (indexInfo.updatedAt) {
+      const date = new Date(indexInfo.updatedAt);
+      // Use consistent format: YYYY-MM-DD HH:MM:SS
+      const formatted = date.toISOString().replace('T', ' ').substring(0, 19);
+      setFormattedDate(formatted);
+      
+      // Calculate time since
+      const ms = Date.now() - date.getTime();
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+      
+      if (days > 0) setTimeSince(`${days} day${days > 1 ? 's' : ''} ago`);
+      else if (hours > 0) setTimeSince(`${hours} hour${hours > 1 ? 's' : ''} ago`);
+      else if (minutes > 0) setTimeSince(`${minutes} minute${minutes > 1 ? 's' : ''} ago`);
+      else setTimeSince('just now');
+    }
+  }, [indexInfo.updatedAt]);
   
   const handleRebuild = (full = false) => {
     fetcher.submit(
@@ -1845,11 +1853,11 @@ function ContentIndexPanel({
         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Last Updated</p>
           <p className="text-sm font-semibold text-gray-900 dark:text-white">
-            {indexInfo.updatedAt ? formatDate(indexInfo.updatedAt) : 'Never'}
+            {formattedDate || (indexInfo.updatedAt ? '...' : 'Never')}
           </p>
-          {indexInfo.updatedAt && (
+          {indexInfo.updatedAt && timeSince && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {getTimeSince(indexInfo.updatedAt)}
+              {timeSince}
             </p>
           )}
         </div>
