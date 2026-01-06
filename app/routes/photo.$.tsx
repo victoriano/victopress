@@ -202,7 +202,13 @@ export default function PhotoPage() {
           </div>
 
           {/* Navigation */}
-          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+            {/* Photo counter */}
+            <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+              {currentIndex + 1} of {totalPhotos}
+            </span>
+            <span className="text-gray-300 dark:text-gray-600">·</span>
+            {/* Prev/Next */}
             {prevPhoto ? (
               <Link
                 to={`/photo/${gallerySlug}/${prevPhoto.filename}`}
@@ -213,7 +219,7 @@ export default function PhotoPage() {
             ) : (
               <span className="text-gray-300 dark:text-gray-600 uppercase text-xs tracking-wide">PREV</span>
             )}
-            <span className="text-gray-300 dark:text-gray-600 mx-1">/</span>
+            <span className="text-gray-300 dark:text-gray-600">/</span>
             {nextPhoto ? (
               <Link
                 to={`/photo/${gallerySlug}/${nextPhoto.filename}`}
@@ -228,10 +234,10 @@ export default function PhotoPage() {
         </div>
 
         {/* Thumbnails link */}
-        <div className="bg-white dark:bg-gray-950 px-4 pb-4 flex flex-col items-center justify-center">
+        <div className="bg-white dark:bg-gray-950 px-4 pb-4">
           <Link
             to={`/gallery/${gallerySlug}`}
-            className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide text-center"
+            className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
           >
             SHOW THUMBNAILS
             {gallery.title && (
