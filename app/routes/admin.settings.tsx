@@ -1786,19 +1786,82 @@ function ImageOptimizationPanel() {
     failed: number;
     variantsCreated: number;
   } | null>(null);
+  const [liveStatus, setLiveStatus] = useState<{
+    totalImages: number;
+    imagesWithVariants: number;
+    percentOptimized: number;
+  } | null>(null);
   
-  // Fetch optimization status on mount
+  // Fetch optimization status on mount  
   React.useEffect(() => {
-    fetcher.load("/api/admin/optimize");
+    console.log("[Progress] Component mounted, fetching status...");
+    // Use direct fetch to avoid Remix fetcher issues
+    fetch("/api/admin/optimize", { credentials: "include" })
+      .then(res => res.json())
+      .then(data => {
+        console.log("[Progress] Initial load:", data);
+        setLiveStatus({
+          totalImages: data.totalImages || 0,
+          imagesWithVariants: data.imagesWithVariants || 0,
+          percentOptimized: data.percentOptimized || 0,
+        });
+      })
+      .catch(err => console.error("[Progress] Initial load failed:", err));
   }, []);
   
+  // Sync fetcher data to liveStatus on initial load
+  React.useEffect(() => {
+    if (fetcher.data) {
+      console.log("[Progress] Fetcher data received:", fetcher.data);
+      setLiveStatus({
+        totalImages: fetcher.data.totalImages || 0,
+        imagesWithVariants: fetcher.data.imagesWithVariants || 0,
+        percentOptimized: fetcher.data.percentOptimized || 0,
+      });
+    }
+  }, [fetcher.data]);
+  
   const handleOptimizeAll = async () => {
+    // Initialize liveStatus from current fetcher data before starting
+    if (fetcher.data) {
+      setLiveStatus({
+        totalImages: fetcher.data.totalImages || 0,
+        imagesWithVariants: fetcher.data.imagesWithVariants || 0,
+        percentOptimized: fetcher.data.percentOptimized || 0,
+      });
+    }
+    
     setIsOptimizing(true);
     setOptimizeProgress(null);
     
-    // Start polling for progress updates every 2 seconds
-    const pollInterval = setInterval(() => {
-      fetcher.load("/api/admin/optimize");
+    // Immediately fetch current status
+    try {
+      const initialRes = await fetch("/api/admin/optimize", { credentials: "include" });
+      const initialData = await initialRes.json();
+      console.log("[Progress] Initial status:", initialData);
+      setLiveStatus({
+        totalImages: initialData.totalImages || 0,
+        imagesWithVariants: initialData.imagesWithVariants || 0,
+        percentOptimized: initialData.percentOptimized || 0,
+      });
+    } catch (e) {
+      console.error("[Progress] Initial fetch failed:", e);
+    }
+    
+    // Start polling for progress updates every 2 seconds using direct fetch
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/admin/optimize", { credentials: "include" });
+        const data = await res.json();
+        console.log("[Progress] Poll update:", data.imagesWithVariants, "/", data.totalImages);
+        setLiveStatus({
+          totalImages: data.totalImages || 0,
+          imagesWithVariants: data.imagesWithVariants || 0,
+          percentOptimized: data.percentOptimized || 0,
+        });
+      } catch (e) {
+        console.error("[Progress] Poll failed:", e);
+      }
     }, 2000);
     
     try {
@@ -1823,8 +1886,18 @@ function ImageOptimizationPanel() {
         setOptimizeProgress(result.stats);
       }
       
-      // Final refresh
-      fetcher.load("/api/admin/optimize");
+      // Final refresh - update liveStatus one more time
+      try {
+        const finalRes = await fetch("/api/admin/optimize", { credentials: "include" });
+        const finalData = await finalRes.json();
+        setLiveStatus({
+          totalImages: finalData.totalImages || 0,
+          imagesWithVariants: finalData.imagesWithVariants || 0,
+          percentOptimized: finalData.percentOptimized || 0,
+        });
+      } catch (e) {
+        console.error("Final refresh failed:", e);
+      }
     } catch (error) {
       console.error("Optimization failed:", error);
     } finally {
@@ -1833,8 +1906,8 @@ function ImageOptimizationPanel() {
     }
   };
   
-  const status = fetcher.data;
-  const isLoading = fetcher.state === "loading";
+  const status = liveStatus || fetcher.data;
+  const isLoading = fetcher.state === "loading" && !liveStatus;
   
   return (
     <div className="space-y-4">
@@ -1856,7 +1929,7 @@ function ImageOptimizationPanel() {
       </div>
       
       {/* Status */}
-      {status && !isLoading && (
+      {status && (
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Total Images</p>
@@ -1873,18 +1946,28 @@ function ImageOptimizationPanel() {
       )}
       
       {/* Progress Bar */}
-      {status && status.percentOptimized !== undefined && status.percentOptimized < 100 && (
+      {status && status.totalImages > 0 && status.percentOptimized < 100 && (
         <div className="space-y-2">
           <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>{status.imagesNeedingOptimization} images need optimization</span>
-            <span>{status.percentOptimized}% complete</span>
+            <span>{isOptimizing ? "Processing..." : `${status.totalImages - status.imagesWithVariants} images need optimization`}</span>
+            <span>{status.imagesWithVariants}/{status.totalImages} ({status.percentOptimized}%)</span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
             <div 
-              className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
-              style={{ width: `${status.percentOptimized}%` }}
+              className={`bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-300 ${isOptimizing ? 'animate-pulse' : ''}`}
+              style={{ width: `${Math.max(1, (status.imagesWithVariants / status.totalImages) * 100)}%` }}
             />
           </div>
+        </div>
+      )}
+      
+      {/* Live counter during optimization */}
+      {isOptimizing && status && (
+        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-3 text-center">
+          <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
+            {status.imagesWithVariants} / {status.totalImages}
+          </p>
+          <p className="text-xs text-purple-500 dark:text-purple-400">images optimized</p>
         </div>
       )}
       
@@ -1899,7 +1982,7 @@ function ImageOptimizationPanel() {
           {isOptimizing ? (
             <>
               <LoadingSpinner />
-              Optimizing... {status?.imagesWithVariants || 0}/{status?.totalImages || '?'} done
+              Optimizing... {status?.imagesWithVariants ?? 0}/{status?.totalImages ?? '?'} done
             </>
           ) : isLoading ? (
             <>
