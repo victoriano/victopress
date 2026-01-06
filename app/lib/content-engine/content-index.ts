@@ -9,14 +9,14 @@
  */
 
 import type { StorageAdapter, Gallery, BlogPost, Page } from "./types";
-import { scanGalleries, scanParentMetadata } from "./gallery-scanner";
+import { scanGalleries, scanParentMetadata, type PhotoCache, type CachedPhotoData } from "./gallery-scanner";
 import { scanBlog } from "./blog-scanner";
 import { scanPages } from "./page-scanner";
 import { buildNavigation } from "../../utils/navigation";
 import type { NavItem } from "../../components/Sidebar";
 
 const INDEX_FILE = "_content-index.json";
-const INDEX_VERSION = 5; // Bumped to include isParentGallery flag
+const INDEX_VERSION = 6; // Bumped to include EXIF cache and lastModified
 
 /** Number of photos to store per gallery for home page */
 const PHOTOS_PER_GALLERY = 6;
@@ -74,6 +74,7 @@ export interface GalleryDataEntry {
 
 /**
  * Photo data stored per-gallery in index
+ * Includes cached EXIF data to avoid re-reading images
  */
 export interface GalleryPhotoEntry {
   id: string;
@@ -85,6 +86,21 @@ export interface GalleryPhotoEntry {
   order?: number;
   year?: number;
   tags?: string[];
+  /** File modification time - used to invalidate EXIF cache */
+  lastModified?: string;
+  /** Cached EXIF data */
+  exif?: {
+    dateTaken?: string;
+    camera?: string;
+    lens?: string;
+    focalLength?: number;
+    aperture?: number;
+    shutterSpeed?: string;
+    iso?: number;
+    width?: number;
+    height?: number;
+    gps?: { lat: number; lng: number };
+  };
 }
 
 /**
@@ -189,16 +205,54 @@ export async function writeContentIndex(storage: StorageAdapter, index: ContentI
 }
 
 /**
+ * Build a PhotoCache from existing index data
+ * This allows reusing EXIF data for unchanged files
+ */
+function buildPhotoCacheFromIndex(existingIndex: ContentIndex | null): PhotoCache {
+  const cache: PhotoCache = new Map();
+  
+  if (!existingIndex?.galleryData) {
+    return cache;
+  }
+  
+  for (const gallery of existingIndex.galleryData) {
+    const galleryCache = new Map<string, CachedPhotoData>();
+    
+    for (const photo of gallery.photos) {
+      if (photo.lastModified) {
+        galleryCache.set(photo.filename, {
+          filename: photo.filename,
+          lastModified: photo.lastModified,
+          exif: photo.exif,
+        });
+      }
+    }
+    
+    if (galleryCache.size > 0) {
+      cache.set(gallery.path, galleryCache);
+    }
+  }
+  
+  return cache;
+}
+
+/**
  * Rebuild the entire content index from scratch
- * This scans all content and saves a new index
+ * Uses EXIF cache to avoid re-reading unchanged images
  */
 export async function rebuildContentIndex(storage: StorageAdapter): Promise<ContentIndex> {
   console.log("Rebuilding content index...");
   const startTime = Date.now();
   
-  // Scan all content in parallel
+  // Try to read existing index for EXIF cache
+  const existingIndex = await readContentIndex(storage);
+  const photoCache = buildPhotoCacheFromIndex(existingIndex);
+  const cacheSize = Array.from(photoCache.values()).reduce((sum, m) => sum + m.size, 0);
+  console.log(`[EXIF Cache] Loaded ${cacheSize} cached photos from existing index`);
+  
+  // Scan all content in parallel (with EXIF cache for galleries)
   const [galleries, posts, pages, parentMeta] = await Promise.all([
-    scanGalleries(storage),
+    scanGalleries(storage, photoCache),
     scanBlog(storage),
     scanPages(storage),
     scanParentMetadata(storage),
@@ -221,11 +275,11 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
     isParentGallery: g.isParentGallery,
   }));
   
-  // Build full gallery data with all photos
+  // Build full gallery data with all photos (including EXIF cache data)
   const galleryDataEntries: GalleryDataEntry[] = galleries.map(g => {
-    // Convert photos to lightweight format
+    // Convert photos to index format with EXIF cache
     const photos: GalleryPhotoEntry[] = g.photos.map(p => {
-      // Extract year
+      // Extract year from date
       let year: number | undefined;
       if (p.dateTaken) {
         const d = new Date(p.dateTaken);
@@ -234,6 +288,23 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
         const d = new Date(p.exif.dateTimeOriginal);
         if (!isNaN(d.getTime())) year = d.getFullYear();
       }
+      
+      // Build EXIF cache data for next rebuild
+      const exifCache = p.exif ? {
+        dateTaken: p.exif.dateTimeOriginal?.toISOString?.() || 
+                   (p.exif.dateTimeOriginal ? String(p.exif.dateTimeOriginal) : undefined),
+        camera: [p.exif.make, p.exif.model].filter(Boolean).join(' ') || undefined,
+        lens: p.exif.lensModel,
+        focalLength: p.exif.focalLength,
+        aperture: p.exif.fNumber,
+        shutterSpeed: p.exif.exposureTime ? `1/${Math.round(1/p.exif.exposureTime)}` : undefined,
+        iso: p.exif.iso,
+        width: p.exif.imageWidth,
+        height: p.exif.imageHeight,
+        gps: (p.exif.latitude && p.exif.longitude) 
+          ? { lat: p.exif.latitude, lng: p.exif.longitude } 
+          : undefined,
+      } : undefined;
       
       return {
         id: p.id,
@@ -245,6 +316,8 @@ export async function rebuildContentIndex(storage: StorageAdapter): Promise<Cont
         order: p.order,
         year,
         tags: p.tags,
+        lastModified: p.lastModified,
+        exif: exifCache,
       };
     });
     
@@ -403,6 +476,180 @@ export async function invalidateContentIndex(storage: StorageAdapter): Promise<v
     await storage.delete(INDEX_FILE);
   } catch {
     // Ignore errors (file might not exist)
+  }
+}
+
+/**
+ * Update only the YAML-based metadata for photos in a gallery
+ * This is MUCH faster than a full rebuild because it doesn't re-read images
+ * Use for: reorder, hide/unhide, edit metadata, delete photos
+ */
+export async function updateGalleryPhotosInIndex(
+  storage: StorageAdapter,
+  galleryPath: string,
+  updateFn: (photos: GalleryPhotoEntry[]) => GalleryPhotoEntry[]
+): Promise<{ success: boolean; message: string }> {
+  const startTime = Date.now();
+  
+  try {
+    // Read existing index
+    const index = await readContentIndex(storage);
+    if (!index) {
+      // No index exists, do a full rebuild
+      await rebuildContentIndex(storage);
+      return { success: true, message: "Index rebuilt from scratch" };
+    }
+    
+    // Find the gallery
+    const galleryIdx = index.galleryData.findIndex(g => g.path === galleryPath);
+    if (galleryIdx === -1) {
+      // Gallery not in index, do a full rebuild
+      await rebuildContentIndex(storage);
+      return { success: true, message: "Index rebuilt (gallery not found)" };
+    }
+    
+    // Apply the update function to the photos
+    const gallery = index.galleryData[galleryIdx];
+    gallery.photos = updateFn(gallery.photos);
+    gallery.photoCount = gallery.photos.filter(p => !p.hidden).length;
+    
+    // Update the light gallery entry too
+    const lightIdx = index.galleries.findIndex(g => g.path === galleryPath);
+    if (lightIdx !== -1) {
+      index.galleries[lightIdx].photoCount = gallery.photoCount;
+    }
+    
+    // Recalculate stats
+    index.stats.totalPhotos = index.galleryData.reduce(
+      (sum, g) => sum + g.photos.length, 0
+    );
+    
+    // Update timestamp
+    index.updatedAt = new Date().toISOString();
+    
+    // Save the updated index
+    await writeContentIndex(storage, index);
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`[Index] Updated gallery ${galleryPath} in ${elapsed}ms`);
+    
+    return { success: true, message: `Index updated in ${elapsed}ms` };
+  } catch (error) {
+    console.error("Failed to update gallery in index:", error);
+    // Fall back to full rebuild
+    await rebuildContentIndex(storage);
+    return { success: true, message: "Index rebuilt due to error" };
+  }
+}
+
+/**
+ * Add new photos to a gallery in the index
+ * Only reads EXIF from the new files, not all files in the gallery
+ */
+export async function addPhotosToGalleryIndex(
+  storage: StorageAdapter,
+  galleryPath: string,
+  newPhotoPaths: string[]
+): Promise<{ success: boolean; message: string }> {
+  const startTime = Date.now();
+  
+  try {
+    const index = await readContentIndex(storage);
+    if (!index) {
+      await rebuildContentIndex(storage);
+      return { success: true, message: "Index rebuilt from scratch" };
+    }
+    
+    const galleryIdx = index.galleryData.findIndex(g => g.path === galleryPath);
+    if (galleryIdx === -1) {
+      await rebuildContentIndex(storage);
+      return { success: true, message: "Index rebuilt (gallery not found)" };
+    }
+    
+    const gallery = index.galleryData[galleryIdx];
+    
+    // Import extractExif dynamically
+    const { extractExif } = await import("./exif");
+    
+    // Process only the new photos
+    for (const photoPath of newPhotoPaths) {
+      const filename = photoPath.split('/').pop() || photoPath;
+      
+      // Check if already exists
+      if (gallery.photos.some(p => p.filename === filename)) {
+        continue;
+      }
+      
+      // Extract EXIF from new photo
+      let exifCache: GalleryPhotoEntry['exif'] = undefined;
+      let year: number | undefined;
+      
+      if (filename.toLowerCase().match(/\.jpe?g$/)) {
+        try {
+          const buffer = await storage.get(photoPath);
+          if (buffer) {
+            const exif = await extractExif(buffer);
+            if (exif) {
+              if (exif.dateTimeOriginal) {
+                const d = new Date(exif.dateTimeOriginal);
+                if (!isNaN(d.getTime())) year = d.getFullYear();
+              }
+              exifCache = {
+                dateTaken: exif.dateTimeOriginal?.toISOString?.() || 
+                           (exif.dateTimeOriginal ? String(exif.dateTimeOriginal) : undefined),
+                camera: [exif.make, exif.model].filter(Boolean).join(' ') || undefined,
+                lens: exif.lensModel,
+                focalLength: exif.focalLength,
+                aperture: exif.fNumber,
+                shutterSpeed: exif.exposureTime ? `1/${Math.round(1/exif.exposureTime)}` : undefined,
+                iso: exif.iso,
+                width: exif.imageWidth,
+                height: exif.imageHeight,
+                gps: (exif.latitude && exif.longitude) 
+                  ? { lat: exif.latitude, lng: exif.longitude } 
+                  : undefined,
+              };
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to extract EXIF from ${photoPath}:`, error);
+        }
+      }
+      
+      // Add the new photo
+      gallery.photos.push({
+        id: filename.replace(/\.[^.]+$/, ''),
+        path: photoPath,
+        filename,
+        year,
+        exif: exifCache,
+        lastModified: new Date().toISOString(),
+      });
+    }
+    
+    // Update counts
+    gallery.photoCount = gallery.photos.filter(p => !p.hidden).length;
+    
+    const lightIdx = index.galleries.findIndex(g => g.path === galleryPath);
+    if (lightIdx !== -1) {
+      index.galleries[lightIdx].photoCount = gallery.photoCount;
+    }
+    
+    index.stats.totalPhotos = index.galleryData.reduce(
+      (sum, g) => sum + g.photos.length, 0
+    );
+    
+    index.updatedAt = new Date().toISOString();
+    await writeContentIndex(storage, index);
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`[Index] Added ${newPhotoPaths.length} photos to ${galleryPath} in ${elapsed}ms`);
+    
+    return { success: true, message: `Added ${newPhotoPaths.length} photos in ${elapsed}ms` };
+  } catch (error) {
+    console.error("Failed to add photos to index:", error);
+    await rebuildContentIndex(storage);
+    return { success: true, message: "Index rebuilt due to error" };
   }
 }
 

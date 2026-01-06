@@ -3,6 +3,8 @@
  * 
  * Scans /content/galleries/ and creates gallery metadata.
  * Zero-config: folder with images = gallery
+ * 
+ * Supports EXIF caching to avoid re-reading unchanged images.
  */
 
 import { parse as parseYaml } from "yaml";
@@ -25,12 +27,40 @@ import { extractExif } from "./exif";
 const GALLERIES_PATH = "galleries";
 
 /**
+ * Cached photo data for EXIF optimization
+ */
+export interface CachedPhotoData {
+  filename: string;
+  lastModified: string;
+  exif?: {
+    dateTaken?: string;
+    camera?: string;
+    lens?: string;
+    focalLength?: number;
+    aperture?: number;
+    shutterSpeed?: string;
+    iso?: number;
+    width?: number;
+    height?: number;
+    gps?: { lat: number; lng: number };
+  };
+}
+
+/**
+ * Cache structure: galleryPath -> filename -> cached data
+ */
+export type PhotoCache = Map<string, Map<string, CachedPhotoData>>;
+
+/**
  * Scan all galleries in the content folder (including nested)
+ * @param storage - Storage adapter to read files
+ * @param photoCache - Optional cache of existing photo EXIF data
  */
 export async function scanGalleries(
-  storage: StorageAdapter
+  storage: StorageAdapter,
+  photoCache?: PhotoCache
 ): Promise<Gallery[]> {
-  return scanGalleriesRecursive(storage, GALLERIES_PATH, null);
+  return scanGalleriesRecursive(storage, GALLERIES_PATH, null, photoCache);
 }
 
 /**
@@ -39,7 +69,8 @@ export async function scanGalleries(
 async function scanGalleriesRecursive(
   storage: StorageAdapter,
   path: string,
-  parentCategory: string | null
+  parentCategory: string | null,
+  photoCache?: PhotoCache
 ): Promise<Gallery[]> {
   const galleries: Gallery[] = [];
   
@@ -49,7 +80,7 @@ async function scanGalleriesRecursive(
 
   for (const dir of directories) {
     // Try to scan as gallery
-    const gallery = await scanGalleryFolder(storage, dir, parentCategory);
+    const gallery = await scanGalleryFolder(storage, dir, parentCategory, photoCache);
     
     if (gallery) {
       galleries.push(gallery);
@@ -59,7 +90,8 @@ async function scanGalleriesRecursive(
     const subGalleries = await scanGalleriesRecursive(
       storage,
       dir.path,
-      parentCategory ? `${parentCategory}/${dir.name}` : dir.name
+      parentCategory ? `${parentCategory}/${dir.name}` : dir.name,
+      photoCache
     );
     galleries.push(...subGalleries);
   }
@@ -73,7 +105,8 @@ async function scanGalleriesRecursive(
 async function scanGalleryFolder(
   storage: StorageAdapter,
   dir: FileInfo,
-  parentCategory: string | null = null
+  parentCategory: string | null = null,
+  photoCache?: PhotoCache
 ): Promise<Gallery | null> {
   const folderPath = dir.path;
   const folderName = dir.name;
@@ -105,9 +138,12 @@ async function scanGalleryFolder(
   const autoSlug = toSlug(folderName);
   const lastModified = hasImages ? getLatestModification(imageFiles) : new Date();
   
+  // Get cached photos for this gallery (if available)
+  const galleryPhotoCache = photoCache?.get(folderPath);
+  
   // Scan each photo (only if there are images)
   const photos = hasImages 
-    ? await scanPhotos(storage, folderPath, imageFiles, photosYaml)
+    ? await scanPhotos(storage, folderPath, imageFiles, photosYaml, galleryPhotoCache)
     : [];
   
   // Sort photos (by custom order or alphabetically)
@@ -229,14 +265,18 @@ interface PhotoYamlEntry {
 
 /**
  * Scan individual photos and extract metadata
+ * Uses cached EXIF data when available to avoid re-reading unchanged files
  */
 async function scanPhotos(
   storage: StorageAdapter,
   folderPath: string,
   imageFiles: FileInfo[],
-  photosYaml: PhotoYamlEntry[] | null
+  photosYaml: PhotoYamlEntry[] | null,
+  photoCache?: Map<string, CachedPhotoData>
 ): Promise<Photo[]> {
   const photos: Photo[] = [];
+  let cacheHits = 0;
+  let cacheMisses = 0;
   
   // Create a map of YAML overrides
   const yamlMap = new Map<string, PhotoYamlEntry>();
@@ -253,10 +293,35 @@ async function scanPhotos(
   for (const file of imageFiles) {
     const photoPath = `${folderPath}/${file.name}`;
     const yamlOverride = yamlMap.get(file.name);
+    const fileLastModified = file.lastModified.toISOString();
     
-    // Try to extract EXIF data
+    // Check cache for this photo
+    const cached = photoCache?.get(file.name);
+    const cacheValid = cached && cached.lastModified === fileLastModified;
+    
+    // Try to extract EXIF data (or use cache)
     let exifData = null;
-    if (file.name.toLowerCase().endsWith(".jpg") || file.name.toLowerCase().endsWith(".jpeg")) {
+    
+    if (cacheValid && cached.exif) {
+      // Use cached EXIF data - don't read the file!
+      cacheHits++;
+      exifData = {
+        dateTimeOriginal: cached.exif.dateTaken ? new Date(cached.exif.dateTaken) : undefined,
+        make: cached.exif.camera?.split(' ')[0],
+        model: cached.exif.camera?.split(' ').slice(1).join(' '),
+        lensModel: cached.exif.lens,
+        focalLength: cached.exif.focalLength,
+        fNumber: cached.exif.aperture,
+        exposureTime: cached.exif.shutterSpeed,
+        iso: cached.exif.iso,
+        imageWidth: cached.exif.width,
+        imageHeight: cached.exif.height,
+        latitude: cached.exif.gps?.lat,
+        longitude: cached.exif.gps?.lng,
+      };
+    } else if (file.name.toLowerCase().endsWith(".jpg") || file.name.toLowerCase().endsWith(".jpeg")) {
+      // Cache miss - need to read file and extract EXIF
+      cacheMisses++;
       try {
         const buffer = await storage.get(photoPath);
         if (buffer) {
@@ -273,6 +338,7 @@ async function scanPhotos(
       filename: file.name,
       path: photoPath,
       size: file.size,
+      lastModified: fileLastModified,
       
       // Title: YAML > EXIF title > EXIF description > filename
       title:
@@ -305,6 +371,11 @@ async function scanPhotos(
     };
 
     photos.push(photo);
+  }
+
+  // Log cache stats for debugging
+  if (photoCache && (cacheHits > 0 || cacheMisses > 0)) {
+    console.log(`[EXIF Cache] ${folderPath}: ${cacheHits} hits, ${cacheMisses} misses`);
   }
 
   return photos;

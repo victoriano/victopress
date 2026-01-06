@@ -11,7 +11,13 @@
 import type { ActionFunctionArgs } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { checkAdminAuth } from "~/utils/admin-auth";
-import { getStorage, invalidateContentIndex } from "~/lib/content-engine";
+import { 
+  getStorage, 
+  invalidateContentIndex,
+  updateGalleryPhotosInIndex,
+  addPhotosToGalleryIndex,
+  type GalleryPhotoEntry,
+} from "~/lib/content-engine";
 import * as yaml from "yaml";
 
 // Must match PhotoYamlEntry in gallery-scanner.ts
@@ -94,8 +100,13 @@ async function handleDelete(
   // Update photos.yaml if it exists
   await removePhotosFromYaml(storage, galleryPath, photoPaths);
   
-  // Invalidate content index
-  await invalidateContentIndex(storage);
+  // Update content index (fast partial update - remove deleted photos)
+  const deletedFilenames = new Set(
+    results.filter(r => r.success).map(r => r.path.split("/").pop()!)
+  );
+  await updateGalleryPhotosInIndex(storage, galleryPath, (photos) => {
+    return photos.filter(p => !deletedFilenames.has(p.filename));
+  });
   
   const successCount = results.filter(r => r.success).length;
   
@@ -154,8 +165,20 @@ async function handleUpdate(
   // Update photos.yaml
   await updatePhotoInYaml(storage, galleryPath, filename, updates);
   
-  // Invalidate content index
-  await invalidateContentIndex(storage);
+  // Update content index (fast partial update)
+  await updateGalleryPhotosInIndex(storage, galleryPath, (photos) => {
+    return photos.map(p => {
+      if (p.filename !== filename) return p;
+      return {
+        ...p,
+        title: updates.title ?? p.title,
+        description: updates.description ?? p.description,
+        tags: updates.tags ?? p.tags,
+        order: updates.order ?? p.order,
+        hidden: updates.hidden ?? p.hidden,
+      };
+    });
+  });
   
   return json({
     success: true,
@@ -311,8 +334,17 @@ async function handleReorder(
   // Write updated photos.yaml as plain array
   await storage.put(yamlPath, yaml.stringify(newPhotos));
   
-  // Invalidate content index
-  await invalidateContentIndex(storage);
+  // Update content index (fast partial update, doesn't re-read images)
+  await updateGalleryPhotosInIndex(storage, galleryPath, (photos) => {
+    // Update order in index based on new YAML
+    return photos.map(p => {
+      const newOrder = order.indexOf(p.filename);
+      return {
+        ...p,
+        order: newOrder >= 0 ? newOrder + 1 : p.order,
+      };
+    }).sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  });
   
   return json({
     success: true,
@@ -343,13 +375,19 @@ async function handleToggleVisibility(
   
   // Extract filenames and update photos.yaml
   const filenames = photoPaths.map(p => p.split("/").pop()!);
+  const filenameSet = new Set(filenames);
   
   for (const filename of filenames) {
     await updatePhotoInYaml(storage, galleryPath, filename, { hidden });
   }
   
-  // Invalidate content index
-  await invalidateContentIndex(storage);
+  // Update content index (fast partial update)
+  await updateGalleryPhotosInIndex(storage, galleryPath, (photos) => {
+    return photos.map(p => ({
+      ...p,
+      hidden: filenameSet.has(p.filename) ? hidden : p.hidden,
+    }));
+  });
   
   return json({
     success: true,
@@ -449,8 +487,18 @@ async function handleBulkUpdate(
   // Write updated photos.yaml as plain array
   await storage.put(yamlPath, yaml.stringify(newPhotos));
   
-  // Invalidate content index
-  await invalidateContentIndex(storage);
+  // Update content index (fast partial update)
+  const filenameSet = new Set(filenames);
+  await updateGalleryPhotosInIndex(storage, galleryPath, (photos) => {
+    return photos.map(p => {
+      if (!filenameSet.has(p.filename)) return p;
+      const meta = metadataMap.get(p.filename);
+      return {
+        ...p,
+        tags: meta?.tags ?? p.tags,
+      };
+    });
+  });
   
   return json({
     success: true,

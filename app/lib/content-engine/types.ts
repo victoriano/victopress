@@ -75,6 +75,9 @@ export interface Photo {
   
   /** File size in bytes */
   size?: number;
+  
+  /** File last modified timestamp (ISO string) for cache invalidation */
+  lastModified?: string;
 }
 
 // =============================================================================

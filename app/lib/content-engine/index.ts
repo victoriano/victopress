@@ -72,6 +72,9 @@ export {
   removePostFromIndex,
   updatePageInIndex,
   removePageFromIndex,
+  // Partial update functions (fast, YAML-only changes)
+  updateGalleryPhotosInIndex,
+  addPhotosToGalleryIndex,
 } from "./content-index";
 export type {
   ContentIndex as ContentIndexData,
