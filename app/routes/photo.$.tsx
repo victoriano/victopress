@@ -228,12 +228,17 @@ export default function PhotoPage() {
         </div>
 
         {/* Thumbnails link */}
-        <div className="bg-white dark:bg-gray-950 px-4 pb-4 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-950 px-4 pb-4 flex flex-col items-center justify-center">
           <Link
             to={`/gallery/${gallerySlug}`}
-            className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
+            className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide text-center"
           >
             SHOW THUMBNAILS
+            {gallery.title && (
+              <span className="block text-[11px] mt-0.5 normal-case">
+                from <span className="font-bold">{gallery.title}</span>
+              </span>
+            )}
           </Link>
         </div>
       </div>

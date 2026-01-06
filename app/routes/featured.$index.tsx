@@ -192,12 +192,17 @@ export default function FeaturedPhotoPage() {
         </div>
 
         {/* Thumbnails link */}
-        <div className="bg-white dark:bg-gray-950 px-4 pb-4 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-950 px-4 pb-4 flex flex-col items-center justify-center">
           <Link
             to="/"
-            className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
+            className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide text-center"
           >
             SHOW THUMBNAILS
+            {photo.galleryTitle && (
+              <span className="block text-[11px] mt-0.5 normal-case">
+                from <span className="font-bold">{photo.galleryTitle}</span>
+              </span>
+            )}
           </Link>
         </div>
       </div>
