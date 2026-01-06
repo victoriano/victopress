@@ -1,0 +1,7 @@
+# Admin credentials for local development
+# R2 Storage Configuration
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+R2_ACCOUNT_ID=2d3ced18d5f8221519548f55c292cfaa
+R2_BUCKET_NAME=victopress-content
+STORAGE_ADAPTER=r2

@@ -2,15 +2,35 @@
  * Admin - Gallery Detail
  * 
  * GET /admin/galleries/:slug
+ * Full CRUD operations for galleries and photos
  */
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/cloudflare";
-import { useLoaderData, Form, Link, useFetcher } from "@remix-run/react";
+import { useLoaderData, Form, Link, useFetcher, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getGalleryFromIndex, getAllGalleriesFromIndex, getContentIndex } from "~/lib/content-engine";
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+
+// Drag and drop
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
@@ -68,7 +88,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
         };
       }
       
-      return json({ username, gallery: virtualGallery, parentGallery, childGalleries, isVirtualParent: true });
+      return json({ username, gallery: virtualGallery, parentGallery, childGalleries, isVirtualParent: true, allGalleries: [] });
     }
     
     // No gallery and no children - truly not found
@@ -91,13 +111,108 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     };
   }
   
-  return json({ username, gallery, parentGallery, childGalleries, isVirtualParent: false });
+  // Get all galleries for move photos modal
+  const allGalleries = contentIndex.galleryData
+    .filter((g) => g.slug !== slug && !g.isParentGallery)
+    .sort((a, b) => a.title.localeCompare(b.title));
+  
+  return json({ username, gallery, parentGallery, childGalleries, isVirtualParent: false, allGalleries });
 }
 
 export default function AdminGalleryDetail() {
-  const { username, gallery, parentGallery, childGalleries, isVirtualParent } = useLoaderData<typeof loader>();
+  const { username, gallery, parentGallery, childGalleries, isVirtualParent, allGalleries } = useLoaderData<typeof loader>();
+  const navigate = useNavigate();
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showMovePhotosModal, setShowMovePhotosModal] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState<string | null>(null);
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  
+  // Fetchers for different operations
+  const galleryFetcher = useFetcher();
+  const photosFetcher = useFetcher();
+  const reorderFetcher = useFetcher();
+  
+  // Track ordered photos (for drag and drop)
+  const [orderedPhotos, setOrderedPhotos] = useState(gallery.photos);
+  
+  // Update ordered photos when gallery changes
+  useEffect(() => {
+    setOrderedPhotos(gallery.photos);
+  }, [gallery.photos]);
+  
+  // Photo IDs for sortable context
+  const photoIds = useMemo(() => orderedPhotos.map((p) => p.id), [orderedPhotos]);
+  
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Minimum drag distance before activation
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  // Handle drag end - reorder photos
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setOrderedPhotos((items) => {
+        const oldIndex = items.findIndex((p) => p.id === active.id);
+        const newIndex = items.findIndex((p) => p.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  }, []);
+  
+  // Save reordered photos
+  const savePhotoOrder = useCallback(() => {
+    const order = orderedPhotos.map((p) => p.filename);
+    const formData = new FormData();
+    formData.append("action", "reorder");
+    formData.append("gallerySlug", gallery.slug);
+    formData.append("order", JSON.stringify(order));
+    
+    reorderFetcher.submit(formData, {
+      method: "POST",
+      action: "/api/admin/photos",
+    });
+    
+    setIsReorderMode(false);
+  }, [orderedPhotos, gallery.slug, reorderFetcher]);
+  
+  // Cancel reorder
+  const cancelReorder = useCallback(() => {
+    setOrderedPhotos(gallery.photos);
+    setIsReorderMode(false);
+  }, [gallery.photos]);
+  
+  // Check if order has changed
+  const hasOrderChanged = useMemo(() => {
+    if (orderedPhotos.length !== gallery.photos.length) return true;
+    return orderedPhotos.some((p, i) => p.id !== gallery.photos[i]?.id);
+  }, [orderedPhotos, gallery.photos]);
+  
+  // Handle successful gallery deletion - redirect
+  useEffect(() => {
+    if (galleryFetcher.data?.success && galleryFetcher.formData?.get("action") === "delete") {
+      navigate("/admin/galleries");
+    }
+  }, [galleryFetcher.data, galleryFetcher.formData, navigate]);
+  
+  // Handle successful photo operations - clear selection
+  useEffect(() => {
+    if (photosFetcher.data?.success) {
+      setSelectedPhotos([]);
+      setShowMovePhotosModal(false);
+      setEditingPhoto(null);
+    }
+  }, [photosFetcher.data]);
 
   const togglePhoto = (photoId: string) => {
     setSelectedPhotos((prev) =>
@@ -114,6 +229,82 @@ export default function AdminGalleryDetail() {
       setSelectedPhotos(gallery.photos.map((p) => p.id));
     }
   };
+  
+  // Gallery actions
+  const handleDeleteGallery = useCallback(() => {
+    const formData = new FormData();
+    formData.append("action", "delete");
+    formData.append("slug", gallery.slug);
+    formData.append("confirm", "true");
+    galleryFetcher.submit(formData, { method: "POST", action: "/api/admin/galleries" });
+  }, [gallery.slug, galleryFetcher]);
+  
+  const handleUpdateGallery = useCallback((updates: Record<string, string>) => {
+    const formData = new FormData();
+    formData.append("action", "update");
+    formData.append("slug", gallery.slug);
+    Object.entries(updates).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+    galleryFetcher.submit(formData, { method: "POST", action: "/api/admin/galleries" });
+  }, [gallery.slug, galleryFetcher]);
+  
+  // Photo actions
+  const handleDeletePhotos = useCallback(() => {
+    if (selectedPhotos.length === 0) return;
+    
+    const formData = new FormData();
+    formData.append("action", "delete");
+    formData.append("gallerySlug", gallery.slug);
+    
+    // Get photo paths for selected photos
+    for (const photoId of selectedPhotos) {
+      const photo = gallery.photos.find((p: { id: string }) => p.id === photoId);
+      if (photo) {
+        formData.append("photoPaths", photo.path);
+      }
+    }
+    
+    photosFetcher.submit(formData, { method: "POST", action: "/api/admin/photos" });
+  }, [selectedPhotos, gallery, photosFetcher]);
+  
+  const handleToggleVisibility = useCallback((hidden: boolean) => {
+    if (selectedPhotos.length === 0) return;
+    
+    const formData = new FormData();
+    formData.append("action", "toggle-visibility");
+    formData.append("gallerySlug", gallery.slug);
+    formData.append("hidden", hidden.toString());
+    
+    for (const photoId of selectedPhotos) {
+      const photo = gallery.photos.find((p: { id: string }) => p.id === photoId);
+      if (photo) {
+        formData.append("photoPaths", photo.path);
+      }
+    }
+    
+    photosFetcher.submit(formData, { method: "POST", action: "/api/admin/photos" });
+  }, [selectedPhotos, gallery, photosFetcher]);
+  
+  const handleMovePhotos = useCallback((toGallerySlug: string) => {
+    if (selectedPhotos.length === 0 || !toGallerySlug) return;
+    
+    const formData = new FormData();
+    formData.append("action", "move");
+    formData.append("fromGallerySlug", gallery.slug);
+    formData.append("toGallerySlug", toGallerySlug);
+    
+    for (const photoId of selectedPhotos) {
+      const photo = gallery.photos.find((p: { id: string }) => p.id === photoId);
+      if (photo) {
+        formData.append("photoPaths", photo.path);
+      }
+    }
+    
+    photosFetcher.submit(formData, { method: "POST", action: "/api/admin/photos" });
+  }, [selectedPhotos, gallery, photosFetcher]);
+  
+  const isOperationPending = galleryFetcher.state !== "idle" || photosFetcher.state !== "idle";
 
   return (
     <AdminLayout username={username || undefined}>
@@ -164,6 +355,15 @@ export default function AdminGalleryDetail() {
               </Link>
             )}
             {!isVirtualParent && (
+              <Link
+                to={`/admin/upload?gallery=${gallery.slug}`}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium"
+              >
+                <UploadIcon />
+                Upload
+              </Link>
+            )}
+            {!isVirtualParent && (
               <button
                 type="button"
                 onClick={() => setShowSettings(!showSettings)}
@@ -192,43 +392,67 @@ export default function AdminGalleryDetail() {
 
         {/* Settings Panel (collapsible) */}
         {showSettings && (
-          <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-4 mb-6">
-            <h3 className="font-medium text-gray-900 dark:text-white mb-4">Gallery Settings</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <label className="block text-gray-500 dark:text-gray-400 mb-1">Title</label>
-                <input 
-                  type="text" 
-                  defaultValue={gallery.title}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
-                  readOnly
-                />
-              </div>
-              <div>
-                <label className="block text-gray-500 dark:text-gray-400 mb-1">Order</label>
-                <input 
-                  type="number" 
-                  defaultValue={gallery.order ?? ""}
-                  placeholder="Not set"
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
-                  readOnly
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-gray-500 dark:text-gray-400 mb-1">Description</label>
-                <textarea 
-                  defaultValue={gallery.description || ""}
-                  placeholder="No description"
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
-                  rows={2}
-                  readOnly
-                />
-              </div>
-            </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">
-              Edit <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">content/{gallery.path}/gallery.yaml</code> to change settings
-            </p>
-          </div>
+          <GallerySettingsPanel 
+            gallery={gallery}
+            onUpdate={handleUpdateGallery}
+            onDelete={() => setShowDeleteConfirm(true)}
+            isLoading={galleryFetcher.state !== "idle"}
+          />
+        )}
+        
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <DeleteConfirmModal
+            title="Delete Gallery"
+            message={`Are you sure you want to delete "${gallery.title}"? This will permanently delete all ${gallery.photoCount} photos in this gallery.`}
+            onConfirm={handleDeleteGallery}
+            onCancel={() => setShowDeleteConfirm(false)}
+            isLoading={galleryFetcher.state !== "idle"}
+          />
+        )}
+        
+        {/* Move Photos Modal */}
+        {showMovePhotosModal && (
+          <MovePhotosModal
+            selectedCount={selectedPhotos.length}
+            galleries={allGalleries}
+            currentGallerySlug={gallery.slug}
+            onMove={handleMovePhotos}
+            onCancel={() => setShowMovePhotosModal(false)}
+            isLoading={photosFetcher.state !== "idle"}
+          />
+        )}
+        
+        {/* Photo Edit Modal */}
+        {editingPhoto && (
+          <PhotoEditModal
+            photo={gallery.photos.find(p => p.id === editingPhoto)!}
+            gallerySlug={gallery.slug}
+            onSave={(updates) => {
+              const photo = gallery.photos.find(p => p.id === editingPhoto);
+              if (!photo) return;
+              
+              const formData = new FormData();
+              formData.append("action", "update");
+              formData.append("gallerySlug", gallery.slug);
+              formData.append("photoPath", photo.path);
+              formData.append("filename", photo.filename);
+              
+              if (updates.title !== undefined) formData.append("title", updates.title);
+              if (updates.description !== undefined) formData.append("description", updates.description);
+              if (updates.tags !== undefined) formData.append("tags", updates.tags.join(","));
+              if (updates.hidden !== undefined) formData.append("hidden", updates.hidden.toString());
+              if (updates.featured !== undefined) formData.append("featured", updates.featured.toString());
+              if (updates.date !== undefined) formData.append("date", updates.date);
+              
+              photosFetcher.submit(formData, {
+                method: "POST",
+                action: "/api/admin/photos",
+              });
+            }}
+            onCancel={() => setEditingPhoto(null)}
+            isLoading={photosFetcher.state !== "idle"}
+          />
         )}
 
         {/* Gallery Info Cards */}
@@ -333,49 +557,168 @@ export default function AdminGalleryDetail() {
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">
-                <button
-                  onClick={toggleAll}
-                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                >
-                  {selectedPhotos.length === gallery.photos.length ? "Deselect all" : "Select all"}
-                </button>
-                {selectedPhotos.length > 0 && (
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {selectedPhotos.length} selected
-                  </span>
+                {!isReorderMode ? (
+                  <>
+                    <button
+                      onClick={toggleAll}
+                      className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    >
+                      {selectedPhotos.length === gallery.photos.length ? "Deselect all" : "Select all"}
+                    </button>
+                    {selectedPhotos.length > 0 && (
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        {selectedPhotos.length} selected
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <DragIcon />
+                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                      Drag photos to reorder
+                    </span>
+                  </div>
                 )}
               </div>
               
-              {selectedPhotos.length > 0 && (
+              {/* Reorder mode controls */}
+              {isReorderMode ? (
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    onClick={cancelReorder}
                     className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   >
-                    Hide
+                    Cancel
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    onClick={savePhotoOrder}
+                    disabled={!hasOrderChanged || reorderFetcher.state !== "idle"}
+                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Delete
+                    {reorderFetcher.state !== "idle" ? (
+                      <>
+                        <LoadingSpinner />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Order"
+                    )}
                   </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {/* Reorder button - always visible when not in reorder mode */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPhotos([]);
+                      setIsReorderMode(true);
+                    }}
+                    className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1.5"
+                  >
+                    <DragIcon />
+                    Reorder
+                  </button>
+                  
+                  {/* Selection action buttons */}
+                  {selectedPhotos.length > 0 && (
+                    <>
+                      <div className="w-px h-5 bg-gray-300 dark:bg-gray-700" />
+                      <button
+                        type="button"
+                        onClick={() => handleToggleVisibility(true)}
+                        disabled={isOperationPending}
+                        className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Hide
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleVisibility(false)}
+                        disabled={isOperationPending}
+                        className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Show
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowMovePhotosModal(true)}
+                        disabled={isOperationPending}
+                        className="px-3 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Move
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeletePhotos}
+                        disabled={isOperationPending}
+                        className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
+            
+            {/* Operation feedback */}
+            {photosFetcher.data && (
+              <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${
+                photosFetcher.data.success 
+                  ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                  : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
+              }`}>
+                {photosFetcher.data.message || photosFetcher.data.error}
+              </div>
+            )}
+            
+            {/* Reorder feedback */}
+            {reorderFetcher.data && (
+              <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${
+                reorderFetcher.data.success 
+                  ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                  : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
+              }`}>
+                {reorderFetcher.data.message || reorderFetcher.data.error}
+              </div>
+            )}
 
-            {/* Photos Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-              {gallery.photos.map((photo) => (
-                <PhotoCard
-                  key={photo.id}
-                  photo={photo}
-                  gallerySlug={gallery.slug}
-                  isSelected={selectedPhotos.includes(photo.id)}
-                  onToggle={() => togglePhoto(photo.id)}
-                />
-              ))}
-            </div>
+            {/* Photos Grid - with drag and drop support */}
+            {isReorderMode ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={photoIds} strategy={rectSortingStrategy}>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                    {orderedPhotos.map((photo) => (
+                      <SortablePhotoCard
+                        key={photo.id}
+                        photo={photo}
+                        gallerySlug={gallery.slug}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                {gallery.photos.map((photo) => (
+                  <PhotoCard
+                    key={photo.id}
+                    photo={photo}
+                    gallerySlug={gallery.slug}
+                    isSelected={selectedPhotos.includes(photo.id)}
+                    onToggle={() => togglePhoto(photo.id)}
+                    onEdit={() => setEditingPhoto(photo.id)}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -393,14 +736,14 @@ function PhotoCard({
   gallerySlug,
   isSelected,
   onToggle,
+  onEdit,
 }: {
   photo: any;
   gallerySlug: string;
   isSelected: boolean;
   onToggle: () => void;
+  onEdit: () => void;
 }) {
-  const [showInfo, setShowInfo] = useState(false);
-  
   // Build image URL with proper encoding for paths with spaces
   const imageUrl = `/api/images/${encodeImagePath(photo.path)}`;
 
@@ -416,14 +759,14 @@ function PhotoCard({
         className="w-full h-full object-cover"
       />
       
-      {/* Hover overlay - pointer-events-none so clicks pass through */}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end pointer-events-none">
+      {/* Hover overlay */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end">
         <div className="w-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <p className="text-white text-sm truncate">{photo.title || photo.filename}</p>
         </div>
       </div>
       
-      {/* Selection checkbox - z-10 to ensure it's above everything */}
+      {/* Selection checkbox - top left */}
       <button
         type="button"
         onClick={onToggle}
@@ -436,6 +779,89 @@ function PhotoCard({
         <CheckIcon />
       </button>
       
+      {/* Edit button - top right (shown on hover) */}
+      <button
+        type="button"
+        onClick={onEdit}
+        className="absolute top-2 right-2 z-10 w-7 h-7 rounded bg-white/90 dark:bg-gray-800/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white dark:hover:bg-gray-700 shadow-sm"
+        title="Edit photo"
+      >
+        <EditIcon />
+      </button>
+      
+      {/* Hidden indicator - below edit button */}
+      {photo.hidden && (
+        <div className="absolute top-11 right-2 z-10 px-2 py-1 bg-gray-900/70 text-white text-xs rounded">
+          Hidden
+        </div>
+      )}
+      
+      {/* Featured indicator */}
+      {photo.featured && (
+        <div className="absolute bottom-2 right-2 z-10 text-yellow-400">
+          <StarIcon />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Sortable Photo Card for drag-and-drop reordering
+function SortablePhotoCard({
+  photo,
+  gallerySlug,
+}: {
+  photo: any;
+  gallerySlug: string;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: photo.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 1,
+  };
+
+  // Build image URL with proper encoding for paths with spaces
+  const imageUrl = `/api/images/${encodeImagePath(photo.path)}`;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`group relative aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden cursor-grab active:cursor-grabbing ${
+        isDragging ? "ring-2 ring-blue-500 shadow-lg" : ""
+      }`}
+    >
+      <img
+        src={imageUrl}
+        alt={photo.title || photo.filename}
+        className="w-full h-full object-cover pointer-events-none"
+        draggable={false}
+      />
+      
+      {/* Drag indicator overlay */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-gray-900/90 rounded-full p-2 shadow-lg">
+          <DragIcon />
+        </div>
+      </div>
+      
+      {/* Photo info at bottom */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+        <p className="text-white text-sm truncate">{photo.title || photo.filename}</p>
+      </div>
+      
       {/* Hidden indicator */}
       {photo.hidden && (
         <div className="absolute top-2 right-2 z-10 px-2 py-1 bg-gray-900/70 text-white text-xs rounded">
@@ -447,10 +873,51 @@ function PhotoCard({
 }
 
 // Icons
+function DragIcon() {
+  return (
+    <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+    </svg>
+  );
+}
+
+function LoadingSpinner() {
+  return (
+    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
+  );
+}
+
 function ExternalIcon() {
   return (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function StarIcon() {
+  return (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
     </svg>
   );
 }
@@ -530,4 +997,438 @@ function InfoCard({
   }
 
   return content;
+}
+
+// Gallery Settings Panel Component
+function GallerySettingsPanel({
+  gallery,
+  onUpdate,
+  onDelete,
+  isLoading,
+}: {
+  gallery: any;
+  onUpdate: (updates: Record<string, string>) => void;
+  onDelete: () => void;
+  isLoading: boolean;
+}) {
+  const [title, setTitle] = useState(gallery.title);
+  const [description, setDescription] = useState(gallery.description || "");
+  const [order, setOrder] = useState(gallery.order?.toString() || "");
+  const [isPrivate, setIsPrivate] = useState(gallery.private || false);
+  const [hasChanges, setHasChanges] = useState(false);
+  
+  // Track changes
+  useEffect(() => {
+    const titleChanged = title !== gallery.title;
+    const descChanged = description !== (gallery.description || "");
+    const orderChanged = order !== (gallery.order?.toString() || "");
+    const privateChanged = isPrivate !== (gallery.private || false);
+    setHasChanges(titleChanged || descChanged || orderChanged || privateChanged);
+  }, [title, description, order, isPrivate, gallery]);
+  
+  const handleSave = () => {
+    const updates: Record<string, string> = {};
+    if (title !== gallery.title) updates.title = title;
+    if (description !== (gallery.description || "")) updates.description = description;
+    if (order !== (gallery.order?.toString() || "")) updates.order = order;
+    if (isPrivate !== (gallery.private || false)) updates.private = isPrivate.toString();
+    onUpdate(updates);
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-4 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-medium text-gray-900 dark:text-white">Gallery Settings</h3>
+        <div className="flex items-center gap-2">
+          {hasChanges && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isLoading}
+              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? "Saving..." : "Save Changes"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+          >
+            Delete Gallery
+          </button>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div>
+          <label className="block text-gray-500 dark:text-gray-400 mb-1">Title</label>
+          <input 
+            type="text" 
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-500 dark:text-gray-400 mb-1">Order</label>
+          <input 
+            type="number" 
+            value={order}
+            onChange={(e) => setOrder(e.target.value)}
+            placeholder="Not set (defaults to 999)"
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-gray-500 dark:text-gray-400 mb-1">Description</label>
+          <textarea 
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Add a description for this gallery..."
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            rows={2}
+          />
+        </div>
+        <div className="md:col-span-2 flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={isPrivate}
+              onChange={(e) => setIsPrivate(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-gray-700 dark:text-gray-300">Private (hidden from public listing)</span>
+          </label>
+        </div>
+      </div>
+      
+      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+        <p className="text-xs text-gray-400 dark:text-gray-500">
+          <span className="font-medium">Path:</span>{" "}
+          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">content/{gallery.path}</code>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Delete Confirmation Modal
+function DeleteConfirmModal({
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  isLoading,
+}: {
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-md w-full p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
+        
+        <div className="flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            {isLoading ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Move Photos Modal
+function MovePhotosModal({
+  selectedCount,
+  galleries,
+  currentGallerySlug,
+  onMove,
+  onCancel,
+  isLoading,
+}: {
+  selectedCount: number;
+  galleries: any[];
+  currentGallerySlug: string;
+  onMove: (toGallerySlug: string) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [selectedGallery, setSelectedGallery] = useState("");
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-md w-full p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          Move {selectedCount} Photo{selectedCount !== 1 ? "s" : ""}
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          Select a destination gallery:
+        </p>
+        
+        <select
+          value={selectedGallery}
+          onChange={(e) => setSelectedGallery(e.target.value)}
+          className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg mb-6"
+        >
+          <option value="">Select a gallery...</option>
+          {galleries.map((g) => (
+            <option key={g.slug} value={g.slug}>
+              {g.title} ({g.photoCount} photos)
+            </option>
+          ))}
+        </select>
+        
+        <div className="flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove(selectedGallery)}
+            disabled={isLoading || !selectedGallery}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {isLoading ? "Moving..." : "Move Photos"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Photo Edit Modal - Edit individual photo metadata
+function PhotoEditModal({
+  photo,
+  gallerySlug,
+  onSave,
+  onCancel,
+  isLoading,
+}: {
+  photo: any;
+  gallerySlug: string;
+  onSave: (updates: {
+    title?: string;
+    description?: string;
+    tags?: string[];
+    hidden?: boolean;
+    featured?: boolean;
+    date?: string;
+  }) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [title, setTitle] = useState(photo.title || "");
+  const [description, setDescription] = useState(photo.description || "");
+  const [tags, setTags] = useState((photo.tags || []).join(", "));
+  const [hidden, setHidden] = useState(photo.hidden || false);
+  const [featured, setFeatured] = useState(photo.featured || false);
+  const [date, setDate] = useState(photo.dateTaken ? new Date(photo.dateTaken).toISOString().split("T")[0] : "");
+  
+  const imageUrl = `/api/images/${encodeImagePath(photo.path)}`;
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      title: title || undefined,
+      description: description || undefined,
+      tags: tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
+      hidden,
+      featured,
+      date: date || undefined,
+    });
+  };
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header with image preview */}
+        <div className="relative h-48 bg-gray-100 dark:bg-gray-800">
+          <img
+            src={imageUrl}
+            alt={photo.filename}
+            className="w-full h-full object-contain"
+          />
+          <button
+            type="button"
+            onClick={onCancel}
+            className="absolute top-3 right-3 p-1.5 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+            Edit Photo
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{photo.filename}</p>
+          
+          <div className="space-y-4">
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Title
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter a title..."
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter a description..."
+                rows={3}
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+            </div>
+            
+            {/* Tags */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Tags
+              </label>
+              <input
+                type="text"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="landscape, nature, sunset (comma-separated)"
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Separate tags with commas
+              </p>
+            </div>
+            
+            {/* Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Date
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            {/* Toggles */}
+            <div className="flex items-center gap-6 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hidden}
+                  onChange={(e) => setHidden(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Hidden</span>
+              </label>
+              
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={featured}
+                  onChange={(e) => setFeatured(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Featured</span>
+              </label>
+            </div>
+            
+            {/* EXIF Info (read-only) */}
+            {photo.exif && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Camera Info (from EXIF)
+                </h4>
+                <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  {photo.exif.camera && (
+                    <div>Camera: {photo.exif.camera}</div>
+                  )}
+                  {photo.exif.lens && (
+                    <div>Lens: {photo.exif.lens}</div>
+                  )}
+                  {photo.exif.focalLength && (
+                    <div>Focal Length: {photo.exif.focalLength}mm</div>
+                  )}
+                  {photo.exif.aperture && (
+                    <div>Aperture: f/{photo.exif.aperture}</div>
+                  )}
+                  {photo.exif.shutterSpeed && (
+                    <div>Shutter: {photo.exif.shutterSpeed}</div>
+                  )}
+                  {photo.exif.iso && (
+                    <div>ISO: {photo.exif.iso}</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={isLoading}
+              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <LoadingSpinner />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }

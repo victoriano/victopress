@@ -54,6 +54,34 @@ export class R2StorageAdapter implements StorageAdapter {
     return files;
   }
 
+  async listRecursive(prefix: string): Promise<FileInfo[]> {
+    const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
+    const files: FileInfo[] = [];
+    let cursor: string | undefined;
+
+    // R2 list API returns max 1000 items per call, so we need to paginate
+    do {
+      const listed = await this.bucket.list({
+        prefix: normalizedPrefix,
+        cursor,
+      });
+
+      for (const object of listed.objects) {
+        files.push({
+          name: object.key.split("/").pop() || object.key,
+          path: object.key,
+          size: object.size,
+          lastModified: object.uploaded,
+          isDirectory: false,
+        });
+      }
+
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
+
+    return files;
+  }
+
   async get(key: string): Promise<ArrayBuffer | null> {
     const object = await this.bucket.get(key);
     if (!object) {
@@ -106,9 +134,55 @@ export class R2StorageAdapter implements StorageAdapter {
     await this.bucket.delete(key);
   }
 
+  async deleteDirectory(prefix: string): Promise<{ deleted: number }> {
+    // List all files in the directory recursively
+    const files = await this.listRecursive(prefix);
+    
+    if (files.length === 0) {
+      return { deleted: 0 };
+    }
+
+    // R2 supports batch delete up to 1000 keys at a time
+    const batchSize = 1000;
+    let deleted = 0;
+
+    for (let i = 0; i < files.length; i += batchSize) {
+      const batch = files.slice(i, i + batchSize);
+      const keys = batch.map(f => f.path);
+      
+      // Delete files in batch
+      await Promise.all(keys.map(key => this.bucket.delete(key)));
+      deleted += keys.length;
+    }
+
+    return { deleted };
+  }
+
   async exists(key: string): Promise<boolean> {
     const head = await this.bucket.head(key);
     return head !== null;
+  }
+
+  async move(from: string, to: string): Promise<void> {
+    // R2 doesn't have a native move operation
+    // We need to copy and then delete
+    await this.copy(from, to);
+    await this.delete(from);
+  }
+
+  async copy(from: string, to: string): Promise<void> {
+    // Get the source object
+    const object = await this.bucket.get(from);
+    if (!object) {
+      throw new Error(`Source file not found: ${from}`);
+    }
+
+    // Get content type from source
+    const contentType = object.httpMetadata?.contentType;
+    
+    // Read data and write to new location
+    const data = await object.arrayBuffer();
+    await this.put(to, data, contentType);
   }
 
   async getSignedUrl(key: string, _expiresIn = 3600): Promise<string> {

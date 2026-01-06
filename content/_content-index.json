@@ -1,6 +1,6 @@
 {
   "version": 5,
-  "updatedAt": "2026-01-05T18:51:29.959Z",
+  "updatedAt": "2026-01-06T00:53:53.444Z",
   "galleries": [
     {
       "slug": "geographies",
@@ -948,13 +948,6 @@
           "year": 2018
         },
         {
-          "id": "DSC00117",
-          "path": "galleries/geographies/asia/japan/DSC00117.jpg",
-          "filename": "DSC00117.jpg",
-          "hidden": false,
-          "year": 2018
-        },
-        {
           "id": "DSC00149",
           "path": "galleries/geographies/asia/japan/DSC00149.jpg",
           "filename": "DSC00149.jpg",
@@ -1317,6 +1310,13 @@
           "filename": "IMG_3956.jpg",
           "hidden": false,
           "year": 2017
+        },
+        {
+          "id": "test-new-upload",
+          "path": "galleries/geographies/asia/japan/test-new-upload.jpg",
+          "filename": "test-new-upload.jpg",
+          "hidden": false,
+          "year": 2018
         }
       ]
     },
@@ -2726,15 +2726,6 @@
       "year": 2018
     },
     {
-      "id": "DSC00117",
-      "path": "galleries/geographies/asia/japan/DSC00117.jpg",
-      "filename": "DSC00117.jpg",
-      "gallerySlug": "geographies/asia/japan",
-      "galleryTitle": "Japan",
-      "hidden": false,
-      "year": 2018
-    },
-    {
       "id": "DSC00149",
       "path": "galleries/geographies/asia/japan/DSC00149.jpg",
       "filename": "DSC00149.jpg",
@@ -2765,6 +2756,15 @@
       "id": "DSC00272",
       "path": "galleries/geographies/asia/japan/DSC00272.jpg",
       "filename": "DSC00272.jpg",
+      "gallerySlug": "geographies/asia/japan",
+      "galleryTitle": "Japan",
+      "hidden": false,
+      "year": 2018
+    },
+    {
+      "id": "DSC00285",
+      "path": "galleries/geographies/asia/japan/DSC00285.jpg",
+      "filename": "DSC00285.jpg",
       "gallerySlug": "geographies/asia/japan",
       "galleryTitle": "Japan",
       "hidden": false,

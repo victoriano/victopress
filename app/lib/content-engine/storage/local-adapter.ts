@@ -62,6 +62,47 @@ export class LocalStorageAdapter implements StorageAdapter {
     }
   }
 
+  async listRecursive(prefix: string): Promise<FileInfo[]> {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    
+    const fullPath = this.resolvePath(prefix);
+    const files: FileInfo[] = [];
+
+    async function walkDir(dirPath: string, relativePath: string): Promise<void> {
+      try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+        
+        for (const entry of entries) {
+          // Skip hidden files
+          if (entry.name.startsWith(".")) continue;
+          
+          const entryFullPath = path.join(dirPath, entry.name);
+          const entryRelativePath = path.join(relativePath, entry.name);
+          
+          if (entry.isDirectory()) {
+            // Recursively walk subdirectories
+            await walkDir(entryFullPath, entryRelativePath);
+          } else {
+            const stat = await fs.stat(entryFullPath);
+            files.push({
+              name: entry.name,
+              path: entryRelativePath,
+              size: stat.size,
+              lastModified: stat.mtime,
+              isDirectory: false,
+            });
+          }
+        }
+      } catch {
+        // Directory doesn't exist or is inaccessible
+      }
+    }
+
+    await walkDir(fullPath, prefix);
+    return files;
+  }
+
   async get(key: string): Promise<ArrayBuffer | null> {
     const fs = await import("node:fs/promises");
     
@@ -114,6 +155,25 @@ export class LocalStorageAdapter implements StorageAdapter {
     }
   }
 
+  async deleteDirectory(prefix: string): Promise<{ deleted: number }> {
+    const fs = await import("node:fs/promises");
+    
+    const fullPath = this.resolvePath(prefix);
+    
+    try {
+      // Count files before deletion for return value
+      const files = await this.listRecursive(prefix);
+      const fileCount = files.length;
+      
+      // Use recursive rm to delete directory and all contents
+      await fs.rm(fullPath, { recursive: true, force: true });
+      
+      return { deleted: fileCount };
+    } catch {
+      return { deleted: 0 };
+    }
+  }
+
   async exists(key: string): Promise<boolean> {
     const fs = await import("node:fs/promises");
     
@@ -123,6 +183,34 @@ export class LocalStorageAdapter implements StorageAdapter {
     } catch {
       return false;
     }
+  }
+
+  async move(from: string, to: string): Promise<void> {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    
+    const fromPath = this.resolvePath(from);
+    const toPath = this.resolvePath(to);
+    
+    // Ensure destination directory exists
+    await fs.mkdir(path.dirname(toPath), { recursive: true });
+    
+    // Rename/move the file
+    await fs.rename(fromPath, toPath);
+  }
+
+  async copy(from: string, to: string): Promise<void> {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    
+    const fromPath = this.resolvePath(from);
+    const toPath = this.resolvePath(to);
+    
+    // Ensure destination directory exists
+    await fs.mkdir(path.dirname(toPath), { recursive: true });
+    
+    // Copy the file
+    await fs.copyFile(fromPath, toPath);
   }
 
   async getSignedUrl(key: string): Promise<string> {

@@ -149,6 +149,43 @@ export class BundledStorageAdapter implements StorageAdapter {
     );
   }
 
+  async deleteDirectory(_prefix: string): Promise<{ deleted: number }> {
+    throw new Error(
+      "Demo mode is read-only. Configure R2 storage to enable uploads and editing."
+    );
+  }
+
+  async move(_from: string, _to: string): Promise<void> {
+    throw new Error(
+      "Demo mode is read-only. Configure R2 storage to enable uploads and editing."
+    );
+  }
+
+  async copy(_from: string, _to: string): Promise<void> {
+    throw new Error(
+      "Demo mode is read-only. Configure R2 storage to enable uploads and editing."
+    );
+  }
+
+  async listRecursive(prefix: string): Promise<FileInfo[]> {
+    const normalizedPrefix = prefix.endsWith("/") ? prefix : prefix ? `${prefix}/` : "";
+    const files: FileInfo[] = [];
+
+    for (const file of this.content.files) {
+      if (file.path.startsWith(normalizedPrefix) && !file.isDirectory) {
+        files.push({
+          name: file.path.split("/").pop() || file.path,
+          path: file.path,
+          size: file.size,
+          lastModified: new Date(file.lastModified),
+          isDirectory: false,
+        });
+      }
+    }
+
+    return files;
+  }
+
   async exists(key: string): Promise<boolean> {
     return this.content.files.some(f => f.path === key);
   }

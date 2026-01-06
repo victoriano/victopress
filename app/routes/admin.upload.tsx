@@ -6,12 +6,12 @@
  */
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/cloudflare";
-import { useLoaderData, useFetcher, useSearchParams } from "@remix-run/react";
+import { useLoaderData, useFetcher, useSearchParams, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getContentIndex, invalidateContentIndex } from "~/lib/content-engine";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
@@ -151,6 +151,26 @@ export default function AdminUpload() {
   }, [files, selectedGallery, fetcher]);
 
   const isUploading = fetcher.state !== "idle";
+  
+  // Track upload success state
+  const uploadSuccess = fetcher.data && "success" in fetcher.data && fetcher.data.success;
+  const uploadedGallery = selectedGallery;
+  
+  // Clear files after successful upload
+  useEffect(() => {
+    if (uploadSuccess && fetcher.state === "idle") {
+      setFiles([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }, [uploadSuccess, fetcher.state]);
+  
+  // Reset success state when starting new upload
+  const handleUploadMore = useCallback(() => {
+    // Just focus on the file input to allow new selection
+    fileInputRef.current?.click();
+  }, []);
 
   return (
     <AdminLayout username={username || undefined}>
@@ -303,8 +323,69 @@ export default function AdminUpload() {
           </div>
         )}
 
-        {/* Upload Results */}
-        {fetcher.data && "results" in fetcher.data && fetcher.data.results && (
+        {/* Success State - Show after successful upload */}
+        {uploadSuccess && files.length === 0 && (
+          <div className="mt-8 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center flex-shrink-0">
+                <SuccessIcon />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-green-800 dark:text-green-300 mb-1">
+                  Upload Complete!
+                </h3>
+                <p className="text-green-700 dark:text-green-400 mb-4">
+                  {fetcher.data && "message" in fetcher.data ? fetcher.data.message : "Your photos have been uploaded successfully."}
+                </p>
+                
+                {/* Upload Results List */}
+                {fetcher.data && "results" in fetcher.data && fetcher.data.results && (
+                  <div className="mb-4 space-y-1">
+                    {(fetcher.data.results as Array<{ name: string; status: string; error?: string }>).map((result, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        {result.status === "success" ? (
+                          <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                            <CheckIcon />
+                            <span className="text-green-700 dark:text-green-300">{result.name}</span>
+                          </span>
+                        ) : (
+                          <span className="text-red-600 dark:text-red-400">
+                            ✕ {result.name}: {result.error}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Action Buttons */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    to={uploadedGallery ? `/admin/galleries/${uploadedGallery}` : "/admin/galleries"}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm"
+                  >
+                    <GalleryIcon />
+                    View Gallery
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleUploadMore}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors font-medium text-sm"
+                  >
+                    <UploadIcon />
+                    Upload More
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Upload Results - Only show if there are errors and files still present */}
+        {fetcher.data && "results" in fetcher.data && fetcher.data.results && files.length > 0 && (
           <div className="mt-6 bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
             <h3 className="font-medium text-gray-900 dark:text-white mb-3">Upload Results</h3>
             <div className="space-y-2">
@@ -366,6 +447,22 @@ function LoadingIcon() {
     <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
+  );
+}
+
+function SuccessIcon() {
+  return (
+    <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
+
+function GalleryIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
     </svg>
   );
 }

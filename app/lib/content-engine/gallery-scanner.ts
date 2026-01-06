@@ -184,6 +184,9 @@ async function loadGalleryYaml(
 
 /**
  * Load photos.yaml if it exists (custom photo order/metadata)
+ * Supports both formats:
+ *   - Plain array: [{ filename: "...", ... }, ...]  (preferred)
+ *   - Object format: { photos: [...] }              (legacy)
  */
 async function loadPhotosYaml(
   storage: StorageAdapter,
@@ -197,7 +200,17 @@ async function loadPhotosYaml(
   }
 
   try {
-    return parseYaml(content) as PhotoYamlEntry[];
+    const parsed = parseYaml(content);
+    
+    // Handle both formats: plain array (preferred) or { photos: [...] } (legacy)
+    if (Array.isArray(parsed)) {
+      return parsed as PhotoYamlEntry[];
+    } else if (parsed && typeof parsed === "object" && Array.isArray(parsed.photos)) {
+      return parsed.photos as PhotoYamlEntry[];
+    }
+    
+    console.warn(`Invalid photos.yaml format in ${yamlPath}: expected array`);
+    return null;
   } catch (error) {
     console.warn(`Failed to parse ${yamlPath}:`, error);
     return null;
@@ -206,6 +219,7 @@ async function loadPhotosYaml(
 
 interface PhotoYamlEntry {
   filename: string;
+  file?: string;  // Legacy field name - will be normalized to filename
   title?: string;
   description?: string;
   tags?: string[];
@@ -228,7 +242,11 @@ async function scanPhotos(
   const yamlMap = new Map<string, PhotoYamlEntry>();
   if (photosYaml) {
     for (const entry of photosYaml) {
-      yamlMap.set(entry.filename, entry);
+      // Handle both 'filename' (preferred) and 'file' (legacy) field names
+      const fname = entry.filename || entry.file;
+      if (fname) {
+        yamlMap.set(fname, entry);
+      }
     }
   }
 
@@ -300,7 +318,11 @@ function sortPhotos(photos: Photo[], photosYaml: PhotoYamlEntry[] | null): Photo
     // Use YAML order
     const orderMap = new Map<string, number>();
     photosYaml.forEach((entry, index) => {
-      orderMap.set(entry.filename, entry.order ?? index);
+      // Handle both 'filename' (preferred) and 'file' (legacy) field names
+      const fname = entry.filename || entry.file;
+      if (fname) {
+        orderMap.set(fname, entry.order ?? index);
+      }
     });
     
     return [...photos].sort((a, b) => {

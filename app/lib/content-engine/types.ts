@@ -301,6 +301,9 @@ export interface StorageAdapter {
   /** List files/folders in a path */
   list(prefix: string): Promise<FileInfo[]>;
   
+  /** List all files recursively in a path */
+  listRecursive(prefix: string): Promise<FileInfo[]>;
+  
   /** Get file contents */
   get(key: string): Promise<ArrayBuffer | null>;
   
@@ -313,8 +316,17 @@ export interface StorageAdapter {
   /** Delete a file */
   delete(key: string): Promise<void>;
   
+  /** Delete a directory and all its contents */
+  deleteDirectory(prefix: string): Promise<{ deleted: number }>;
+  
   /** Check if file exists */
   exists(key: string): Promise<boolean>;
+  
+  /** Move/rename a file */
+  move(from: string, to: string): Promise<void>;
+  
+  /** Copy a file */
+  copy(from: string, to: string): Promise<void>;
   
   /** Get signed URL for an image */
   getSignedUrl(key: string, expiresIn?: number): Promise<string>;
