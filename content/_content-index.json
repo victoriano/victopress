@@ -1,6 +1,6 @@
 {
   "version": 5,
-  "updatedAt": "2026-01-06T10:26:59.141Z",
+  "updatedAt": "2026-01-06T10:33:17.972Z",
   "galleries": [
     {
       "slug": "geographies",
@@ -58,8 +58,8 @@
       "slug": "geographies/america/usa/new-york",
       "title": "New York",
       "description": "Photography from New York City",
-      "cover": "galleries/geographies/america/usa/new york/P1390465_1.jpg",
-      "photoCount": 12,
+      "cover": "galleries/geographies/america/usa/new york/3310100314_f5f71518dc_o46941.jpg",
+      "photoCount": 11,
       "order": 1,
       "category": "geographies/america/usa",
       "tags": [],
@@ -456,9 +456,9 @@
       "slug": "geographies/america/usa/new-york",
       "title": "New York",
       "description": "Photography from New York City",
-      "cover": "galleries/geographies/america/usa/new york/P1390465_1.jpg",
+      "cover": "galleries/geographies/america/usa/new york/3310100314_f5f71518dc_o46941.jpg",
       "path": "galleries/geographies/america/usa/new york",
-      "photoCount": 12,
+      "photoCount": 11,
       "isProtected": false,
       "order": 1,
       "category": "geographies/america/usa",
@@ -468,19 +468,11 @@
       "isParentGallery": false,
       "photos": [
         {
-          "id": "P1390465_1",
-          "path": "galleries/geographies/america/usa/new york/P1390465_1.jpg",
-          "filename": "P1390465_1.jpg",
-          "hidden": false,
-          "order": 1,
-          "year": 2016
-        },
-        {
           "id": "3310100314_f5f71518dc_o46941",
           "path": "galleries/geographies/america/usa/new york/3310100314_f5f71518dc_o46941.jpg",
           "filename": "3310100314_f5f71518dc_o46941.jpg",
           "hidden": false,
-          "order": 2,
+          "order": 1,
           "year": 2009
         },
         {
@@ -488,14 +480,23 @@
           "path": "galleries/geographies/america/usa/new york/IMG_5378.jpg",
           "filename": "IMG_5378.jpg",
           "hidden": false,
-          "order": 3,
+          "order": 2,
           "year": 2009
+        },
+        {
+          "id": "P1390465_1",
+          "path": "galleries/geographies/america/usa/new york/P1390465_1.jpg",
+          "filename": "P1390465_1.jpg",
+          "hidden": false,
+          "order": 3,
+          "year": 2016
         },
         {
           "id": "3298505856_7c770576bd_o46954",
           "path": "galleries/geographies/america/usa/new york/3298505856_7c770576bd_o46954.jpg",
           "filename": "3298505856_7c770576bd_o46954.jpg",
           "hidden": false,
+          "order": 4,
           "year": 2009
         },
         {
@@ -503,13 +504,15 @@
           "path": "galleries/geographies/america/usa/new york/IMG_5406-best.jpg",
           "filename": "IMG_5406-best.jpg",
           "hidden": false,
+          "order": 5,
           "year": 2009
         },
         {
           "id": "P1380846",
           "path": "galleries/geographies/america/usa/new york/P1380846.jpg",
           "filename": "P1380846.jpg",
-          "hidden": false,
+          "hidden": true,
+          "order": 6,
           "year": 2016
         },
         {
@@ -517,6 +520,7 @@
           "path": "galleries/geographies/america/usa/new york/P1380958.jpg",
           "filename": "P1380958.jpg",
           "hidden": false,
+          "order": 7,
           "year": 2016
         },
         {
@@ -524,6 +528,7 @@
           "path": "galleries/geographies/america/usa/new york/P1390067.jpg",
           "filename": "P1390067.jpg",
           "hidden": false,
+          "order": 8,
           "year": 2016
         },
         {
@@ -531,6 +536,7 @@
           "path": "galleries/geographies/america/usa/new york/P1390077.jpg",
           "filename": "P1390077.jpg",
           "hidden": false,
+          "order": 9,
           "year": 2016
         },
         {
@@ -538,6 +544,7 @@
           "path": "galleries/geographies/america/usa/new york/P1390213.jpg",
           "filename": "P1390213.jpg",
           "hidden": false,
+          "order": 10,
           "year": 2016
         },
         {
@@ -545,6 +552,7 @@
           "path": "galleries/geographies/america/usa/new york/P1390330.jpg",
           "filename": "P1390330.jpg",
           "hidden": false,
+          "order": 11,
           "year": 2016
         },
         {
@@ -552,6 +560,7 @@
           "path": "galleries/geographies/america/usa/new york/P1390427_1.jpg",
           "filename": "P1390427_1.jpg",
           "hidden": false,
+          "order": 12,
           "year": 2016
         }
       ]
@@ -2655,15 +2664,6 @@
   ],
   "featuredPhotos": [
     {
-      "id": "P1390465_1",
-      "path": "galleries/geographies/america/usa/new york/P1390465_1.jpg",
-      "filename": "P1390465_1.jpg",
-      "gallerySlug": "geographies/america/usa/new-york",
-      "galleryTitle": "New York",
-      "hidden": false,
-      "year": 2016
-    },
-    {
       "id": "3310100314_f5f71518dc_o46941",
       "path": "galleries/geographies/america/usa/new york/3310100314_f5f71518dc_o46941.jpg",
       "filename": "3310100314_f5f71518dc_o46941.jpg",
@@ -2680,6 +2680,15 @@
       "galleryTitle": "New York",
       "hidden": false,
       "year": 2009
+    },
+    {
+      "id": "P1390465_1",
+      "path": "galleries/geographies/america/usa/new york/P1390465_1.jpg",
+      "filename": "P1390465_1.jpg",
+      "gallerySlug": "geographies/america/usa/new-york",
+      "galleryTitle": "New York",
+      "hidden": false,
+      "year": 2016
     },
     {
       "id": "3298505856_7c770576bd_o46954",
@@ -2700,9 +2709,9 @@
       "year": 2009
     },
     {
-      "id": "P1380846",
-      "path": "galleries/geographies/america/usa/new york/P1380846.jpg",
-      "filename": "P1380846.jpg",
+      "id": "P1380958",
+      "path": "galleries/geographies/america/usa/new york/P1380958.jpg",
+      "filename": "P1380958.jpg",
       "gallerySlug": "geographies/america/usa/new-york",
       "galleryTitle": "New York",
       "hidden": false,
@@ -3591,7 +3600,7 @@
   ],
   "stats": {
     "totalGalleries": 27,
-    "totalPhotos": 248,
+    "totalPhotos": 247,
     "totalPosts": 2,
     "totalPages": 2
   }
