@@ -179,12 +179,39 @@ export default function PhotoPage() {
     >
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
-        {/* Photo - full width, no margins */}
-        <img
-          src={photoUrl}
-          alt={photo.title || photo.filename}
-          className="w-full object-contain pointer-events-none select-none"
-        />
+        {/* Photo container with touch navigation zones */}
+        <div className="relative">
+          <img
+            src={photoUrl}
+            alt={photo.title || photo.filename}
+            className="w-full object-contain pointer-events-none select-none"
+          />
+          
+          {/* Touch navigation overlay zones */}
+          <div className="absolute inset-0 flex">
+            {/* Left zone - Previous */}
+            {prevPhoto ? (
+              <Link
+                to={`/photo/${gallerySlug}/${prevPhoto.filename}`}
+                className="w-1/2 h-full"
+                aria-label="Previous photo"
+              />
+            ) : (
+              <div className="w-1/2 h-full" />
+            )}
+            
+            {/* Right zone - Next */}
+            {nextPhoto ? (
+              <Link
+                to={`/photo/${gallerySlug}/${nextPhoto.filename}`}
+                className="w-1/2 h-full"
+                aria-label="Next photo"
+              />
+            ) : (
+              <div className="w-1/2 h-full" />
+            )}
+          </div>
+        </div>
         
         {/* Info bar */}
         <div className="bg-white dark:bg-gray-950 px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm gap-2 sm:gap-0">
