@@ -1,15 +1,17 @@
 /**
  * OptimizedImage Component
  *
- * Responsive image component with automatic srcset generation.
- * Supports Cloudflare Image Resizing (production) and local fallback (development).
- *
+ * Responsive image component with Cloudflare Image Resizing.
+ * 
  * Features:
- * - Automatic srcset for responsive images
- * - Multiple sizes: 400w (thumb), 800w (mobile), 1600w (desktop), 2400w (retina)
- * - Automatic WebP format via Cloudflare
+ * - Automatic srcset with CFI for responsive images
+ * - Multiple sizes: 400w (thumb), 800w (mobile), 1200w (tablet), 1600w (desktop)
+ * - Automatic WebP/AVIF format via Cloudflare
  * - Native lazy loading
  * - Loading placeholder
+ * 
+ * In production: Images are resized/optimized at Cloudflare's edge
+ * In development: Falls back to original images (CFI not available on localhost)
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -31,7 +33,7 @@ interface OptimizedImageProps {
   sizes?: string;
   /** Aspect ratio for placeholder (e.g., "16/9", "4/3", "1/1") */
   aspectRatio?: string;
-  /** Whether to use Cloudflare Image Resizing (default: true in production) */
+  /** Whether to use Cloudflare Image Resizing (default: true) */
   useCloudflare?: boolean;
   /** Quality (1-100), default: 80 */
   quality?: number;
@@ -42,10 +44,43 @@ interface OptimizedImageProps {
 }
 
 // Standard breakpoint widths for srcset
-const SRCSET_WIDTHS = [400, 800, 1200, 1600, 2400];
+const SRCSET_WIDTHS = [400, 800, 1200, 1600];
 
 // Default sizes attribute (can be overridden)
 const DEFAULT_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
+
+/**
+ * Generate a Cloudflare Image Resizing URL
+ */
+function generateCFIUrl(
+  imagePath: string,
+  targetWidth: number,
+  quality: number,
+  forSrcset = false
+): string {
+  // Build the base image path
+  let basePath = imagePath;
+  if (!basePath.startsWith("/api/images/")) {
+    basePath = basePath.startsWith("/") 
+      ? `/api/images${basePath}` 
+      : `/api/images/${basePath}`;
+  }
+  
+  // Build CFI options
+  const cfiOptions = `width=${targetWidth},quality=${quality},format=auto,fit=scale-down`;
+  
+  // Build full CFI URL
+  const cfiUrl = `/cdn-cgi/image/${cfiOptions}${basePath}`;
+  
+  // Encode for srcset if needed (spaces and special chars)
+  if (forSrcset) {
+    return cfiUrl.split('/').map(segment => 
+      segment.includes('=') ? segment : encodeURIComponent(segment)
+    ).join('/');
+  }
+  
+  return cfiUrl;
+}
 
 export function OptimizedImage({
   src,
@@ -66,42 +101,25 @@ export function OptimizedImage({
   const imgRef = useRef<HTMLImageElement>(null);
 
   // Check if image is already loaded (cached) on mount
-  // This handles the case where image loads before React hydrates
   useEffect(() => {
     if (imgRef.current?.complete && imgRef.current?.naturalHeight > 0) {
       setIsLoaded(true);
     }
   }, []);
 
-  // Normalize src path
+  // Normalize src path - remove /api/images/ prefix if present
   const normalizedSrc = src.startsWith("/") ? src : `/${src}`;
-  const isApiPath = normalizedSrc.startsWith("/api/images/");
-  const imagePath = isApiPath
-    ? normalizedSrc.replace("/api/images/", "")
-    : normalizedSrc;
+  const imagePath = normalizedSrc.startsWith("/api/images/")
+    ? normalizedSrc
+    : `/api/images/${normalizedSrc.replace(/^\//, "")}`;
 
-  // Encode URL for srcset (spaces and special chars must be encoded)
-  const encodeForSrcset = (url: string): string => {
-    // Split path and encode each segment, then rejoin
-    // This handles spaces and special characters in folder/file names
-    return url.split('/').map(segment => encodeURIComponent(segment)).join('/');
-  };
+  // Generate srcset with CFI URLs for each width
+  const srcSet = SRCSET_WIDTHS
+    .map((w) => `${generateCFIUrl(imagePath, w, quality, true)} ${w}w`)
+    .join(", ");
 
-  // Generate URLs for different sizes
-  // Note: We always use /api/images/ for consistent server/client rendering
-  // This avoids hydration mismatches between SSR and client-side navigation
-  const generateUrl = (targetWidth: number, forSrcset = false): string => {
-    // Always use /api/images/ for consistent behavior
-    // Cloudflare Image Resizing can be added later via CDN configuration
-    const url = isApiPath ? normalizedSrc : `/api/images/${imagePath}`;
-    return forSrcset ? encodeForSrcset(url) : url;
-  };
-
-  // Generate srcset with properly encoded URLs
-  const srcSet = SRCSET_WIDTHS.map((w) => `${generateUrl(w, true)} ${w}w`).join(", ");
-
-  // Default src (medium size)
-  const defaultSrc = generateUrl(1200);
+  // Default src (medium size for initial load)
+  const defaultSrc = generateCFIUrl(imagePath, 1200, quality);
 
   // Placeholder styles
   const placeholderStyles = aspectRatio
@@ -151,10 +169,7 @@ export function OptimizedImage({
 
 /**
  * Generate optimized image URL for a specific width
- * Useful for OG images or other server-side usage
- * 
- * Note: We use /api/images/ for consistency. Cloudflare Image Resizing
- * can be configured separately at the CDN level if needed.
+ * Uses Cloudflare Image Resizing for automatic optimization
  */
 export function getOptimizedImageUrl(
   src: string,
@@ -162,17 +177,23 @@ export function getOptimizedImageUrl(
     width?: number;
     height?: number;
     quality?: number;
-    format?: "auto" | "webp" | "avif" | "json";
+    format?: "auto" | "webp" | "avif";
   } = {}
 ): string {
-  // Always use /api/images/ for consistent server/client behavior
   const normalizedSrc = src.startsWith("/") ? src : `/${src}`;
+  const imagePath = normalizedSrc.startsWith("/api/images/")
+    ? normalizedSrc
+    : `/api/images/${normalizedSrc.replace(/^\//, "")}`;
   
-  if (normalizedSrc.startsWith("/api/images/")) {
-    return normalizedSrc;
-  }
+  // Build CFI options
+  const cfiParts: string[] = [];
+  if (options.width) cfiParts.push(`width=${options.width}`);
+  if (options.height) cfiParts.push(`height=${options.height}`);
+  cfiParts.push(`quality=${options.quality || 80}`);
+  cfiParts.push(`format=${options.format || "auto"}`);
+  cfiParts.push("fit=scale-down");
   
-  return `/api/images/${src}`;
+  return `/cdn-cgi/image/${cfiParts.join(",")}${imagePath}`;
 }
 
 /**
