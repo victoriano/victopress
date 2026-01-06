@@ -181,8 +181,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 }
 
+// Number of images to process in parallel
+// R2 has no rate limits, but we keep this reasonable for memory/CPU
+const PARALLEL_BATCH_SIZE = 10;
+
 /**
- * Optimize all images in all galleries
+ * Optimize all images in all galleries (parallelized)
  */
 async function handleOptimizeAll(
   context: Parameters<typeof getStorage>[0]
@@ -193,15 +197,19 @@ async function handleOptimizeAll(
   const storage = getStorage(context);
   const contentIndex = await getContentIndex(storage);
   
-  // Count total images first
-  let totalImages = 0;
+  // Collect all images to process
+  const imagesToProcess: { galleryPath: string; photo: { filename: string } }[] = [];
+  
   for (const gallery of contentIndex.galleryData || []) {
+    const galleryPath = gallery.path || `galleries/${gallery.slug}`;
     for (const photo of gallery.photos || []) {
       if (!isImageFile(photo.filename)) continue;
       if (isVariantFile(photo.filename)) continue;
-      totalImages++;
+      imagesToProcess.push({ galleryPath, photo });
     }
   }
+  
+  const totalImages = imagesToProcess.length;
   
   // Initialize progress tracking
   optimizationProgress = {
@@ -215,59 +223,71 @@ async function handleOptimizeAll(
   let skipped = 0;
   let failed = 0;
   let variantsCreated = 0;
-  let alreadyOptimized = 0;
   
-  // Use galleryData which has photos
-  for (const gallery of contentIndex.galleryData || []) {
-    const galleryPath = gallery.path || `galleries/${gallery.slug}`;
+  // Process a single image
+  async function processImage(item: { galleryPath: string; photo: { filename: string } }) {
+    const { galleryPath, photo } = item;
     
-    for (const photo of gallery.photos || []) {
-      if (!isImageFile(photo.filename)) continue;
-      if (isVariantFile(photo.filename)) continue;
-      
-      // Check if already optimized
-      const variantPath = `${galleryPath}/${getVariantFilename(photo.filename, 800)}`;
+    // Check if already optimized
+    const variantPath = `${galleryPath}/${getVariantFilename(photo.filename, 800)}`;
+    try {
       if (await storage.exists(variantPath)) {
         skipped++;
-        alreadyOptimized++;
-        // Update progress
-        optimizationProgress.imagesWithVariants = alreadyOptimized + processed;
-        continue;
+        optimizationProgress.imagesWithVariants++;
+        return { status: 'skipped' as const };
       }
-      
-      // Process this image
-      const photoPath = `${galleryPath}/${photo.filename}`;
-      
-      try {
-        const imageData = await storage.get(photoPath);
-        if (!imageData) {
-          failed++;
-          continue;
-        }
-        
-        const result = await processImageServer(imageData, photo.filename);
-        
-        // Save variants - convert Uint8Array to ArrayBuffer
-        for (const variant of result.variants) {
-          const savePath = `${galleryPath}/${variant.filename}`;
-          await storage.put(savePath, variant.data.buffer as ArrayBuffer, "image/webp");
-          variantsCreated++;
-        }
-        
-        processed++;
-        // Update progress after each successful processing
-        optimizationProgress.imagesWithVariants = alreadyOptimized + processed;
-        console.log(`[Optimize] Processed ${photo.filename} (${result.variants.length} variants) - Progress: ${optimizationProgress.imagesWithVariants}/${totalImages}`);
-      } catch (err) {
-        console.error(`[Optimize] Failed to process ${photoPath}:`, err);
-        failed++;
-      }
+    } catch {
+      // If exists check fails, try to process anyway
     }
+    
+    // Process this image
+    const photoPath = `${galleryPath}/${photo.filename}`;
+    
+    try {
+      const imageData = await storage.get(photoPath);
+      if (!imageData) {
+        failed++;
+        return { status: 'failed' as const, reason: 'not found' };
+      }
+      
+      const result = await processImageServer(imageData, photo.filename);
+      
+      // Save variants in parallel
+      await Promise.all(result.variants.map(async (variant) => {
+        const savePath = `${galleryPath}/${variant.filename}`;
+        await storage.put(savePath, variant.data.buffer as ArrayBuffer, "image/webp");
+        variantsCreated++;
+      }));
+      
+      processed++;
+      optimizationProgress.imagesWithVariants++;
+      console.log(`[Optimize] ✅ ${photo.filename} (${result.variants.length} variants) - ${optimizationProgress.imagesWithVariants}/${totalImages}`);
+      return { status: 'processed' as const };
+    } catch (err) {
+      console.error(`[Optimize] ❌ Failed ${photoPath}:`, err);
+      failed++;
+      return { status: 'failed' as const, reason: String(err) };
+    }
+  }
+  
+  // Process in parallel batches
+  console.log(`[Optimize] 🚀 Starting parallel optimization of ${totalImages} images (batch size: ${PARALLEL_BATCH_SIZE})`);
+  
+  for (let i = 0; i < imagesToProcess.length; i += PARALLEL_BATCH_SIZE) {
+    const batch = imagesToProcess.slice(i, i + PARALLEL_BATCH_SIZE);
+    await Promise.all(batch.map(processImage));
+    
+    // Log batch progress
+    const batchNum = Math.floor(i / PARALLEL_BATCH_SIZE) + 1;
+    const totalBatches = Math.ceil(imagesToProcess.length / PARALLEL_BATCH_SIZE);
+    console.log(`[Optimize] 📦 Batch ${batchNum}/${totalBatches} complete`);
   }
   
   // Mark optimization as complete
   optimizationProgress.isRunning = false;
   optimizationProgress.lastChecked = Date.now();
+  
+  console.log(`[Optimize] 🎉 Complete! Processed: ${processed}, Skipped: ${skipped}, Failed: ${failed}`);
   
   return json({
     success: true,
