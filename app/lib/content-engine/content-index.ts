@@ -22,6 +22,14 @@ const INDEX_VERSION = 6; // Bumped to include EXIF cache and lastModified
 const PHOTOS_PER_GALLERY = 6;
 
 /**
+ * In-memory lock to prevent concurrent index rebuilds
+ * This prevents multiple requests from triggering simultaneous rebuilds
+ */
+let rebuildInProgress: Promise<ContentIndex> | null = null;
+let lastRebuildTime = 0;
+const MIN_REBUILD_INTERVAL_MS = 5000; // Don't rebuild more than once per 5 seconds
+
+/**
  * Parent folder metadata
  */
 export interface ParentMetadataEntry {
@@ -445,6 +453,9 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
 /**
  * Get content index, rebuilding if necessary
  * This is the main function to use in loaders
+ * 
+ * Uses an in-memory lock to prevent concurrent rebuilds when multiple
+ * requests hit the server simultaneously after an index invalidation.
  */
 export async function getContentIndex(storage: StorageAdapter, forceRebuild = false): Promise<ContentIndex> {
   if (!forceRebuild) {
@@ -454,8 +465,34 @@ export async function getContentIndex(storage: StorageAdapter, forceRebuild = fa
     }
   }
   
-  // Index doesn't exist or force rebuild requested
-  return rebuildContentIndex(storage);
+  // Check if rebuild is already in progress
+  if (rebuildInProgress) {
+    console.log("[Index] Rebuild already in progress, waiting...");
+    return rebuildInProgress;
+  }
+  
+  // Check if we just rebuilt (prevents rapid repeated rebuilds)
+  const now = Date.now();
+  if (now - lastRebuildTime < MIN_REBUILD_INTERVAL_MS) {
+    // Try to read cached index one more time
+    const cached = await readContentIndex(storage);
+    if (cached) {
+      console.log("[Index] Using recently rebuilt index");
+      return cached;
+    }
+  }
+  
+  // Start rebuild with lock
+  console.log("[Index] Starting rebuild with lock");
+  rebuildInProgress = rebuildContentIndex(storage);
+  
+  try {
+    const index = await rebuildInProgress;
+    lastRebuildTime = Date.now();
+    return index;
+  } finally {
+    rebuildInProgress = null;
+  }
 }
 
 /**

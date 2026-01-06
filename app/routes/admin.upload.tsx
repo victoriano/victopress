@@ -10,7 +10,7 @@ import { useLoaderData, useFetcher, useSearchParams, Link } from "@remix-run/rea
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { getStorage, getContentIndex, invalidateContentIndex } from "~/lib/content-engine";
+import { getStorage, getContentIndex, addPhotosToGalleryIndex } from "~/lib/content-engine";
 import { useState, useCallback, useRef, useEffect } from "react";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
@@ -71,10 +71,25 @@ export async function action({ request, context }: ActionFunctionArgs) {
   
   const successCount = results.filter((r) => r.status === "success").length;
   
-  // Invalidate content index if any uploads succeeded
-  // (will be rebuilt on next request)
+  // Update content index incrementally (much faster than full rebuild)
+  // Only process the new photos, not the entire gallery
   if (successCount > 0) {
-    await invalidateContentIndex(storage);
+    const successfulPaths = results
+      .filter((r) => r.status === "success" && r.path)
+      .map((r) => r.path as string);
+    
+    // Determine the gallery path
+    const galleryPath = gallery
+      ? `galleries/${gallery}`
+      : "galleries/uploads";
+    
+    try {
+      await addPhotosToGalleryIndex(storage, galleryPath, successfulPaths);
+      console.log(`[Upload] Updated index with ${successfulPaths.length} new photos`);
+    } catch (error) {
+      console.error("[Upload] Failed to update index:", error);
+      // Non-fatal - index will be rebuilt on next request if needed
+    }
   }
   
   return json({

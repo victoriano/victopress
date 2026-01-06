@@ -309,34 +309,42 @@ export default function AdminGalleryDetail() {
   return (
     <AdminLayout username={username || undefined}>
       <div className="p-6 lg:p-8">
+        {/* Breadcrumbs */}
+        <nav className="flex items-center gap-1 mb-6 text-sm overflow-x-auto pb-2">
+          <Link 
+            to="/admin/galleries"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1"
+          >
+            <HomeIcon />
+            <span>Galleries</span>
+          </Link>
+          {gallery.slug.split("/").map((part, index, arr) => {
+            const partialSlug = arr.slice(0, index + 1).join("/");
+            const isLast = index === arr.length - 1;
+            // Try to get the title from parent gallery or generate from slug
+            const partTitle = part.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+            const displayTitle = isLast ? gallery.title : partTitle;
+            return (
+              <div key={partialSlug} className="flex items-center gap-1">
+                <ChevronRightSmallIcon />
+                {isLast ? (
+                  <span className="text-gray-900 dark:text-white font-medium">{displayTitle}</span>
+                ) : (
+                  <Link
+                    to={`/admin/galleries?path=${encodeURIComponent(partialSlug)}`}
+                    className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  >
+                    {displayTitle}
+                  </Link>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            {/* Breadcrumb with parent galleries */}
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2 flex-wrap">
-              <Link to="/admin/galleries" className="hover:text-gray-700 dark:hover:text-gray-300">
-                Galleries
-              </Link>
-              {gallery.slug.split("/").map((part, index, arr) => {
-                const partialSlug = arr.slice(0, index + 1).join("/");
-                const isLast = index === arr.length - 1;
-                return (
-                  <span key={partialSlug} className="flex items-center gap-2">
-                    <span>/</span>
-                    {isLast ? (
-                      <span className="text-gray-900 dark:text-white">{gallery.title}</span>
-                    ) : (
-                      <Link 
-                        to={`/admin/galleries/${partialSlug}`}
-                        className="hover:text-gray-700 dark:hover:text-gray-300"
-                      >
-                        {part.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
-                      </Link>
-                    )}
-                  </span>
-                );
-              })}
-            </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{gallery.title}</h1>
             {gallery.description && (
               <p className="text-gray-500 dark:text-gray-400 mt-1">{gallery.description}</p>
@@ -959,6 +967,22 @@ function FolderIcon() {
   return (
     <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+    </svg>
+  );
+}
+
+function HomeIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+    </svg>
+  );
+}
+
+function ChevronRightSmallIcon() {
+  return (
+    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
     </svg>
   );
 }

@@ -177,15 +177,15 @@ export default function PhotoPage() {
       socialLinks={socialLinks}
       photoNav={photoNav}
     >
-      {/* Photo container - full height */}
-      <div className="min-h-screen lg:h-screen flex flex-col">
+      {/* Photo container - full height on desktop, auto on mobile */}
+      <div className="lg:h-screen flex flex-col">
         {/* Main photo area with clickable zones */}
-        <div className="flex-1 flex items-center justify-center overflow-hidden pt-0 lg:pt-8 pb-4 lg:pb-8 px-4 lg:px-8 relative">
+        <div className="flex-1 flex items-start lg:items-center justify-center overflow-hidden pt-0 lg:pt-8 pb-0 lg:pb-8 px-0 lg:px-8 relative">
           {/* Photo */}
           <img
             src={photoUrl}
             alt={photo.title || photo.filename}
-            className="max-h-full max-w-full object-contain pointer-events-none select-none"
+            className="w-full lg:max-h-full lg:max-w-full lg:w-auto object-contain pointer-events-none select-none"
           />
           
           {/* Clickable overlay zones (desktop only) */}
@@ -222,7 +222,7 @@ export default function PhotoPage() {
         </div>
 
         {/* Bottom info bar (mobile only) */}
-        <div className="bg-white dark:bg-gray-950 px-4 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm gap-2 sm:gap-0 lg:hidden">
+        <div className="bg-white dark:bg-gray-950 px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm gap-2 sm:gap-0 lg:hidden">
           {/* Photo info - left side */}
           <div className="space-y-0.5">
             {photoTitle && (
