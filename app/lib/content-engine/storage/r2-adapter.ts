@@ -127,10 +127,13 @@ export class R2StorageAdapter implements StorageAdapter {
       }
     }
 
+    const size = typeof data === "string" ? data.length : data.byteLength;
+    console.log(`[R2Storage] ☁️  PUT ${key} (${(size / 1024).toFixed(1)} KB)`);
     await this.bucket.put(key, data, options);
   }
 
   async delete(key: string): Promise<void> {
+    console.log(`[R2Storage] ☁️  DELETE ${key}`);
     await this.bucket.delete(key);
   }
 

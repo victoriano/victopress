@@ -138,6 +138,9 @@ export class LocalStorageAdapter implements StorageAdapter {
     await fs.mkdir(dir, { recursive: true });
     
     // Write file
+    const size = typeof data === "string" ? data.length : data.byteLength;
+    console.log(`[LocalStorage] 📁 PUT ${key} (${(size / 1024).toFixed(1)} KB) → ${fullPath}`);
+    
     if (typeof data === "string") {
       await fs.writeFile(fullPath, data, "utf-8");
     } else {
@@ -148,6 +151,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   async delete(key: string): Promise<void> {
     const fs = await import("node:fs/promises");
     
+    console.log(`[LocalStorage] 📁 DELETE ${key}`);
     try {
       await fs.unlink(this.resolvePath(key));
     } catch {

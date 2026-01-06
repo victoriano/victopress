@@ -94,14 +94,14 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const storage = getStorage(context, request);
   const env = context.cloudflare?.env as Env | undefined;
   const demoMode = isDemoMode(context);
-  const storageMode = getStorageMode(context, request);
+  const storageMode = getStorageMode(context);
   const isDevMode = isDevelopment();
   
   // Use pre-calculated content index for fast loading
   const contentIndex = await getContentIndex(storage);
   
-  // Get adapter preference (checks cookie first for instant switching)
-  const adapterPreference = getAdapterPreference(context, request);
+  // Get adapter preference from .dev.vars
+  const adapterPreference = getAdapterPreference(context);
   
   // Get storage configuration details
   const storageConfig: StorageConfig = {
@@ -1942,8 +1942,9 @@ function AdapterToggle({
   currentAdapter: StorageAdapterType;
   bucketName: string | null;
 }) {
-  const fetcher = useFetcher<{ success: boolean; message: string; adapter?: string }>();
+  const fetcher = useFetcher<{ success: boolean; message: string; adapter?: string; needsRestart?: boolean }>();
   const isLoading = fetcher.state !== "idle";
+  const switchSuccess = fetcher.data?.success && fetcher.data?.needsRestart;
   
   const handleSwitch = (newAdapter: "local" | "r2") => {
     if (newAdapter === currentAdapter) return;
@@ -1954,23 +1955,13 @@ function AdapterToggle({
     );
   };
   
-  // Reload page when switch is successful (cookie is set, instant effect!)
-  React.useEffect(() => {
-    if (fetcher.data?.success) {
-      // Small delay to ensure cookie is set, then reload
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
-    }
-  }, [fetcher.data]);
-  
   return (
     <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800/30 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
           <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Storage Adapter</h4>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Switch between local files and cloud storage
+            Switch between local files and cloud storage (requires restart)
           </p>
         </div>
         <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 rounded-full">
@@ -1982,7 +1973,7 @@ function AdapterToggle({
       <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1 gap-1">
         <button
           onClick={() => handleSwitch("local")}
-          disabled={isLoading}
+          disabled={isLoading || switchSuccess}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
             currentAdapter === "local"
               ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm"
@@ -1998,7 +1989,7 @@ function AdapterToggle({
         
         <button
           onClick={() => handleSwitch("r2")}
-          disabled={isLoading}
+          disabled={isLoading || switchSuccess}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
             currentAdapter === "r2"
               ? "bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm"
@@ -2020,7 +2011,36 @@ function AdapterToggle({
       {isLoading && (
         <div className="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           <LoadingSpinner />
-          <span>Switching adapter...</span>
+          <span>Updating .dev.vars...</span>
+        </div>
+      )}
+      
+      {/* Success State - Restart Required */}
+      {switchSuccess && (
+        <div className="mt-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/40 rounded-full flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h5 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                Restart Required
+              </h5>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                Configuration saved to <code className="bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded font-mono text-xs">.dev.vars</code>. 
+                Restart the dev server for changes to take effect:
+              </p>
+              <div className="mt-3 bg-gray-900 dark:bg-gray-950 rounded-lg p-3 font-mono text-sm text-green-400">
+                <span className="text-gray-500 select-none">$ </span>
+                <span className="select-all">bun run dev</span>
+              </div>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                Press Ctrl+C in the terminal first to stop the current server
+              </p>
+            </div>
+          </div>
         </div>
       )}
       

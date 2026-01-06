@@ -60,7 +60,8 @@ export function createStorageAdapter(config: StorageConfig): StorageAdapter {
 
 /**
  * Get storage adapter for the current request context
- * In development, checks cookie first for instant switching without restart
+ * In development, uses STORAGE_ADAPTER from .dev.vars (requires restart to change)
+ * In production, R2 is required
  */
 export function getStorage(context: {
   cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket; STORAGE_ADAPTER?: string } };
@@ -68,22 +69,32 @@ export function getStorage(context: {
   const bucket = context.cloudflare?.env?.CONTENT_BUCKET;
   const localPath = process.cwd() + "/content";
   
-  // In development, check cookie first for instant switching
+  // Extract request info for logging
+  const requestUrl = request?.url ? new URL(request.url).pathname : "no-request";
+  
+  // In development, use STORAGE_ADAPTER from .dev.vars
   if (process.env.NODE_ENV === "development") {
-    const cookiePreference = request ? getAdapterFromCookie(request) : null;
-    const envPreference = context.cloudflare?.env?.STORAGE_ADAPTER;
-    const adapterPreference = cookiePreference || envPreference;
+    const adapterPreference = context.cloudflare?.env?.STORAGE_ADAPTER;
     
     // If user explicitly wants R2 and it's available
     if (adapterPreference === "r2" && bucket) {
+      console.log(`[Storage] ☁️  R2 adapter | route: ${requestUrl} | .dev.vars: STORAGE_ADAPTER=r2`);
       return new R2StorageAdapter(bucket);
     }
+    
     // Default to local in development
+    const reason = adapterPreference === "local" 
+      ? ".dev.vars: STORAGE_ADAPTER=local" 
+      : adapterPreference === "r2" && !bucket 
+        ? "R2 requested but bucket not configured" 
+        : "default (STORAGE_ADAPTER not set)";
+    console.log(`[Storage] 📁 LOCAL adapter | route: ${requestUrl} | ${reason}`);
     return new LocalStorageAdapter(localPath);
   }
   
   // In production, R2 is REQUIRED
   if (bucket) {
+    console.log(`[Storage] ☁️  R2 adapter | route: ${requestUrl} | production mode`);
     return new R2StorageAdapter(bucket);
   }
 
@@ -92,29 +103,16 @@ export function getStorage(context: {
 }
 
 /**
- * Get adapter preference from cookie (for development instant switching)
- */
-function getAdapterFromCookie(request: Request): StorageAdapterPreference | null {
-  const cookieHeader = request.headers.get("Cookie");
-  if (!cookieHeader) return null;
-  
-  const match = cookieHeader.match(/storage_adapter=(local|r2)/);
-  return match ? (match[1] as StorageAdapterPreference) : null;
-}
-
-/**
  * Detect the current storage mode
- * In development, checks cookie first for instant switching without restart
+ * Uses STORAGE_ADAPTER from .dev.vars in development
  */
 export function getStorageMode(context: {
   cloudflare?: { env?: { CONTENT_BUCKET?: R2Bucket; STORAGE_ADAPTER?: string } };
-}, request?: Request): StorageMode {
+}): StorageMode {
   const bucket = context.cloudflare?.env?.CONTENT_BUCKET;
   
   if (process.env.NODE_ENV === "development") {
-    const cookiePreference = request ? getAdapterFromCookie(request) : null;
-    const envPreference = context.cloudflare?.env?.STORAGE_ADAPTER;
-    const adapterPreference = cookiePreference || envPreference;
+    const adapterPreference = context.cloudflare?.env?.STORAGE_ADAPTER;
     
     // If user explicitly wants R2 and it's available
     if (adapterPreference === "r2" && bucket) {
@@ -132,19 +130,11 @@ export function getStorageMode(context: {
 }
 
 /**
- * Get the current adapter preference
- * In development, checks cookie first for instant switching
+ * Get the current adapter preference from .dev.vars
  */
 export function getAdapterPreference(context: {
   cloudflare?: { env?: { STORAGE_ADAPTER?: string } };
-}, request?: Request): StorageAdapterPreference {
-  // Check cookie first (for development instant switching)
-  if (request) {
-    const cookiePref = getAdapterFromCookie(request);
-    if (cookiePref) return cookiePref;
-  }
-  
-  // Fall back to environment variable
+}): StorageAdapterPreference {
   const pref = context.cloudflare?.env?.STORAGE_ADAPTER;
   if (pref === "r2" || pref === "local") {
     return pref;

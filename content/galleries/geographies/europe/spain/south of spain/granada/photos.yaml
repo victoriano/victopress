@@ -1,5 +1,7 @@
 - filename: alhambra_pano.jpg
   order: 1
+  hidden: false
+  featured: true
 - filename: IMG_4851_2.jpg
   order: 2
 - filename: 31502363611_faae72190e_o.jpg

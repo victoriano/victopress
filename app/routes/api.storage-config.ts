@@ -491,23 +491,67 @@ async function handleSwitchAdapter(formData: FormData) {
     });
   }
   
-  // Set cookie for instant switching (no restart needed!)
-  // Cookie expires in 1 year
-  const cookieValue = `storage_adapter=${adapter}; Path=/; Max-Age=31536000; SameSite=Lax`;
-  
-  return json(
-    {
-      success: true,
-      message: `Switched to ${adapter === "r2" ? "R2 Storage" : "Local Storage"}`,
-      adapter,
-      needsRestart: false, // No restart needed with cookie approach!
-    },
-    {
-      headers: {
-        "Set-Cookie": cookieValue,
-      },
+  try {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    
+    const devVarsPath = path.join(process.cwd(), ".dev.vars");
+    
+    // Read existing .dev.vars
+    let existingContent = "";
+    try {
+      existingContent = await fs.readFile(devVarsPath, "utf-8");
+    } catch {
+      // File doesn't exist, create with defaults
+      existingContent = "ADMIN_USERNAME=admin\nADMIN_PASSWORD=admin123\n";
     }
-  );
+    
+    // Parse existing vars
+    const lines = existingContent.split("\n");
+    const newLines: string[] = [];
+    let foundStorageAdapter = false;
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("STORAGE_ADAPTER=")) {
+        // Replace existing STORAGE_ADAPTER line
+        newLines.push(`STORAGE_ADAPTER=${adapter}`);
+        foundStorageAdapter = true;
+      } else {
+        newLines.push(line);
+      }
+    }
+    
+    // If STORAGE_ADAPTER wasn't found, add it
+    if (!foundStorageAdapter) {
+      // Remove trailing empty lines
+      while (newLines.length > 0 && newLines[newLines.length - 1].trim() === "") {
+        newLines.pop();
+      }
+      newLines.push(`STORAGE_ADAPTER=${adapter}`);
+      newLines.push(""); // Add final newline
+    }
+    
+    // Write back to .dev.vars
+    await fs.writeFile(devVarsPath, newLines.join("\n"));
+    
+    console.log(`[Storage Config] ✅ Changed STORAGE_ADAPTER to "${adapter}" in .dev.vars`);
+    console.log(`[Storage Config] ⚠️  Server restart required for changes to take effect`);
+    
+    return json({
+      success: true,
+      message: `Storage adapter changed to "${adapter === "r2" ? "R2 Storage" : "Local Storage"}". Restart the server for changes to take effect.`,
+      adapter,
+      needsRestart: true,
+      devVarsUpdated: true,
+    });
+  } catch (error) {
+    console.error("[Storage Config] Failed to update .dev.vars:", error);
+    return json({ 
+      success: false, 
+      message: error instanceof Error ? error.message : "Failed to update .dev.vars" 
+    });
+  }
 }
 
 function generateWranglerConfig(accountId: string, bucketName: string, publicUrl: string): string {
