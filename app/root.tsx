@@ -4,10 +4,47 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigation,
 } from "@remix-run/react";
 import type { LinksFunction } from "@remix-run/cloudflare";
 
 import "./tailwind.css";
+
+/**
+ * Global navigation loading indicator
+ * Shows an animated progress bar at the top when navigating between pages
+ */
+function NavigationProgress() {
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "loading";
+  
+  return (
+    <>
+      {/* Progress bar */}
+      <div
+        className={`fixed top-0 left-0 right-0 z-[100] h-0.5 transition-opacity duration-150 ${
+          isLoading ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <div 
+          className="h-full bg-gray-900 dark:bg-white"
+          style={{
+            animation: isLoading ? "progress 2s ease-in-out infinite" : "none",
+          }}
+        />
+      </div>
+      
+      {/* CSS animation for progress bar */}
+      <style>{`
+        @keyframes progress {
+          0% { width: 0%; }
+          50% { width: 70%; }
+          100% { width: 95%; }
+        }
+      `}</style>
+    </>
+  );
+}
 
 export const links: LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -50,6 +87,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: darkModeScript }} />
       </head>
       <body className="h-full bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+        <NavigationProgress />
         {children}
         <ScrollRestoration />
         <Scripts />

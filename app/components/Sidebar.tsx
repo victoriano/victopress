@@ -364,6 +364,7 @@ function NavSection({
         <Link
           to={item.path}
           onClick={handleClick}
+          prefetch="intent"
           className={`
             block text-[15px] font-medium leading-[24px] transition-colors text-left w-full
             ${getTextColor()}
@@ -375,6 +376,7 @@ function NavSection({
       ) : (
         <Link
           to={item.path}
+          prefetch="intent"
           className={`
             block text-[15px] leading-[24px] transition-colors
             ${isInPath ? "text-black dark:text-white font-bold" : "text-gray-400"}

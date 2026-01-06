@@ -50,6 +50,17 @@ const SRCSET_WIDTHS = [400, 800, 1200, 1600];
 const DEFAULT_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 
 /**
+ * CFI Toggle
+ * 
+ * Set to true when:
+ * - You have a custom domain (not .pages.dev)
+ * - Cloudflare Image Resizing is enabled for your zone
+ * 
+ * Set to false to use direct /api/images/ URLs (works everywhere)
+ */
+const USE_CFI = true; // Enabled - requires custom domain (photos.victoriano.me)
+
+/**
  * Encode a path for use in URLs (handles spaces and special chars)
  */
 function encodeImagePath(path: string): string {
@@ -61,9 +72,9 @@ function encodeImagePath(path: string): string {
 }
 
 /**
- * Generate a Cloudflare Image Resizing URL
+ * Generate an image URL - either CFI or direct based on configuration
  */
-function generateCFIUrl(
+function generateImageUrl(
   imagePath: string,
   targetWidth: number,
   quality: number
@@ -81,11 +92,14 @@ function generateCFIUrl(
   // Encode the path (handles spaces in folder names like "new york")
   const encodedPath = encodeImagePath(basePath);
   
-  // Build CFI options (no encoding needed - commas and equals are valid)
-  const cfiOptions = `width=${targetWidth},quality=${quality},format=auto,fit=scale-down`;
+  if (USE_CFI) {
+    // Build CFI URL for Cloudflare Image Resizing
+    const cfiOptions = `width=${targetWidth},quality=${quality},format=auto,fit=scale-down`;
+    return `/cdn-cgi/image/${cfiOptions}/api/images/${encodedPath}`;
+  }
   
-  // Build full CFI URL
-  return `/cdn-cgi/image/${cfiOptions}/api/images/${encodedPath}`;
+  // Direct URL - no resizing, but works everywhere
+  return `/api/images/${encodedPath}`;
 }
 
 export function OptimizedImage({
@@ -119,13 +133,13 @@ export function OptimizedImage({
     ? normalizedSrc
     : `/api/images/${normalizedSrc.replace(/^\//, "")}`;
 
-  // Generate srcset with CFI URLs for each width
-  const srcSet = SRCSET_WIDTHS
-    .map((w) => `${generateCFIUrl(imagePath, w, quality)} ${w}w`)
-    .join(", ");
+  // Generate srcset for each width (CFI or direct based on config)
+  const srcSet = USE_CFI
+    ? SRCSET_WIDTHS.map((w) => `${generateImageUrl(imagePath, w, quality)} ${w}w`).join(", ")
+    : undefined; // No srcset needed for direct URLs (browser handles it)
 
-  // Default src (medium size for initial load)
-  const defaultSrc = generateCFIUrl(imagePath, 1200, quality);
+  // Default src
+  const defaultSrc = generateImageUrl(imagePath, 1200, quality);
 
   // Placeholder styles
   const placeholderStyles = aspectRatio
@@ -154,7 +168,7 @@ export function OptimizedImage({
         ref={imgRef}
         src={defaultSrc}
         srcSet={srcSet}
-        sizes={sizes}
+        sizes={srcSet ? sizes : undefined}
         alt={alt}
         width={width}
         height={height}

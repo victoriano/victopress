@@ -117,7 +117,7 @@ export function PhotoItem({
 
   if (href) {
     return (
-      <Link to={href} className={className}>
+      <Link to={href} prefetch="intent" className={className}>
         {image}
       </Link>
     );

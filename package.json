@@ -15,7 +15,9 @@
     "deploy": "wrangler pages deploy ./build/client",
     "cf-typegen": "wrangler types",
     "generate-content": "bun run scripts/generate-sample-content.ts",
-    "generate-manifest": "bun run scripts/generate-content-manifest.ts"
+    "generate-manifest": "bun run scripts/generate-content-manifest.ts",
+    "sync-to-r2": "bun run scripts/sync-local-to-r2.ts",
+    "sync-from-r2": "bun run scripts/sync-r2-to-local.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

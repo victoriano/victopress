@@ -297,6 +297,7 @@ function MobileNavSection({
         <Link
           to={item.path}
           onClick={handleClick}
+          prefetch="intent"
           className={`
             text-[15px] font-medium leading-[24px] transition-colors
             ${getTextColor()}
