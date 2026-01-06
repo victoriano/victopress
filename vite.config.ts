@@ -18,8 +18,6 @@ export default defineConfig({
   },
   plugins: [
     remixCloudflareDevProxy({
-      // Connect to REAL R2 bucket in development (requires wrangler login)
-      // Set to false to use local emulation instead
       remoteBindings: true,
       persist: { path: ".wrangler/state/v3" },
     }),

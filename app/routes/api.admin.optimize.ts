@@ -9,20 +9,31 @@
  * - action: "optimize-image" - Process a single image
  * - action: "status" - Get optimization status (how many images need processing)
  * 
- * Uses @cf-wasm/photon for server-side WebP generation.
+ * Uses Jimp for server-side WebP generation.
  */
 
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { checkAdminAuth } from "~/utils/admin-auth";
 import { getStorage, getContentIndex } from "~/lib/content-engine";
-import {
-  processImageServer,
-  isVariantFile,
-  isImageFile,
-  getVariantFilename,
-  VARIANT_WIDTHS,
-} from "~/lib/image-optimizer.server";
+
+// Helper functions that don't need Jimp
+function isImageFile(filename: string): boolean {
+  const ext = filename.toLowerCase().split(".").pop();
+  return ["jpg", "jpeg", "png", "webp", "gif"].includes(ext || "");
+}
+
+function isVariantFile(filename: string): boolean {
+  return /_\d+w\.webp$/.test(filename);
+}
+
+function getVariantFilename(originalFilename: string, width: number): string {
+  const dotIndex = originalFilename.lastIndexOf(".");
+  const nameWithoutExt = dotIndex >= 0 
+    ? originalFilename.substring(0, dotIndex) 
+    : originalFilename;
+  return `${nameWithoutExt}_${width}w.webp`;
+}
 
 /**
  * GET - Get optimization status
@@ -97,6 +108,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 async function handleOptimizeAll(
   context: Parameters<typeof getStorage>[0]
 ) {
+  // Dynamic import to avoid blocking Vite startup
+  const { processImageServer } = await import("~/lib/image-optimizer.server");
+  
   const storage = getStorage(context);
   const contentIndex = await getContentIndex(storage);
   
@@ -167,6 +181,8 @@ async function handleOptimizeGallery(
   formData: FormData,
   context: Parameters<typeof getStorage>[0]
 ) {
+  const { processImageServer } = await import("~/lib/image-optimizer.server");
+  
   const gallerySlug = formData.get("gallerySlug") as string;
   
   if (!gallerySlug) {
@@ -240,6 +256,8 @@ async function handleOptimizeImage(
   formData: FormData,
   context: Parameters<typeof getStorage>[0]
 ) {
+  const { processImageServer } = await import("~/lib/image-optimizer.server");
+  
   const imagePath = formData.get("imagePath") as string;
   
   if (!imagePath) {

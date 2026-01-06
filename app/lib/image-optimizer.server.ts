@@ -1,10 +1,12 @@
 /**
  * Server-side Image Optimizer
  * 
- * Utility functions for image optimization.
+ * Uses Jimp for image processing - works in ALL environments:
+ * - Node.js / Bun (local development)
+ * - Cloudflare Workers (production)
+ * - Edge runtimes
  * 
- * NOTE: The actual @cf-wasm/photon processing is in a separate worker-only module.
- * These utilities work in both dev and production.
+ * Generates WebP variants at multiple sizes for responsive images.
  */
 
 // Standard widths for responsive images
@@ -63,52 +65,127 @@ export function isImageFile(filename: string): boolean {
 
 /**
  * Process an image and generate WebP variants
- * 
- * NOTE: This is a stub that returns empty variants in development.
- * In production (Cloudflare Workers), you should use the worker-specific
- * implementation that imports @cf-wasm/photon.
+ * Uses dynamic import to avoid blocking Vite startup
  * 
  * @param imageData - Raw image bytes (ArrayBuffer or Uint8Array)
  * @param filename - Original filename (for naming variants)
- * @returns Processed result with variants (empty in dev)
+ * @returns Processed result with variants
  */
 export async function processImageServer(
-  _imageData: ArrayBuffer | Uint8Array,
+  imageData: ArrayBuffer | Uint8Array,
   filename: string
 ): Promise<ProcessedImageResult> {
-  // In development, we can't use @cf-wasm/photon (it requires Workers runtime)
-  // Return empty variants - images will be served without optimization in dev
-  console.log(`[Image Optimizer] Skipping optimization for ${filename} (not in Workers runtime)`);
-  
-  return {
-    original: {
-      filename,
-      width: 0,
-      height: 0,
-    },
-    variants: [],
-  };
+  try {
+    // Dynamic import to avoid blocking Vite startup
+    const { Jimp } = await import("jimp");
+    
+    const buffer = imageData instanceof ArrayBuffer 
+      ? Buffer.from(imageData) 
+      : Buffer.from(imageData);
+    
+    // Load image with Jimp
+    const image = await Jimp.read(buffer);
+    const originalWidth = image.width;
+    const originalHeight = image.height;
+    
+    console.log(`[Image Optimizer] Processing ${filename} (${originalWidth}x${originalHeight})`);
+    
+    const variants: ImageVariant[] = [];
+    
+    for (const targetWidth of VARIANT_WIDTHS) {
+      // Don't upscale - skip if original is smaller
+      if (targetWidth >= originalWidth) {
+        console.log(`[Image Optimizer] Skipping ${targetWidth}w (original is ${originalWidth}w)`);
+        continue;
+      }
+      
+      // Clone and resize
+      const resized = image.clone().resize({ w: targetWidth });
+      
+      // Convert to WebP buffer
+      const webpBuffer = await resized.getBuffer("image/webp", { quality: WEBP_QUALITY });
+      
+      const variantFilename = getVariantFilename(filename, targetWidth);
+      console.log(`[Image Optimizer] Created ${variantFilename} (${webpBuffer.length} bytes)`);
+      
+      variants.push({
+        width: targetWidth,
+        data: new Uint8Array(webpBuffer),
+        filename: variantFilename,
+        size: webpBuffer.length,
+      });
+    }
+    
+    console.log(`[Image Optimizer] Done: ${filename} → ${variants.length} variants`);
+    
+    return {
+      original: {
+        filename,
+        width: originalWidth,
+        height: originalHeight,
+      },
+      variants,
+    };
+  } catch (error) {
+    console.error(`[Image Optimizer] Error processing ${filename}:`, error);
+    return {
+      original: { filename, width: 0, height: 0 },
+      variants: [],
+    };
+  }
 }
 
 /**
  * Generate a single variant at a specific width
- * Returns null in development
  */
 export async function generateVariant(
-  _imageData: ArrayBuffer | Uint8Array,
-  _targetWidth: number,
-  _quality: number = WEBP_QUALITY
+  imageData: ArrayBuffer | Uint8Array,
+  targetWidth: number,
+  quality: number = WEBP_QUALITY
 ): Promise<Uint8Array | null> {
-  console.log("[Image Optimizer] Skipping variant generation (not in Workers runtime)");
-  return null;
+  try {
+    const { Jimp } = await import("jimp");
+    
+    const buffer = imageData instanceof ArrayBuffer 
+      ? Buffer.from(imageData) 
+      : Buffer.from(imageData);
+    
+    const image = await Jimp.read(buffer);
+    const originalWidth = image.width;
+    
+    // Don't upscale
+    if (targetWidth >= originalWidth) {
+      return null;
+    }
+    
+    // Resize and convert to WebP
+    const resized = image.resize({ w: targetWidth });
+    const webpBuffer = await resized.getBuffer("image/webp", { quality });
+    
+    return new Uint8Array(webpBuffer);
+  } catch (error) {
+    console.error("[Image Optimizer] Error generating variant:", error);
+    return null;
+  }
 }
 
 /**
  * Get image dimensions without full processing
- * Returns null in development
  */
 export async function getImageDimensions(
-  _imageData: ArrayBuffer | Uint8Array
+  imageData: ArrayBuffer | Uint8Array
 ): Promise<{ width: number; height: number } | null> {
-  return null;
+  try {
+    const { Jimp } = await import("jimp");
+    
+    const buffer = imageData instanceof ArrayBuffer 
+      ? Buffer.from(imageData) 
+      : Buffer.from(imageData);
+    
+    const image = await Jimp.read(buffer);
+    return { width: image.width, height: image.height };
+  } catch (error) {
+    console.error("[Image Optimizer] Error reading dimensions:", error);
+    return null;
+  }
 }

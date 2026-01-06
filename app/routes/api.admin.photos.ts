@@ -18,7 +18,19 @@ import {
   addPhotosToGalleryIndex,
   type GalleryPhotoEntry,
 } from "~/lib/content-engine";
-import { getAllVariantFilenames, isVariantFile } from "~/lib/image-optimizer.server";
+// Helper functions that don't need Jimp
+function isVariantFile(filename: string): boolean {
+  return /_\d+w\.webp$/.test(filename);
+}
+
+function getAllVariantFilenames(originalFilename: string): string[] {
+  const widths = [400, 800, 1200, 1600];
+  const dotIndex = originalFilename.lastIndexOf(".");
+  const nameWithoutExt = dotIndex >= 0 
+    ? originalFilename.substring(0, dotIndex) 
+    : originalFilename;
+  return widths.map(w => `${nameWithoutExt}_${w}w.webp`);
+}
 import * as yaml from "yaml";
 
 // Must match PhotoYamlEntry in gallery-scanner.ts
