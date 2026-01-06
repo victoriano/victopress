@@ -1843,7 +1843,7 @@ function ImageOptimizationPanel() {
               WebP Variant Generation
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Uses @cf-wasm/photon to generate optimized WebP variants (400, 800, 1200, 1600px) server-side
+              Uses Jimp to generate optimized WebP variants (400, 800, 1200, 1600px) server-side
             </p>
           </div>
         </div>
