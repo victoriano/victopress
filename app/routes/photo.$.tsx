@@ -179,37 +179,39 @@ export default function PhotoPage() {
     >
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
-        {/* Photo container with touch navigation zones */}
+        {/* Photo with navigation buttons overlaid */}
         <div className="relative">
           <img
             src={photoUrl}
             alt={photo.title || photo.filename}
-            className="w-full object-contain pointer-events-none select-none"
+            className="w-full object-contain select-none"
           />
-          
-          {/* Touch navigation overlay zones */}
-          <div className="absolute inset-0 flex">
-            {/* Left zone - Previous */}
-            {prevPhoto ? (
-              <Link
-                to={`/photo/${gallerySlug}/${prevPhoto.filename}`}
-                className="w-1/2 h-full"
-                aria-label="Previous photo"
-              />
-            ) : (
-              <div className="w-1/2 h-full" />
-            )}
-            
-            {/* Right zone - Next */}
-            {nextPhoto ? (
-              <Link
-                to={`/photo/${gallerySlug}/${nextPhoto.filename}`}
-                className="w-1/2 h-full"
-                aria-label="Next photo"
-              />
-            ) : (
-              <div className="w-1/2 h-full" />
-            )}
+          {/* Navigation buttons over the image */}
+          <div className="absolute inset-0 z-20 flex pointer-events-auto">
+            {/* Left half - Previous */}
+            <button
+              type="button"
+              onClick={() => {
+                if (prevPhoto) {
+                  navigate(`/photo/${gallerySlug}/${prevPhoto.filename}`);
+                }
+              }}
+              disabled={!prevPhoto}
+              className="w-1/2 h-full border-0 cursor-pointer disabled:cursor-default bg-transparent active:bg-black/10"
+              aria-label="Previous photo"
+            />
+            {/* Right half - Next */}
+            <button
+              type="button"
+              onClick={() => {
+                if (nextPhoto) {
+                  navigate(`/photo/${gallerySlug}/${nextPhoto.filename}`);
+                }
+              }}
+              disabled={!nextPhoto}
+              className="w-1/2 h-full border-0 cursor-pointer disabled:cursor-default bg-transparent active:bg-black/10"
+              aria-label="Next photo"
+            />
           </div>
         </div>
         

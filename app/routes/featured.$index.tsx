@@ -143,12 +143,41 @@ export default function FeaturedPhotoPage() {
     >
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
-        {/* Photo - full width, no margins */}
-        <img
-          src={photoUrl}
-          alt={photo.title || photo.filename}
-          className="w-full object-contain pointer-events-none select-none"
-        />
+        {/* Photo with navigation buttons overlaid */}
+        <div className="relative">
+          <img
+            src={photoUrl}
+            alt={photo.title || photo.filename}
+            className="w-full object-contain select-none"
+          />
+          {/* Navigation buttons over the image */}
+          <div className="absolute inset-0 z-20 flex pointer-events-auto">
+            {/* Left half - Previous */}
+            <button
+              type="button"
+              onClick={() => {
+                if (prevIndex !== null) {
+                  navigate(`/featured/${prevIndex}`);
+                }
+              }}
+              disabled={prevIndex === null}
+              className="w-1/2 h-full border-0 cursor-pointer disabled:cursor-default bg-transparent active:bg-black/10"
+              aria-label="Previous photo"
+            />
+            {/* Right half - Next */}
+            <button
+              type="button"
+              onClick={() => {
+                if (nextIndex !== null) {
+                  navigate(`/featured/${nextIndex}`);
+                }
+              }}
+              disabled={nextIndex === null}
+              className="w-1/2 h-full border-0 cursor-pointer disabled:cursor-default bg-transparent active:bg-black/10"
+              aria-label="Next photo"
+            />
+          </div>
+        </div>
         
         {/* Info bar */}
         <div className="bg-white dark:bg-gray-950 px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm gap-2 sm:gap-0">
