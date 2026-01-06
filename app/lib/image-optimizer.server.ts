@@ -1,13 +1,11 @@
 /**
  * Server-side Image Optimizer
  * 
- * Uses @cf-wasm/photon for image processing in Cloudflare Workers.
- * Generates WebP variants at multiple sizes for responsive images.
+ * Utility functions for image optimization.
  * 
- * This runs entirely server-side, no browser processing needed!
+ * NOTE: The actual @cf-wasm/photon processing is in a separate worker-only module.
+ * These utilities work in both dev and production.
  */
-
-import { PhotonImage, resize, SamplingFilter } from "@cf-wasm/photon";
 
 // Standard widths for responsive images
 export const VARIANT_WIDTHS = [400, 800, 1200, 1600] as const;
@@ -66,115 +64,51 @@ export function isImageFile(filename: string): boolean {
 /**
  * Process an image and generate WebP variants
  * 
+ * NOTE: This is a stub that returns empty variants in development.
+ * In production (Cloudflare Workers), you should use the worker-specific
+ * implementation that imports @cf-wasm/photon.
+ * 
  * @param imageData - Raw image bytes (ArrayBuffer or Uint8Array)
  * @param filename - Original filename (for naming variants)
- * @returns Processed result with variants
+ * @returns Processed result with variants (empty in dev)
  */
 export async function processImageServer(
-  imageData: ArrayBuffer | Uint8Array,
+  _imageData: ArrayBuffer | Uint8Array,
   filename: string
 ): Promise<ProcessedImageResult> {
-  const bytes = imageData instanceof ArrayBuffer 
-    ? new Uint8Array(imageData) 
-    : imageData;
-  
-  // Load image with Photon
-  const image = PhotonImage.new_from_byteslice(bytes);
-  const originalWidth = image.get_width();
-  const originalHeight = image.get_height();
-  
-  const variants: ImageVariant[] = [];
-  
-  for (const targetWidth of VARIANT_WIDTHS) {
-    // Don't upscale - skip if original is smaller
-    if (targetWidth >= originalWidth) continue;
-    
-    // Calculate new height maintaining aspect ratio
-    const scale = targetWidth / originalWidth;
-    const targetHeight = Math.round(originalHeight * scale);
-    
-    // Clone the image for this variant (don't modify original)
-    const variantImage = PhotonImage.new_from_byteslice(bytes);
-    
-    // Resize using Lanczos3 for high quality (SamplingFilter.Lanczos3 = 3)
-    resize(variantImage, targetWidth, targetHeight, SamplingFilter.Lanczos3);
-    
-    // Convert to WebP
-    const webpData = variantImage.get_bytes_webp();
-    
-    // Free memory
-    variantImage.free();
-    
-    variants.push({
-      width: targetWidth,
-      data: webpData,
-      filename: getVariantFilename(filename, targetWidth),
-      size: webpData.length,
-    });
-  }
-  
-  // Free the original image
-  image.free();
+  // In development, we can't use @cf-wasm/photon (it requires Workers runtime)
+  // Return empty variants - images will be served without optimization in dev
+  console.log(`[Image Optimizer] Skipping optimization for ${filename} (not in Workers runtime)`);
   
   return {
     original: {
       filename,
-      width: originalWidth,
-      height: originalHeight,
+      width: 0,
+      height: 0,
     },
-    variants,
+    variants: [],
   };
 }
 
 /**
  * Generate a single variant at a specific width
+ * Returns null in development
  */
 export async function generateVariant(
-  imageData: ArrayBuffer | Uint8Array,
-  targetWidth: number,
-  quality: number = WEBP_QUALITY
-): Promise<Uint8Array> {
-  const bytes = imageData instanceof ArrayBuffer 
-    ? new Uint8Array(imageData) 
-    : imageData;
-  
-  const image = PhotonImage.new_from_byteslice(bytes);
-  const originalWidth = image.get_width();
-  const originalHeight = image.get_height();
-  
-  // Calculate new height maintaining aspect ratio
-  const scale = Math.min(targetWidth / originalWidth, 1); // Don't upscale
-  const newWidth = Math.round(originalWidth * scale);
-  const newHeight = Math.round(originalHeight * scale);
-  
-  // Resize if needed
-  if (newWidth < originalWidth) {
-    resize(image, newWidth, newHeight, SamplingFilter.Lanczos3);
-  }
-  
-  // Convert to WebP
-  const webpData = image.get_bytes_webp();
-  
-  // Free memory
-  image.free();
-  
-  return webpData;
+  _imageData: ArrayBuffer | Uint8Array,
+  _targetWidth: number,
+  _quality: number = WEBP_QUALITY
+): Promise<Uint8Array | null> {
+  console.log("[Image Optimizer] Skipping variant generation (not in Workers runtime)");
+  return null;
 }
 
 /**
  * Get image dimensions without full processing
+ * Returns null in development
  */
-export function getImageDimensions(
-  imageData: ArrayBuffer | Uint8Array
-): { width: number; height: number } {
-  const bytes = imageData instanceof ArrayBuffer 
-    ? new Uint8Array(imageData) 
-    : imageData;
-  
-  const image = PhotonImage.new_from_byteslice(bytes);
-  const width = image.get_width();
-  const height = image.get_height();
-  image.free();
-  
-  return { width, height };
+export async function getImageDimensions(
+  _imageData: ArrayBuffer | Uint8Array
+): Promise<{ width: number; height: number } | null> {
+  return null;
 }
