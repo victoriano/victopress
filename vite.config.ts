@@ -16,6 +16,15 @@ export default defineConfig({
     port: 5174,
     host: true,
   },
+  // Exclude Workers-only WASM packages from Vite bundling
+  // These only work in wrangler pages dev / production
+  optimizeDeps: {
+    exclude: ["@cf-wasm/photon"],
+  },
+  ssr: {
+    external: ["@cf-wasm/photon"],
+    noExternal: [],
+  },
   plugins: [
     remixCloudflareDevProxy({
       remoteBindings: true,

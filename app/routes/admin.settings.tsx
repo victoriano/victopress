@@ -1843,7 +1843,7 @@ function ImageOptimizationPanel() {
               WebP Variant Generation
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Uses Jimp to generate optimized WebP variants (400, 800, 1200, 1600px) server-side
+              Uses @cf-wasm/photon to generate optimized WebP variants (400, 800, 1200, 1600px) server-side
             </p>
           </div>
         </div>
@@ -1885,14 +1885,20 @@ function ImageOptimizationPanel() {
       {/* Optimize All Button */}
       <div className="pt-2">
         <button
+          type="button"
           onClick={handleOptimizeAll}
-          disabled={isOptimizing || isLoading || (status?.percentOptimized === 100)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 disabled:shadow-none"
+          disabled={isOptimizing || (status?.percentOptimized === 100)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed"
         >
           {isOptimizing ? (
             <>
               <LoadingSpinner />
               Optimizing Images...
+            </>
+          ) : isLoading ? (
+            <>
+              <LoadingSpinner />
+              Loading Status...
             </>
           ) : status?.percentOptimized === 100 ? (
             <>

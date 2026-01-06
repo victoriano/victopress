@@ -50,8 +50,11 @@ The setup wizard will guide you through:
 # Install dependencies
 bun install
 
-# Start development server
+# Start development server (fast, with hot reload)
 bun run dev
+
+# Start with full Workers emulation (for testing image optimization)
+bun run dev:workers
 
 # Build for production
 bun run build
@@ -59,6 +62,20 @@ bun run build
 # Deploy to Cloudflare Pages
 bun run deploy
 ```
+
+### Development Modes
+
+VictoPress uses `@cf-wasm/photon` for server-side image optimization, which requires the Cloudflare Workers runtime. There are two development modes:
+
+| Command | Use Case | Image Optimization | Hot Reload |
+|---------|----------|:------------------:|:----------:|
+| `bun run dev` | Fast UI development | ❌ Skipped | ✅ Yes |
+| `bun run dev:workers` | Test Workers features | ✅ Full support | ❌ No |
+
+**Recommended workflow:**
+1. Use `bun run dev` for everyday UI/UX development (fast iteration)
+2. Use `bun run dev:workers` when testing image uploads or optimization features
+3. Production uses the same code as `dev:workers`
 
 ## 📁 Content Structure
 
@@ -113,8 +130,31 @@ Your markdown content here...
 - **Framework:** Remix + TypeScript
 - **Styling:** Tailwind CSS
 - **Storage:** Cloudflare R2 (S3-compatible)
+- **Images:** @cf-wasm/photon (WebP generation in Workers)
 - **Deploy:** Cloudflare Pages
 - **Package Manager:** Bun
+
+## 🖼️ Image Optimization
+
+VictoPress generates optimized WebP variants server-side using `@cf-wasm/photon`:
+
+```
+original.jpg → original.jpg (kept)
+             → original_400w.webp
+             → original_800w.webp
+             → original_1200w.webp
+             → original_1600w.webp
+```
+
+**Key features:**
+- Works on any Cloudflare plan (no Pro required)
+- Automatic on upload via admin panel
+- Batch optimization via Admin Settings
+- Variants deleted when original is removed
+
+**Admin Settings → Image Optimization:**
+- Shows % of images optimized
+- "Optimize All Images" button for existing photos
 
 ## 🏗️ Architecture
 
