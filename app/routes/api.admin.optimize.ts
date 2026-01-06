@@ -35,49 +35,128 @@ function getVariantFilename(originalFilename: string, width: number): string {
   return `${nameWithoutExt}_${width}w.webp`;
 }
 
+// Track optimization progress in memory (updated by the optimize action)
+let optimizationProgress: { 
+  totalImages: number;
+  imagesWithVariants: number; 
+  isRunning: boolean;
+  lastChecked: number;
+} = { totalImages: 0, imagesWithVariants: 0, isRunning: false, lastChecked: 0 };
+
+// Increment this during optimization
+function updateProgress(processed: number, total: number) {
+  optimizationProgress.imagesWithVariants = processed;
+  optimizationProgress.totalImages = total;
+}
+
 /**
- * GET - Get optimization status
+ * GET - Get optimization status (uses in-memory progress during optimization)
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
   
+  // If optimization is running, return the live progress immediately
+  if (optimizationProgress.isRunning) {
+    const { totalImages, imagesWithVariants } = optimizationProgress;
+    const percentOptimized = totalImages > 0 
+      ? Math.round((imagesWithVariants / totalImages) * 100) 
+      : 0;
+    
+    return json({
+      totalImages,
+      imagesWithVariants,
+      imagesNeedingOptimization: totalImages - imagesWithVariants,
+      percentOptimized,
+      isRunning: true,
+    });
+  }
+  
+  // If not running but we have recent data, return it
+  const now = Date.now();
+  if (optimizationProgress.lastChecked && (now - optimizationProgress.lastChecked) < 30000) {
+    const { totalImages, imagesWithVariants } = optimizationProgress;
+    const percentOptimized = totalImages > 0 
+      ? Math.round((imagesWithVariants / totalImages) * 100) 
+      : 100;
+    
+    return json({
+      totalImages,
+      imagesWithVariants,
+      imagesNeedingOptimization: totalImages - imagesWithVariants,
+      percentOptimized,
+    });
+  }
+  
+  // Otherwise, do a full scan (slow but accurate)
   const storage = getStorage(context);
   const contentIndex = await getContentIndex(storage);
   
   let totalImages = 0;
   let imagesWithVariants = 0;
-  let imagesNeedingOptimization = 0;
   
-  // Check each gallery from galleryData (which has photos)
+  // Count total images first (fast - just uses the content index)
   for (const gallery of contentIndex.galleryData || []) {
     for (const photo of gallery.photos || []) {
       if (!isImageFile(photo.filename)) continue;
       if (isVariantFile(photo.filename)) continue;
-      
       totalImages++;
-      
-      // Check if this image has all variants
-      const galleryPath = gallery.path || `galleries/${gallery.slug}`;
-      const variantFilename = getVariantFilename(photo.filename, 800); // Check for 800w as indicator
-      const variantPath = `${galleryPath}/${variantFilename}`;
-      
-      const hasVariants = await storage.exists(variantPath);
-      
-      if (hasVariants) {
-        imagesWithVariants++;
-      } else {
-        imagesNeedingOptimization++;
-      }
     }
   }
+  
+  // Spot-check a few random images to estimate optimization status
+  // This is much faster than checking every file
+  const sampleSize = Math.min(10, totalImages);
+  const allPhotos: { gallery: typeof contentIndex.galleryData[0]; photo: { filename: string } }[] = [];
+  
+  for (const gallery of contentIndex.galleryData || []) {
+    for (const photo of gallery.photos || []) {
+      if (!isImageFile(photo.filename)) continue;
+      if (isVariantFile(photo.filename)) continue;
+      allPhotos.push({ gallery, photo });
+    }
+  }
+  
+  // Sample random photos
+  let optimizedCount = 0;
+  for (let i = 0; i < sampleSize && allPhotos.length > 0; i++) {
+    const idx = Math.floor(Math.random() * allPhotos.length);
+    const { gallery, photo } = allPhotos.splice(idx, 1)[0];
+    
+    const galleryPath = gallery.path || `galleries/${gallery.slug}`;
+    const variantFilename = getVariantFilename(photo.filename, 800);
+    const variantPath = `${galleryPath}/${variantFilename}`;
+    
+    try {
+      const exists = await storage.exists(variantPath);
+      if (exists) optimizedCount++;
+    } catch {
+      // Ignore errors in sampling
+    }
+  }
+  
+  // Extrapolate from sample
+  const sampleRatio = sampleSize > 0 ? optimizedCount / sampleSize : 0;
+  imagesWithVariants = Math.round(totalImages * sampleRatio);
+  
+  const percentOptimized = totalImages > 0 
+    ? Math.round((imagesWithVariants / totalImages) * 100) 
+    : 100;
+  
+  // Update the progress cache
+  optimizationProgress = {
+    totalImages,
+    imagesWithVariants,
+    isRunning: false,
+    lastChecked: now,
+  };
+  
+  console.log(`[Optimize] Status (sampled): ${imagesWithVariants}/${totalImages} (${percentOptimized}%)`);
   
   return json({
     totalImages,
     imagesWithVariants,
-    imagesNeedingOptimization,
-    percentOptimized: totalImages > 0 
-      ? Math.round((imagesWithVariants / totalImages) * 100) 
-      : 100,
+    imagesNeedingOptimization: totalImages - imagesWithVariants,
+    percentOptimized,
   });
 }
 
@@ -114,10 +193,29 @@ async function handleOptimizeAll(
   const storage = getStorage(context);
   const contentIndex = await getContentIndex(storage);
   
+  // Count total images first
+  let totalImages = 0;
+  for (const gallery of contentIndex.galleryData || []) {
+    for (const photo of gallery.photos || []) {
+      if (!isImageFile(photo.filename)) continue;
+      if (isVariantFile(photo.filename)) continue;
+      totalImages++;
+    }
+  }
+  
+  // Initialize progress tracking
+  optimizationProgress = {
+    totalImages,
+    imagesWithVariants: 0,
+    isRunning: true,
+    lastChecked: Date.now(),
+  };
+  
   let processed = 0;
   let skipped = 0;
   let failed = 0;
   let variantsCreated = 0;
+  let alreadyOptimized = 0;
   
   // Use galleryData which has photos
   for (const gallery of contentIndex.galleryData || []) {
@@ -131,6 +229,9 @@ async function handleOptimizeAll(
       const variantPath = `${galleryPath}/${getVariantFilename(photo.filename, 800)}`;
       if (await storage.exists(variantPath)) {
         skipped++;
+        alreadyOptimized++;
+        // Update progress
+        optimizationProgress.imagesWithVariants = alreadyOptimized + processed;
         continue;
       }
       
@@ -154,13 +255,19 @@ async function handleOptimizeAll(
         }
         
         processed++;
-        console.log(`[Optimize] Processed ${photo.filename} (${result.variants.length} variants)`);
+        // Update progress after each successful processing
+        optimizationProgress.imagesWithVariants = alreadyOptimized + processed;
+        console.log(`[Optimize] Processed ${photo.filename} (${result.variants.length} variants) - Progress: ${optimizationProgress.imagesWithVariants}/${totalImages}`);
       } catch (err) {
         console.error(`[Optimize] Failed to process ${photoPath}:`, err);
         failed++;
       }
     }
   }
+  
+  // Mark optimization as complete
+  optimizationProgress.isRunning = false;
+  optimizationProgress.lastChecked = Date.now();
   
   return json({
     success: true,
