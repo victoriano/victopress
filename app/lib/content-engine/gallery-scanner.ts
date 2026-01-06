@@ -86,11 +86,14 @@ async function scanGalleriesRecursive(
       galleries.push(gallery);
     }
     
+    // Create slugified folder name for child galleries
+    const folderSlug = toSlug(dir.name);
+    
     // Also scan subdirectories recursively
     const subGalleries = await scanGalleriesRecursive(
       storage,
       dir.path,
-      parentCategory ? `${parentCategory}/${dir.name}` : dir.name,
+      parentCategory ? `${parentCategory}/${folderSlug}` : folderSlug,
       photoCache
     );
     galleries.push(...subGalleries);
