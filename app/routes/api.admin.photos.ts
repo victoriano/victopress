@@ -57,18 +57,17 @@ async function handleDelete(
   formData: FormData,
   context: { cloudflare?: { env?: Record<string, unknown> } }
 ) {
-  const gallerySlug = formData.get("gallerySlug") as string;
+  const galleryPath = formData.get("galleryPath") as string;
   const photoPaths = formData.getAll("photoPaths") as string[];
   
-  if (!gallerySlug || photoPaths.length === 0) {
+  if (!galleryPath || photoPaths.length === 0) {
     return json({ 
       success: false, 
-      error: "Gallery slug and photo paths are required" 
+      error: "Gallery path and photo paths are required" 
     }, { status: 400 });
   }
   
   const storage = getStorage(context);
-  const galleryPath = `galleries/${gallerySlug}`;
   
   // Delete each photo
   const results: Array<{ path: string; success: boolean; error?: string }> = [];
@@ -114,19 +113,18 @@ async function handleUpdate(
   formData: FormData,
   context: { cloudflare?: { env?: Record<string, unknown> } }
 ) {
-  const gallerySlug = formData.get("gallerySlug") as string;
+  const galleryPath = formData.get("galleryPath") as string;
   const photoPath = formData.get("photoPath") as string;
   const filename = formData.get("filename") as string;
   
-  if (!gallerySlug || !photoPath || !filename) {
+  if (!galleryPath || !photoPath || !filename) {
     return json({ 
       success: false, 
-      error: "Gallery slug, photo path, and filename are required" 
+      error: "Gallery path, photo path, and filename are required" 
     }, { status: 400 });
   }
   
   const storage = getStorage(context);
-  const galleryPath = `galleries/${gallerySlug}`;
   
   // Parse update fields
   const updates: Partial<PhotoMetadata> = {};
@@ -173,20 +171,18 @@ async function handleMove(
   formData: FormData,
   context: { cloudflare?: { env?: Record<string, unknown> } }
 ) {
-  const fromGallerySlug = formData.get("fromGallerySlug") as string;
-  const toGallerySlug = formData.get("toGallerySlug") as string;
+  const fromPath = formData.get("fromGalleryPath") as string;
+  const toPath = formData.get("toGalleryPath") as string;
   const photoPaths = formData.getAll("photoPaths") as string[];
   
-  if (!fromGallerySlug || !toGallerySlug || photoPaths.length === 0) {
+  if (!fromPath || !toPath || photoPaths.length === 0) {
     return json({ 
       success: false, 
-      error: "Source gallery, destination gallery, and photo paths are required" 
+      error: "Source gallery path, destination gallery path, and photo paths are required" 
     }, { status: 400 });
   }
   
   const storage = getStorage(context);
-  const fromPath = `galleries/${fromGallerySlug}`;
-  const toPath = `galleries/${toGallerySlug}`;
   
   // Check destination exists
   const destFiles = await storage.list(toPath);
@@ -251,13 +247,13 @@ async function handleReorder(
   formData: FormData,
   context: { cloudflare?: { env?: Record<string, unknown> } }
 ) {
-  const gallerySlug = formData.get("gallerySlug") as string;
+  const galleryPath = formData.get("galleryPath") as string;
   const orderJson = formData.get("order") as string;
   
-  if (!gallerySlug || !orderJson) {
+  if (!galleryPath || !orderJson) {
     return json({ 
       success: false, 
-      error: "Gallery slug and order are required" 
+      error: "Gallery path and order are required" 
     }, { status: 400 });
   }
   
@@ -272,7 +268,6 @@ async function handleReorder(
   }
   
   const storage = getStorage(context);
-  const galleryPath = `galleries/${gallerySlug}`;
   const yamlPath = `${galleryPath}/photos.yaml`;
   
   // Get or create photos.yaml (plain array format)
@@ -333,19 +328,18 @@ async function handleToggleVisibility(
   formData: FormData,
   context: { cloudflare?: { env?: Record<string, unknown> } }
 ) {
-  const gallerySlug = formData.get("gallerySlug") as string;
+  const galleryPath = formData.get("galleryPath") as string;
   const photoPaths = formData.getAll("photoPaths") as string[];
   const hidden = formData.get("hidden") === "true";
   
-  if (!gallerySlug || photoPaths.length === 0) {
+  if (!galleryPath || photoPaths.length === 0) {
     return json({ 
       success: false, 
-      error: "Gallery slug and photo paths are required" 
+      error: "Gallery path and photo paths are required" 
     }, { status: 400 });
   }
   
   const storage = getStorage(context);
-  const galleryPath = `galleries/${gallerySlug}`;
   
   // Extract filenames and update photos.yaml
   const filenames = photoPaths.map(p => p.split("/").pop()!);
@@ -372,18 +366,17 @@ async function handleBulkUpdate(
   formData: FormData,
   context: { cloudflare?: { env?: Record<string, unknown> } }
 ) {
-  const gallerySlug = formData.get("gallerySlug") as string;
+  const galleryPath = formData.get("galleryPath") as string;
   const photoPaths = formData.getAll("photoPaths") as string[];
   
-  if (!gallerySlug || photoPaths.length === 0) {
+  if (!galleryPath || photoPaths.length === 0) {
     return json({ 
       success: false, 
-      error: "Gallery slug and photo paths are required" 
+      error: "Gallery path and photo paths are required" 
     }, { status: 400 });
   }
   
   const storage = getStorage(context);
-  const galleryPath = `galleries/${gallerySlug}`;
   
   const addTags = formData.get("addTags") as string | null;
   const removeTags = formData.get("removeTags") as string | null;

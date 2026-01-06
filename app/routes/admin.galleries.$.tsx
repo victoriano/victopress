@@ -175,7 +175,7 @@ export default function AdminGalleryDetail() {
     const order = orderedPhotos.map((p) => p.filename);
     const formData = new FormData();
     formData.append("action", "reorder");
-    formData.append("gallerySlug", gallery.slug);
+    formData.append("galleryPath", gallery.path);
     formData.append("order", JSON.stringify(order));
     
     reorderFetcher.submit(formData, {
@@ -184,7 +184,7 @@ export default function AdminGalleryDetail() {
     });
     
     setIsReorderMode(false);
-  }, [orderedPhotos, gallery.slug, reorderFetcher]);
+  }, [orderedPhotos, gallery.path, reorderFetcher]);
   
   // Cancel reorder
   const cancelReorder = useCallback(() => {
@@ -255,7 +255,7 @@ export default function AdminGalleryDetail() {
     
     const formData = new FormData();
     formData.append("action", "delete");
-    formData.append("gallerySlug", gallery.slug);
+    formData.append("galleryPath", gallery.path);
     
     // Get photo paths for selected photos
     for (const photoId of selectedPhotos) {
@@ -273,7 +273,7 @@ export default function AdminGalleryDetail() {
     
     const formData = new FormData();
     formData.append("action", "toggle-visibility");
-    formData.append("gallerySlug", gallery.slug);
+    formData.append("galleryPath", gallery.path);
     formData.append("hidden", hidden.toString());
     
     for (const photoId of selectedPhotos) {
@@ -286,13 +286,13 @@ export default function AdminGalleryDetail() {
     photosFetcher.submit(formData, { method: "POST", action: "/api/admin/photos" });
   }, [selectedPhotos, gallery, photosFetcher]);
   
-  const handleMovePhotos = useCallback((toGallerySlug: string) => {
-    if (selectedPhotos.length === 0 || !toGallerySlug) return;
+  const handleMovePhotos = useCallback((toGalleryPath: string) => {
+    if (selectedPhotos.length === 0 || !toGalleryPath) return;
     
     const formData = new FormData();
     formData.append("action", "move");
-    formData.append("fromGallerySlug", gallery.slug);
-    formData.append("toGallerySlug", toGallerySlug);
+    formData.append("fromGalleryPath", gallery.path);
+    formData.append("toGalleryPath", toGalleryPath);
     
     for (const photoId of selectedPhotos) {
       const photo = gallery.photos.find((p: { id: string }) => p.id === photoId);
@@ -416,7 +416,7 @@ export default function AdminGalleryDetail() {
           <MovePhotosModal
             selectedCount={selectedPhotos.length}
             galleries={allGalleries}
-            currentGallerySlug={gallery.slug}
+            currentGalleryPath={gallery.path}
             onMove={handleMovePhotos}
             onCancel={() => setShowMovePhotosModal(false)}
             isLoading={photosFetcher.state !== "idle"}
@@ -434,7 +434,7 @@ export default function AdminGalleryDetail() {
               
               const formData = new FormData();
               formData.append("action", "update");
-              formData.append("gallerySlug", gallery.slug);
+              formData.append("galleryPath", gallery.path);
               formData.append("photoPath", photo.path);
               formData.append("filename", photo.filename);
               
@@ -1161,19 +1161,22 @@ function DeleteConfirmModal({
 function MovePhotosModal({
   selectedCount,
   galleries,
-  currentGallerySlug,
+  currentGalleryPath,
   onMove,
   onCancel,
   isLoading,
 }: {
   selectedCount: number;
   galleries: any[];
-  currentGallerySlug: string;
-  onMove: (toGallerySlug: string) => void;
+  currentGalleryPath: string;
+  onMove: (toGalleryPath: string) => void;
   onCancel: () => void;
   isLoading: boolean;
 }) {
-  const [selectedGallery, setSelectedGallery] = useState("");
+  const [selectedGalleryPath, setSelectedGalleryPath] = useState("");
+  
+  // Filter out current gallery from the list
+  const availableGalleries = galleries.filter(g => g.path !== currentGalleryPath);
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1187,13 +1190,13 @@ function MovePhotosModal({
         </p>
         
         <select
-          value={selectedGallery}
-          onChange={(e) => setSelectedGallery(e.target.value)}
+          value={selectedGalleryPath}
+          onChange={(e) => setSelectedGalleryPath(e.target.value)}
           className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg mb-6"
         >
           <option value="">Select a gallery...</option>
-          {galleries.map((g) => (
-            <option key={g.slug} value={g.slug}>
+          {availableGalleries.map((g) => (
+            <option key={g.path} value={g.path}>
               {g.title} ({g.photoCount} photos)
             </option>
           ))}
@@ -1210,8 +1213,8 @@ function MovePhotosModal({
           </button>
           <button
             type="button"
-            onClick={() => onMove(selectedGallery)}
-            disabled={isLoading || !selectedGallery}
+            onClick={() => onMove(selectedGalleryPath)}
+            disabled={isLoading || !selectedGalleryPath}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {isLoading ? "Moving..." : "Move Photos"}

@@ -1,6 +1,8 @@
-# Photo metadata for New York gallery
-# This file allows you to customize individual photo properties
-
-- filename: 3298505856_7c770576bd_o46954.jpg
-  title: "Newyorker Cowboy"
-  description: "A solitary figure leans into the city, half in shadow, half in light. Dressed in denim and boots, he feels out of place and completely at home at the same time"
+- filename: P1390465_1.jpg
+  order: 1
+- filename: 3310100314_f5f71518dc_o46941.jpg
+  order: 2
+- filename: IMG_5378.jpg
+  order: 3
+- filename: Newyorker Cowboy.jpg
+  order: 4
