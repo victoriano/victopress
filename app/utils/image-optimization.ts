@@ -22,6 +22,16 @@ export interface ImageOptimizationOptions {
 }
 
 /**
+ * Encode a path for use in URLs (handles spaces and special chars)
+ */
+function encodeImagePath(path: string): string {
+  return path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
+/**
  * Build Cloudflare Image Resizing options string
  */
 function buildCFIOptions(options: ImageOptimizationOptions): string {
@@ -48,35 +58,36 @@ export function getOptimizedImageUrl(
   src: string,
   options: ImageOptimizationOptions = {}
 ): string {
-  // Normalize the source path
-  let imagePath = src;
-  
-  // Handle various input formats
-  if (src.startsWith("/api/images/")) {
-    imagePath = src;
-  } else if (src.startsWith("/")) {
-    imagePath = `/api/images${src}`;
-  } else {
-    imagePath = `/api/images/${src}`;
+  // Normalize the source path - strip /api/images/ prefix if present
+  let basePath = src;
+  if (basePath.startsWith("/api/images/")) {
+    basePath = basePath.substring("/api/images/".length);
+  } else if (basePath.startsWith("/")) {
+    basePath = basePath.substring(1);
   }
+  
+  // Encode the path (handles spaces in folder names like "new york")
+  const encodedPath = encodeImagePath(basePath);
   
   // Build CFI URL with options
   const cfiOptions = buildCFIOptions(options);
   
-  return `/cdn-cgi/image/${cfiOptions}${imagePath}`;
+  return `/cdn-cgi/image/${cfiOptions}/api/images/${encodedPath}`;
 }
 
 /**
  * Generate URL without CFI (for fallback or when original is needed)
  */
 export function getOriginalImageUrl(src: string): string {
-  if (src.startsWith("/api/images/")) {
-    return src;
-  } else if (src.startsWith("/")) {
-    return `/api/images${src}`;
-  } else {
-    return `/api/images/${src}`;
+  let basePath = src;
+  if (basePath.startsWith("/api/images/")) {
+    basePath = basePath.substring("/api/images/".length);
+  } else if (basePath.startsWith("/")) {
+    basePath = basePath.substring(1);
   }
+  
+  const encodedPath = encodeImagePath(basePath);
+  return `/api/images/${encodedPath}`;
 }
 
 /**

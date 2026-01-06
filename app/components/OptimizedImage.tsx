@@ -50,36 +50,42 @@ const SRCSET_WIDTHS = [400, 800, 1200, 1600];
 const DEFAULT_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
 
 /**
+ * Encode a path for use in URLs (handles spaces and special chars)
+ */
+function encodeImagePath(path: string): string {
+  // Split by / and encode each segment, then rejoin
+  return path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
+/**
  * Generate a Cloudflare Image Resizing URL
  */
 function generateCFIUrl(
   imagePath: string,
   targetWidth: number,
-  quality: number,
-  forSrcset = false
+  quality: number
 ): string {
-  // Build the base image path
+  // Normalize and encode the image path
   let basePath = imagePath;
-  if (!basePath.startsWith("/api/images/")) {
-    basePath = basePath.startsWith("/") 
-      ? `/api/images${basePath}` 
-      : `/api/images/${basePath}`;
+  
+  // Remove /api/images/ prefix if present, we'll add it back encoded
+  if (basePath.startsWith("/api/images/")) {
+    basePath = basePath.substring("/api/images/".length);
+  } else if (basePath.startsWith("/")) {
+    basePath = basePath.substring(1);
   }
   
-  // Build CFI options
+  // Encode the path (handles spaces in folder names like "new york")
+  const encodedPath = encodeImagePath(basePath);
+  
+  // Build CFI options (no encoding needed - commas and equals are valid)
   const cfiOptions = `width=${targetWidth},quality=${quality},format=auto,fit=scale-down`;
   
   // Build full CFI URL
-  const cfiUrl = `/cdn-cgi/image/${cfiOptions}${basePath}`;
-  
-  // Encode for srcset if needed (spaces and special chars)
-  if (forSrcset) {
-    return cfiUrl.split('/').map(segment => 
-      segment.includes('=') ? segment : encodeURIComponent(segment)
-    ).join('/');
-  }
-  
-  return cfiUrl;
+  return `/cdn-cgi/image/${cfiOptions}/api/images/${encodedPath}`;
 }
 
 export function OptimizedImage({
@@ -115,7 +121,7 @@ export function OptimizedImage({
 
   // Generate srcset with CFI URLs for each width
   const srcSet = SRCSET_WIDTHS
-    .map((w) => `${generateCFIUrl(imagePath, w, quality, true)} ${w}w`)
+    .map((w) => `${generateCFIUrl(imagePath, w, quality)} ${w}w`)
     .join(", ");
 
   // Default src (medium size for initial load)
@@ -180,10 +186,16 @@ export function getOptimizedImageUrl(
     format?: "auto" | "webp" | "avif";
   } = {}
 ): string {
-  const normalizedSrc = src.startsWith("/") ? src : `/${src}`;
-  const imagePath = normalizedSrc.startsWith("/api/images/")
-    ? normalizedSrc
-    : `/api/images/${normalizedSrc.replace(/^\//, "")}`;
+  // Normalize the path
+  let basePath = src;
+  if (basePath.startsWith("/api/images/")) {
+    basePath = basePath.substring("/api/images/".length);
+  } else if (basePath.startsWith("/")) {
+    basePath = basePath.substring(1);
+  }
+  
+  // Encode the path (handles spaces in folder names)
+  const encodedPath = encodeImagePath(basePath);
   
   // Build CFI options
   const cfiParts: string[] = [];
@@ -193,7 +205,7 @@ export function getOptimizedImageUrl(
   cfiParts.push(`format=${options.format || "auto"}`);
   cfiParts.push("fit=scale-down");
   
-  return `/cdn-cgi/image/${cfiParts.join(",")}${imagePath}`;
+  return `/cdn-cgi/image/${cfiParts.join(",")}/api/images/${encodedPath}`;
 }
 
 /**
