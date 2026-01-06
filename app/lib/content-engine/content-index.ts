@@ -238,17 +238,26 @@ function buildPhotoCacheFromIndex(existingIndex: ContentIndex | null): PhotoCach
 
 /**
  * Rebuild the entire content index from scratch
- * Uses EXIF cache to avoid re-reading unchanged images
+ * Uses EXIF cache to avoid re-reading unchanged images (unless skipCache is true)
+ * 
+ * @param storage - Storage adapter
+ * @param skipCache - If true, re-reads all EXIF data from images (slower but thorough)
  */
-export async function rebuildContentIndex(storage: StorageAdapter): Promise<ContentIndex> {
-  console.log("Rebuilding content index...");
+export async function rebuildContentIndex(storage: StorageAdapter, skipCache = false): Promise<ContentIndex> {
+  console.log(`Rebuilding content index... (skipCache=${skipCache})`);
   const startTime = Date.now();
   
-  // Try to read existing index for EXIF cache
-  const existingIndex = await readContentIndex(storage);
-  const photoCache = buildPhotoCacheFromIndex(existingIndex);
-  const cacheSize = Array.from(photoCache.values()).reduce((sum, m) => sum + m.size, 0);
-  console.log(`[EXIF Cache] Loaded ${cacheSize} cached photos from existing index`);
+  // Try to read existing index for EXIF cache (unless skipCache is true)
+  let photoCache: PhotoCache;
+  if (skipCache) {
+    photoCache = new Map();
+    console.log(`[EXIF Cache] Skipping cache - will re-read all EXIF data from images`);
+  } else {
+    const existingIndex = await readContentIndex(storage);
+    photoCache = buildPhotoCacheFromIndex(existingIndex);
+    const cacheSize = Array.from(photoCache.values()).reduce((sum, m) => sum + m.size, 0);
+    console.log(`[EXIF Cache] Loaded ${cacheSize} cached photos from existing index`);
+  }
   
   // Scan all content in parallel (with EXIF cache for galleries)
   const [galleries, posts, pages, parentMeta] = await Promise.all([

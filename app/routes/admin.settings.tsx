@@ -1789,7 +1789,7 @@ function ContentIndexPanel({
 }: { 
   indexInfo: { updatedAt: string; version: number } 
 }) {
-  const fetcher = useFetcher<{ success: boolean; message: string; rebuildTime?: number }>();
+  const fetcher = useFetcher<{ success: boolean; message: string; rebuildTime?: number; fullRebuild?: boolean }>();
   const isRebuilding = fetcher.state !== "idle";
   
   const formatDate = (isoString: string) => {
@@ -1810,9 +1810,9 @@ function ContentIndexPanel({
     return 'just now';
   };
   
-  const handleRebuild = () => {
+  const handleRebuild = (full = false) => {
     fetcher.submit(
-      { action: "rebuild-index" },
+      { action: full ? "rebuild-index-full" : "rebuild-index" },
       { method: "POST", action: "/api/content-index" }
     );
   };
@@ -1865,10 +1865,11 @@ function ContentIndexPanel({
         </div>
       </div>
       
-      {/* Rebuild Button */}
-      <div className="pt-2">
+      {/* Rebuild Buttons */}
+      <div className="pt-2 space-y-3">
+        {/* Fast Rebuild (with EXIF cache) */}
         <button
-          onClick={handleRebuild}
+          onClick={() => handleRebuild(false)}
           disabled={isRebuilding}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 disabled:shadow-none"
         >
@@ -1884,8 +1885,29 @@ function ContentIndexPanel({
             </>
           )}
         </button>
-        <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-          Force a full re-scan of all content. Use if content appears outdated.
+        
+        {/* Full Rebuild (re-scan all EXIF) */}
+        <button
+          onClick={() => handleRebuild(true)}
+          disabled={isRebuilding}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 disabled:opacity-50 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-all border border-gray-200 dark:border-gray-700"
+        >
+          {isRebuilding ? (
+            <>
+              <LoadingSpinner />
+              Rebuilding...
+            </>
+          ) : (
+            <>
+              <ImageIcon className="w-4 h-4" />
+              Full Rebuild (Re-scan EXIF)
+            </>
+          )}
+        </button>
+        
+        <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+          <strong>Rebuild Index:</strong> Uses cached EXIF data (~40ms) • 
+          <strong className="ml-1">Full Rebuild:</strong> Re-reads all images (~400ms)
         </p>
       </div>
       
@@ -1897,6 +1919,7 @@ function ContentIndexPanel({
             {fetcher.data.rebuildTime && (
               <span className="block text-xs mt-1 opacity-75">
                 Completed in {fetcher.data.rebuildTime}ms
+                {fetcher.data.fullRebuild && " (full EXIF re-scan)"}
               </span>
             )}
           </p>
