@@ -128,18 +128,18 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
       {/* Mobile Menu Overlay */}
       {isOpen && (
         <div className="fixed inset-0 bg-white dark:bg-gray-950 z-[100] lg:hidden overflow-y-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+          {/* Header - matches the mobile header exactly */}
+          <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800">
             <Link 
               to="/" 
-              className="font-bold text-xl"
+              className="font-bold text-lg"
               onClick={() => setIsOpen(false)}
             >
               {siteName}
             </Link>
             <button
               onClick={() => setIsOpen(false)}
-              className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800"
+              className="p-2 -mr-2"
               aria-label="Close menu"
             >
               <CloseIcon />
