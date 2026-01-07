@@ -228,7 +228,7 @@ export default function GalleryPage() {
       <PhotoGrid>
         {gallery.photos.map((photo, index) => (
           <PhotoItem
-            key={photo.id}
+            key={photo.path}
             src={`/api/images/${photo.path}`}
             alt={photo.title || photo.filename}
             href={`/photo/${(photo as any).gallerySlug}/${photo.filename}`}

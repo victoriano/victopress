@@ -114,6 +114,7 @@ export {
   folderNameToTitle,
   toSlug,
   isImageFile,
+  isSourceImage,
   isMarkdownFile,
   calculateReadingTime,
   generateExcerpt,

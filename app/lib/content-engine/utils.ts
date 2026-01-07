@@ -30,10 +30,28 @@ export function toSlug(text: string): string {
 
 /**
  * Check if filename is a supported image format
+ * Used for serving images via API - includes all image types
  */
 export function isImageFile(filename: string): boolean {
   const ext = filename.toLowerCase().split(".").pop();
   return ["jpg", "jpeg", "png", "webp", "gif", "avif", "svg"].includes(ext || "");
+}
+
+/**
+ * Check if filename is a source/original image (not a generated variant)
+ * Used for gallery scanning - excludes pre-generated WebP optimization variants
+ * (e.g., photo_800w.webp, photo_1600w.webp, photo_2400w.webp)
+ */
+export function isSourceImage(filename: string): boolean {
+  if (!isImageFile(filename)) return false;
+  
+  // Exclude pre-generated WebP variants (pattern: *_800w.webp, *_1600w.webp, *_2400w.webp, etc.)
+  // These are optimization artifacts, not source images
+  if (/_\d+w\.webp$/i.test(filename)) {
+    return false;
+  }
+  
+  return true;
 }
 
 /**

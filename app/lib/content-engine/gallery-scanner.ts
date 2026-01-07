@@ -18,7 +18,7 @@ import type {
 import {
   folderNameToTitle,
   toSlug,
-  isImageFile,
+  isSourceImage,
   getBasename,
   sortPhotosAlphabetically,
 } from "./utils";
@@ -118,7 +118,7 @@ async function scanGalleryFolder(
   const contents = await storage.list(folderPath);
   
   // Find image files
-  const imageFiles = contents.filter((f) => !f.isDirectory && isImageFile(f.name));
+  const imageFiles = contents.filter((f) => !f.isDirectory && isSourceImage(f.name));
   
   // Check for gallery.yaml (custom metadata)
   const yamlMetadata = await loadGalleryYaml(storage, folderPath);
@@ -470,7 +470,7 @@ async function scanParentMetadataRecursive(
 ): Promise<void> {
   const items = await storage.list(path);
   const directories = items.filter((f) => f.isDirectory);
-  const imageFiles = items.filter((f) => !f.isDirectory && isImageFile(f.name));
+  const imageFiles = items.filter((f) => !f.isDirectory && isSourceImage(f.name));
   
   // If this folder has no images but has a gallery.yaml, it's a parent category
   if (imageFiles.length === 0 && path !== GALLERIES_PATH && currentSlug) {

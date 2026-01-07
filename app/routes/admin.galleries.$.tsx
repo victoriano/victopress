@@ -142,8 +142,8 @@ export default function AdminGalleryDetail() {
     setOrderedPhotos(gallery.photos);
   }, [gallery.photos]);
   
-  // Photo IDs for sortable context
-  const photoIds = useMemo(() => orderedPhotos.map((p) => p.id), [orderedPhotos]);
+  // Photo IDs for sortable context (using path for uniqueness across galleries)
+  const photoIds = useMemo(() => orderedPhotos.map((p) => p.path), [orderedPhotos]);
   
   // Drag and drop sensors
   const sensors = useSensors(
@@ -163,8 +163,8 @@ export default function AdminGalleryDetail() {
     
     if (over && active.id !== over.id) {
       setOrderedPhotos((items) => {
-        const oldIndex = items.findIndex((p) => p.id === active.id);
-        const newIndex = items.findIndex((p) => p.id === over.id);
+        const oldIndex = items.findIndex((p) => p.path === active.id);
+        const newIndex = items.findIndex((p) => p.path === over.id);
         return arrayMove(items, oldIndex, newIndex);
       });
     }
@@ -195,7 +195,7 @@ export default function AdminGalleryDetail() {
   // Check if order has changed
   const hasOrderChanged = useMemo(() => {
     if (orderedPhotos.length !== gallery.photos.length) return true;
-    return orderedPhotos.some((p, i) => p.id !== gallery.photos[i]?.id);
+    return orderedPhotos.some((p, i) => p.path !== gallery.photos[i]?.path);
   }, [orderedPhotos, gallery.photos]);
   
   // Handle successful gallery deletion - redirect
@@ -705,7 +705,7 @@ export default function AdminGalleryDetail() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                     {orderedPhotos.map((photo) => (
                       <SortablePhotoCard
-                        key={photo.id}
+                        key={photo.path}
                         photo={photo}
                         gallerySlug={gallery.slug}
                       />
@@ -717,7 +717,7 @@ export default function AdminGalleryDetail() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                 {gallery.photos.map((photo) => (
                   <PhotoCard
-                    key={photo.id}
+                    key={photo.path}
                     photo={photo}
                     gallerySlug={gallery.slug}
                     isSelected={selectedPhotos.includes(photo.id)}
@@ -829,7 +829,7 @@ function SortablePhotoCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: photo.id });
+  } = useSortable({ id: photo.path });
 
   const style = {
     transform: CSS.Transform.toString(transform),

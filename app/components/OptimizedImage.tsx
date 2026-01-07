@@ -115,26 +115,51 @@ export function OptimizedImage({
   const [hasError, setHasError] = useState(false);
   const [useOriginal, setUseOriginal] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
+  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Reset state when src changes, then check if already cached
+  // Reset state when src changes
   useEffect(() => {
     setIsLoaded(false);
     setHasError(false);
     setUseOriginal(false);
     
-    // Check if image is already loaded (cached) after a microtask
-    // This handles cases where the browser has the image cached
+    // Clear any existing interval
+    if (checkIntervalRef.current) {
+      clearInterval(checkIntervalRef.current);
+    }
+    
+    // Check if image is already loaded (cached)
+    // Use interval to handle race conditions where image loads before onLoad is attached
     const checkLoaded = () => {
       if (imgRef.current?.complete && imgRef.current?.naturalHeight > 0) {
         setIsLoaded(true);
+        if (checkIntervalRef.current) {
+          clearInterval(checkIntervalRef.current);
+          checkIntervalRef.current = null;
+        }
       }
     };
     
-    // Check immediately and after a short delay (for hydration)
+    // Check immediately
     checkLoaded();
-    const timeoutId = setTimeout(checkLoaded, 100);
     
-    return () => clearTimeout(timeoutId);
+    // Keep checking for a short period (handles race conditions)
+    checkIntervalRef.current = setInterval(checkLoaded, 50);
+    
+    // Stop checking after 2 seconds (image should be loaded or errored by then)
+    const stopTimeout = setTimeout(() => {
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+        checkIntervalRef.current = null;
+      }
+    }, 2000);
+    
+    return () => {
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+      }
+      clearTimeout(stopTimeout);
+    };
   }, [src]);
 
   // Normalize src path
@@ -188,7 +213,6 @@ export function OptimizedImage({
       )}
 
       <img
-        key={defaultSrc}
         ref={imgRef}
         src={defaultSrc}
         srcSet={srcSet}

@@ -100,7 +100,7 @@ export default function Index() {
             alt={photo.title || photo.filename}
             aspectRatio="auto"
             href={`/featured/${photo.homeIndex}`}
-            priority={index < 8}
+            priority
           />
         ))}
       </PhotoGrid>
