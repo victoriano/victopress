@@ -84,10 +84,10 @@ export function AdminLayout({ children, username, isDemoMode = false }: AdminLay
       {/* Mobile header */}
       <header className={`lg:hidden fixed left-0 right-0 h-16 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 z-40 flex items-center justify-between px-4 ${isDemoMode ? "top-10" : "top-0"}`}>
         <Link to="/admin" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gray-900 dark:bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <span className="text-white dark:text-gray-900 font-bold text-sm">V</span>
           </div>
-          <span className="font-semibold text-gray-900 dark:text-white">VictoPress</span>
+          <span className="font-semibold text-gray-900 dark:text-white hidden sm:inline">VictoPress</span>
         </Link>
         
         <MobileMenu username={username} />
