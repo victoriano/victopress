@@ -3,7 +3,8 @@
  * Image Optimization Script
  * 
  * Generates optimized WebP variants of all images in the content folder.
- * Creates multiple sizes for responsive loading.
+ * Creates 3 sizes for responsive loading (800w, 1600w, 2400w) optimized for
+ * 5K displays and Retina MacBooks.
  * 
  * Usage:
  *   bun run scripts/optimize-images.ts              # Process all images
@@ -12,10 +13,9 @@
  * 
  * Output structure:
  *   photo.jpg → photo.jpg (original kept)
- *              photo_400w.webp
- *              photo_800w.webp
- *              photo_1200w.webp
- *              photo_1600w.webp
+ *              photo_800w.webp  (mobile, thumbnails)
+ *              photo_1600w.webp (desktop HD)
+ *              photo_2400w.webp (Retina, 4K/5K)
  * 
  * Requires: bun add sharp
  */
@@ -26,7 +26,11 @@ import * as path from "node:path";
 
 // Configuration
 const CONTENT_PATH = path.resolve("content");
-const WIDTHS = [400, 800, 1200, 1600]; // Responsive breakpoints
+// Responsive breakpoints optimized for 5K/Retina displays:
+// - 800w: mobile, thumbnails, small screens
+// - 1600w: desktop HD, tablets
+// - 2400w: Retina displays, 4K/5K monitors
+const WIDTHS = [800, 1600, 2400];
 const QUALITY = 80; // WebP quality (0-100)
 const SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 

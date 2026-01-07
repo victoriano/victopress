@@ -14,7 +14,11 @@
  */
 
 // Standard widths for responsive images
-export const VARIANT_WIDTHS = [400, 800, 1200, 1600] as const;
+// Optimized for 5K displays and Retina MacBooks:
+// - 800w: mobile, thumbnails, small screens
+// - 1600w: desktop HD, tablets  
+// - 2400w: Retina displays, 4K/5K monitors
+export const VARIANT_WIDTHS = [800, 1600, 2400] as const;
 export const WEBP_QUALITY = 80;
 
 export interface ImageVariant {
@@ -157,16 +161,20 @@ export async function processImageServer(
       const targetHeight = Math.round(originalHeight * scale);
       
       // Clone the image for this variant
-      const variantImage = PhotonImage.new_from_byteslice(bytes);
+      const sourceImage = PhotonImage.new_from_byteslice(bytes);
       
       // Resize using Lanczos3 for high quality
-      resize(variantImage, targetWidth, targetHeight, SamplingFilter.Lanczos3);
+      // NOTE: resize() returns a NEW resized image, doesn't mutate in place
+      const resizedImage = resize(sourceImage, targetWidth, targetHeight, SamplingFilter.Lanczos3);
       
-      // Convert to WebP
-      const webpData = variantImage.get_bytes_webp();
+      // Free the source image (no longer needed)
+      sourceImage.free();
       
-      // Free memory
-      variantImage.free();
+      // Convert resized image to WebP
+      const webpData = resizedImage.get_bytes_webp();
+      
+      // Free the resized image
+      resizedImage.free();
       
       const variantFilename = getVariantFilename(filename, targetWidth);
       console.log(`[Image Optimizer] Created ${variantFilename} (${webpData.length} bytes)`);
@@ -236,14 +244,17 @@ export async function generateVariant(
     const scale = targetWidth / originalWidth;
     const targetHeight = Math.round(originalHeight * scale);
     
-    // Resize
-    resize(image, targetWidth, targetHeight, SamplingFilter.Lanczos3);
+    // Resize - returns a NEW image
+    const resizedImage = resize(image, targetWidth, targetHeight, SamplingFilter.Lanczos3);
+    
+    // Free original
+    image.free();
     
     // Convert to WebP
-    const webpData = image.get_bytes_webp();
+    const webpData = resizedImage.get_bytes_webp();
     
-    // Free memory
-    image.free();
+    // Free resized
+    resizedImage.free();
     
     return webpData;
   } catch (error) {

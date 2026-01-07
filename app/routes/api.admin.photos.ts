@@ -24,7 +24,8 @@ function isVariantFile(filename: string): boolean {
 }
 
 function getAllVariantFilenames(originalFilename: string): string[] {
-  const widths = [400, 800, 1200, 1600];
+  // Must match VARIANT_WIDTHS in image-optimizer.server.ts
+  const widths = [800, 1600, 2400];
   const dotIndex = originalFilename.lastIndexOf(".");
   const nameWithoutExt = dotIndex >= 0 
     ? originalFilename.substring(0, dotIndex) 

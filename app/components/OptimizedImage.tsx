@@ -4,7 +4,8 @@
  * Responsive image component using pre-generated WebP variants.
  * 
  * Features:
- * - Automatic srcset using pre-generated WebP variants (400w, 800w, 1200w, 1600w)
+ * - Automatic srcset using pre-generated WebP variants (800w, 1600w, 2400w)
+ * - Optimized for 5K displays and Retina MacBooks
  * - Native lazy loading
  * - Loading placeholder with smooth fade-in
  * - Fallback to original image if variants don't exist
@@ -37,8 +38,11 @@ interface OptimizedImageProps {
   onClick?: () => void;
 }
 
-// Standard breakpoint widths for srcset (must match optimize-images.ts)
-const SRCSET_WIDTHS = [400, 800, 1200, 1600];
+// Standard breakpoint widths for srcset
+// - 800w: mobile, thumbnails, small screens
+// - 1600w: desktop HD, tablets
+// - 2400w: Retina displays, 4K/5K monitors
+const SRCSET_WIDTHS = [800, 1600, 2400];
 
 // Default sizes attribute (can be overridden)
 const DEFAULT_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";

@@ -191,8 +191,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 }
 
 // Number of images to process in parallel
-// R2 has no rate limits, but we keep this reasonable for memory/CPU
-const PARALLEL_BATCH_SIZE = 10;
+// Keep low to avoid overwhelming R2 API and local wrangler dev
+// Each image generates 3 variants = 3 PUT calls + progress file updates
+const PARALLEL_BATCH_SIZE = 3;
 
 /**
  * Optimize all images in all galleries (parallelized)
