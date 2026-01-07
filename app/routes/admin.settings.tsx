@@ -1798,11 +1798,20 @@ function ImageOptimizationPanel() {
   // Live processing log with variant URLs for preview
   interface ProcessedImageLog {
     filename: string;
+    fullPath?: string; // Full path for linking to original
     status: "processed" | "skipped" | "failed";
     originalSize?: number;
     variants?: { width: number; size: number; url: string }[];
   }
   const [processedLog, setProcessedLog] = useState<ProcessedImageLog[]>([]);
+  
+  // Helper to format file sizes (KB for small, MB for large)
+  const formatSize = (bytes: number): string => {
+    if (bytes >= 1024 * 1024) {
+      return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+    }
+    return `${Math.round(bytes / 1024)}KB`;
+  };
   
   // Fetch optimization status and check for existing job on mount  
   React.useEffect(() => {
@@ -1866,11 +1875,20 @@ function ImageOptimizationPanel() {
   // Processes images entirely in the browser, uploads variants to server
   const handleOptimizeAll = async (cleanup = false, startIndex = 0) => {
     // Dynamic import to avoid loading in SSR
-    const { optimizeImageInBrowser, cleanupVariantUrls, formatFileSize } = await import("~/utils/browser-image-optimizer");
+    const { optimizeImageInBrowser, cleanupVariantUrls } = await import("~/utils/browser-image-optimizer");
     
     setIsOptimizing(true);
     setShouldPause(false);
     setProcessedLog([]);
+    
+    // Reset status when starting fresh (especially for regenerate)
+    if (startIndex === 0) {
+      setLiveStatus(prev => prev ? {
+        ...prev,
+        imagesWithVariants: 0,
+        percentOptimized: 0,
+      } : null);
+    }
     
     let processed = 0;
     let skipped = 0;
@@ -1925,7 +1943,11 @@ function ImageOptimizationPanel() {
         }
         
         const image = images[i];
-        const logEntry: ProcessedImageLog = { filename: image.filename, status: "processed" };
+        const logEntry: ProcessedImageLog = { 
+          filename: image.filename, 
+          fullPath: image.path, // Include full path for linking
+          status: "processed" 
+        };
         
         try {
           // Process image in browser
@@ -1975,13 +1997,15 @@ function ImageOptimizationPanel() {
           failed++;
         }
         
-        // Update progress
+        // Update progress - use job progress, not accumulated count
         setProcessedLog(prev => [logEntry, ...prev].slice(0, 15));
         setJobState({ status: "running", currentIndex: i + 1, totalImages: total });
+        // Update live status to reflect actual progress through the job
+        // Don't increment - just use the job index as progress
         setLiveStatus(prev => prev ? {
           ...prev,
-          imagesWithVariants: prev.imagesWithVariants + (logEntry.status === "processed" ? 1 : 0),
-          percentOptimized: Math.round(((prev.imagesWithVariants + (logEntry.status === "processed" ? 1 : 0)) / prev.totalImages) * 100),
+          imagesWithVariants: i + 1, // Current position in job
+          percentOptimized: Math.min(100, Math.round(((i + 1) / total) * 100)),
         } : null);
         
         // Update job progress every 5 images
@@ -2076,8 +2100,12 @@ function ImageOptimizationPanel() {
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Optimized</p>
             <div className="flex items-baseline gap-2">
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{status.percentOptimized}%</p>
-              <p className="text-xs text-gray-500">({status.imagesWithVariants}/{status.totalImages})</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {Math.min(100, status.percentOptimized || 0)}%
+              </p>
+              <p className="text-xs text-gray-500">
+                ({Math.min(status.imagesWithVariants || 0, status.totalImages || 0)}/{status.totalImages})
+              </p>
             </div>
           </div>
         </div>
@@ -2103,7 +2131,7 @@ function ImageOptimizationPanel() {
       {isOptimizing && status && (
         <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-3 text-center">
           <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
-            {status.imagesWithVariants} / {status.totalImages}
+            {jobState?.currentIndex || 0} / {jobState?.totalImages || status.totalImages}
           </p>
           <p className="text-xs text-purple-500 dark:text-purple-400">images optimized</p>
         </div>
@@ -2126,10 +2154,23 @@ function ImageOptimizationPanel() {
                 <span className="flex-shrink-0">
                   {img.status === "processed" ? "✅" : img.status === "skipped" ? "⏭️" : "❌"}
                 </span>
-                <span className="truncate max-w-[200px]">{img.filename}</span>
+                {/* Filename with link to original */}
+                {img.fullPath ? (
+                  <a
+                    href={`/api/images/${encodeURIComponent(img.fullPath)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate max-w-[200px] hover:underline"
+                    title={`View original: ${img.filename}`}
+                  >
+                    {img.filename}
+                  </a>
+                ) : (
+                  <span className="truncate max-w-[200px]">{img.filename}</span>
+                )}
                 {img.status === "processed" && img.variants && img.originalSize && (
                   <span className="flex-shrink-0 flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                    <span>{Math.round(img.originalSize / 1024)}KB →</span>
+                    <span>{formatSize(img.originalSize)} →</span>
                     {img.variants.map((v, vi) => (
                       <a
                         key={vi}
@@ -2137,7 +2178,7 @@ function ImageOptimizationPanel() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-purple-600 dark:text-purple-400 hover:underline"
-                        title={`Preview ${v.width}w variant (${Math.round(v.size / 1024)}KB)`}
+                        title={`${v.width}px variant: ${formatSize(v.size)}`}
                       >
                         {v.width}w
                       </a>

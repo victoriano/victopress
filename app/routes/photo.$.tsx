@@ -158,21 +158,23 @@ export default function PhotoPage() {
   // Reset fallback when photo changes
   useEffect(() => {
     setUseOriginal(false);
+    setIsImageLoaded(false);
   }, [photo.filename]);
+  
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const previousPhotoUrl = useRef(photoUrl);
+  const previousPhotoUrl = useRef(currentPhotoUrl);
 
   // Preload adjacent photos
   usePhotoPreloading([prevPhotoUrl, nextPhotoUrl]);
 
-  // Handle image loading state
+  // Handle image loading state - reset when current URL changes (including fallback)
   useEffect(() => {
-    if (photoUrl !== previousPhotoUrl.current) {
+    if (currentPhotoUrl !== previousPhotoUrl.current) {
       setIsImageLoaded(false);
-      previousPhotoUrl.current = photoUrl;
+      previousPhotoUrl.current = currentPhotoUrl;
     }
-  }, [photoUrl]);
+  }, [currentPhotoUrl]);
 
   // Navigation with transition
   const navigateWithTransition = useCallback(
@@ -247,21 +249,30 @@ export default function PhotoPage() {
             className={`w-full object-contain select-none transition-opacity duration-300 ease-out ${
               isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
             }`}
-            onLoad={() => setIsImageLoaded(true)}
-            onError={() => !useOriginal && setUseOriginal(true)}
+            onLoad={() => {
+              console.log(`[Photo] Mobile image loaded: ${currentPhotoUrl}`);
+              setIsImageLoaded(true);
+            }}
+            onError={() => {
+              console.warn(`[Photo] Mobile image failed: ${currentPhotoUrl}`);
+              if (!useOriginal) {
+                console.log(`[Photo] Falling back to original: ${originalPhotoUrl}`);
+                setUseOriginal(true);
+              }
+            }}
           />
           {/* Invisible tap zones - left half = prev, right half = next */}
           <div className="absolute inset-0 flex z-10">
             <Link
               to={prevPhoto ? `/photo/${gallerySlug}/${prevPhoto.filename}` : "#"}
               onClick={(e) => !prevPhoto && e.preventDefault()}
-              className={`w-1/2 h-full ${!prevPhoto ? "pointer-events-none" : ""}`}
+              className={`w-1/2 h-full focus:outline-none ${!prevPhoto ? "pointer-events-none" : ""}`}
               aria-label="Previous photo"
             />
             <Link
               to={nextPhoto ? `/photo/${gallerySlug}/${nextPhoto.filename}` : "#"}
               onClick={(e) => !nextPhoto && e.preventDefault()}
-              className={`w-1/2 h-full ${!nextPhoto ? "pointer-events-none" : ""}`}
+              className={`w-1/2 h-full focus:outline-none ${!nextPhoto ? "pointer-events-none" : ""}`}
               aria-label="Next photo"
             />
           </div>
@@ -345,8 +356,17 @@ export default function PhotoPage() {
             className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-opacity duration-300 ease-out ${
               isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
             }`}
-            onLoad={() => setIsImageLoaded(true)}
-            onError={() => !useOriginal && setUseOriginal(true)}
+            onLoad={() => {
+              console.log(`[Photo] Desktop image loaded: ${currentPhotoUrl}`);
+              setIsImageLoaded(true);
+            }}
+            onError={() => {
+              console.warn(`[Photo] Desktop image failed: ${currentPhotoUrl}`);
+              if (!useOriginal) {
+                console.log(`[Photo] Falling back to original: ${originalPhotoUrl}`);
+                setUseOriginal(true);
+              }
+            }}
           />
           
           {/* Clickable overlay zones */}
@@ -356,7 +376,7 @@ export default function PhotoPage() {
               <button
                 type="button"
                 onClick={() => navigateWithTransition(`/photo/${gallerySlug}/${prevPhoto.filename}`)}
-                className="w-1/3 h-full cursor-prev bg-transparent border-0"
+                className="w-1/3 h-full cursor-prev bg-transparent border-0 focus:outline-none"
                 aria-label="Previous photo"
               />
             ) : (
@@ -366,7 +386,7 @@ export default function PhotoPage() {
             {/* Center zone - Thumbnails */}
             <Link
               to={`/gallery/${gallerySlug}`}
-              className="w-1/3 h-full cursor-thumbnails"
+              className="w-1/3 h-full cursor-thumbnails focus:outline-none"
               aria-label="Show thumbnails"
             />
             
@@ -375,7 +395,7 @@ export default function PhotoPage() {
               <button
                 type="button"
                 onClick={() => navigateWithTransition(`/photo/${gallerySlug}/${nextPhoto.filename}`)}
-                className="w-1/3 h-full cursor-next bg-transparent border-0"
+                className="w-1/3 h-full cursor-next bg-transparent border-0 focus:outline-none"
                 aria-label="Next photo"
               />
             ) : (

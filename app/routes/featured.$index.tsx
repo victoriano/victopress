@@ -119,26 +119,27 @@ export default function FeaturedPhotoPage() {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [useOriginal, setUseOriginal] = useState(false);
-  const previousPhotoUrl = useRef(photoUrl);
   
   // Current URL with fallback support
   const currentPhotoUrl = useOriginal ? originalPhotoUrl : photoUrl;
+  const previousPhotoUrl = useRef(currentPhotoUrl);
   
   // Reset fallback when photo changes
   useEffect(() => {
     setUseOriginal(false);
+    setIsImageLoaded(false);
   }, [photo.filename]);
 
   // Preload adjacent photos
   usePhotoPreloading([prevPhotoUrl, nextPhotoUrl]);
 
-  // Handle image loading state
+  // Handle image loading state - reset when current URL changes (including fallback)
   useEffect(() => {
-    if (photoUrl !== previousPhotoUrl.current) {
+    if (currentPhotoUrl !== previousPhotoUrl.current) {
       setIsImageLoaded(false);
-      previousPhotoUrl.current = photoUrl;
+      previousPhotoUrl.current = currentPhotoUrl;
     }
-  }, [photoUrl]);
+  }, [currentPhotoUrl]);
 
   // Navigation with transition
   const navigateWithTransition = useCallback(
@@ -213,8 +214,17 @@ export default function FeaturedPhotoPage() {
             className={`w-full object-contain select-none transition-opacity duration-300 ease-out ${
               isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
             }`}
-            onLoad={() => setIsImageLoaded(true)}
-            onError={() => !useOriginal && setUseOriginal(true)}
+            onLoad={() => {
+              console.log(`[Featured] Mobile image loaded: ${currentPhotoUrl}`);
+              setIsImageLoaded(true);
+            }}
+            onError={() => {
+              console.warn(`[Featured] Mobile image failed: ${currentPhotoUrl}`);
+              if (!useOriginal) {
+                console.log(`[Featured] Falling back to original: ${originalPhotoUrl}`);
+                setUseOriginal(true);
+              }
+            }}
           />
           {/* Invisible tap zones - left half = prev, right half = next */}
           <div className="absolute inset-0 flex z-10">
@@ -311,8 +321,17 @@ export default function FeaturedPhotoPage() {
             className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-opacity duration-300 ease-out ${
               isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
             }`}
-            onLoad={() => setIsImageLoaded(true)}
-            onError={() => !useOriginal && setUseOriginal(true)}
+            onLoad={() => {
+              console.log(`[Featured] Desktop image loaded: ${currentPhotoUrl}`);
+              setIsImageLoaded(true);
+            }}
+            onError={() => {
+              console.warn(`[Featured] Desktop image failed: ${currentPhotoUrl}`);
+              if (!useOriginal) {
+                console.log(`[Featured] Falling back to original: ${originalPhotoUrl}`);
+                setUseOriginal(true);
+              }
+            }}
           />
           
           {/* Clickable overlay zones */}
