@@ -526,6 +526,82 @@ export async function invalidateContentIndex(storage: StorageAdapter): Promise<v
 }
 
 /**
+ * Update only the gallery metadata (title, description, order, etc.) in the index
+ * This is INSTANT compared to a full rebuild - just updates the JSON file
+ * Use for: gallery settings changes (title, description, order, private, etc.)
+ */
+export async function updateGalleryMetadataInIndex(
+  storage: StorageAdapter,
+  galleryPath: string,
+  updates: {
+    title?: string;
+    description?: string;
+    order?: number;
+    private?: boolean;
+    password?: string;
+    tags?: string[];
+    includeNestedPhotos?: boolean;
+  }
+): Promise<{ success: boolean; message: string }> {
+  const startTime = Date.now();
+  
+  try {
+    // Read existing index
+    const index = await readContentIndex(storage);
+    if (!index) {
+      // No index exists, do a full rebuild
+      await rebuildContentIndex(storage);
+      return { success: true, message: "Index rebuilt from scratch" };
+    }
+    
+    // Find the gallery in galleryData
+    const galleryIdx = index.galleryData.findIndex(g => g.path === galleryPath);
+    if (galleryIdx === -1) {
+      // Gallery not in index - might be new, do a full rebuild
+      await rebuildContentIndex(storage);
+      return { success: true, message: "Index rebuilt (gallery not found)" };
+    }
+    
+    // Apply updates to galleryData
+    const gallery = index.galleryData[galleryIdx];
+    if (updates.title !== undefined) gallery.title = updates.title;
+    if (updates.description !== undefined) gallery.description = updates.description || undefined;
+    if (updates.order !== undefined) gallery.order = updates.order;
+    if (updates.private !== undefined) gallery.isProtected = updates.private;
+    if (updates.password !== undefined) gallery.password = updates.password || undefined;
+    if (updates.tags !== undefined) gallery.tags = updates.tags.length > 0 ? updates.tags : undefined;
+    if (updates.includeNestedPhotos !== undefined) gallery.includeNestedPhotos = updates.includeNestedPhotos;
+    
+    // Also update the light gallery entry (for navigation)
+    const lightIdx = index.galleries.findIndex(g => g.path === galleryPath);
+    if (lightIdx !== -1) {
+      const light = index.galleries[lightIdx];
+      if (updates.title !== undefined) light.title = updates.title;
+      if (updates.description !== undefined) light.description = updates.description || undefined;
+      if (updates.order !== undefined) light.order = updates.order;
+      if (updates.private !== undefined) light.isProtected = updates.private;
+      if (updates.tags !== undefined) light.tags = updates.tags.length > 0 ? updates.tags : undefined;
+    }
+    
+    // Update timestamp
+    index.updatedAt = new Date().toISOString();
+    
+    // Save the updated index
+    await writeContentIndex(storage, index);
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`[Index] Updated gallery metadata for ${galleryPath} in ${elapsed}ms`);
+    
+    return { success: true, message: `Index updated in ${elapsed}ms` };
+  } catch (error) {
+    console.error("Failed to update gallery metadata in index:", error);
+    // Fall back to full rebuild
+    await rebuildContentIndex(storage);
+    return { success: true, message: "Index rebuilt due to error" };
+  }
+}
+
+/**
  * Update only the YAML-based metadata for photos in a gallery
  * This is MUCH faster than a full rebuild because it doesn't re-read images
  * Use for: reorder, hide/unhide, edit metadata, delete photos

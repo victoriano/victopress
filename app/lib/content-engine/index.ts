@@ -73,6 +73,7 @@ export {
   updatePageInIndex,
   removePageFromIndex,
   // Partial update functions (fast, YAML-only changes)
+  updateGalleryMetadataInIndex,
   updateGalleryPhotosInIndex,
   addPhotosToGalleryIndex,
 } from "./content-index";

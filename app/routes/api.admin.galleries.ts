@@ -10,7 +10,7 @@
 import type { ActionFunctionArgs } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { checkAdminAuth } from "~/utils/admin-auth";
-import { getStorage, invalidateContentIndex } from "~/lib/content-engine";
+import { getStorage, invalidateContentIndex, updateGalleryMetadataInIndex } from "~/lib/content-engine";
 import * as yaml from "yaml";
 
 interface GalleryMetadata {
@@ -182,8 +182,18 @@ async function handleUpdate(
   const yamlContent = yaml.stringify(newMetadata);
   await storage.put(yamlPath, yamlContent);
   
-  // Invalidate content index
-  await invalidateContentIndex(storage);
+  // Fast index update - only update this gallery's metadata, don't rebuild everything
+  const indexResult = await updateGalleryMetadataInIndex(storage, galleryPath, {
+    title: newMetadata.title as string | undefined,
+    description: newMetadata.description as string | undefined,
+    order: newMetadata.order as number | undefined,
+    private: newMetadata.private as boolean | undefined,
+    password: newMetadata.password as string | undefined,
+    tags: newMetadata.tags as string[] | undefined,
+    includeNestedPhotos: newMetadata.includeNestedPhotos as boolean | undefined,
+  });
+  
+  console.log(`[Gallery Update] ${slug}: ${indexResult.message}`);
   
   return json({
     success: true,
