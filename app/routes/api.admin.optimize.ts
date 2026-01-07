@@ -35,32 +35,62 @@ function getVariantFilename(originalFilename: string, width: number): string {
   return `${nameWithoutExt}_${width}w.webp`;
 }
 
-// Track optimization progress in memory (updated by the optimize action)
-let optimizationProgress: { 
-  totalImages: number;
-  imagesWithVariants: number; 
-  isRunning: boolean;
-  lastChecked: number;
-} = { totalImages: 0, imagesWithVariants: 0, isRunning: false, lastChecked: 0 };
+// Progress file path in R2
+const PROGRESS_FILE = ".optimization-progress.json";
 
-// Increment this during optimization
-function updateProgress(processed: number, total: number) {
-  optimizationProgress.imagesWithVariants = processed;
-  optimizationProgress.totalImages = total;
+// Progress data type
+interface OptimizationProgressData {
+  totalImages: number;
+  imagesWithVariants: number;
+  isRunning: boolean;
+  startedAt: number;
+}
+
+// Helper to read progress from R2
+async function getProgress(storage: ReturnType<typeof getStorage>): Promise<OptimizationProgressData | null> {
+  try {
+    const data = await storage.get(PROGRESS_FILE);
+    if (!data) return null;
+    const text = new TextDecoder().decode(data);
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+// Helper to save progress to R2
+async function saveProgress(storage: ReturnType<typeof getStorage>, progress: OptimizationProgressData): Promise<void> {
+  const data = JSON.stringify(progress);
+  await storage.put(PROGRESS_FILE, new TextEncoder().encode(data), "application/json");
+}
+
+// Helper to clear progress
+async function clearProgress(storage: ReturnType<typeof getStorage>): Promise<void> {
+  try {
+    await storage.delete(PROGRESS_FILE);
+  } catch {
+    // Ignore if doesn't exist
+  }
 }
 
 /**
- * GET - Get optimization status (uses in-memory progress during optimization)
+ * GET - Get optimization status (reads from R2 progress file for instant updates)
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
   
-  // If optimization is running, return the live progress immediately
-  if (optimizationProgress.isRunning) {
-    const { totalImages, imagesWithVariants } = optimizationProgress;
+  const storage = getStorage(context);
+  
+  // Check for active optimization progress (fast - single R2 read)
+  const progress = await getProgress(storage);
+  
+  if (progress && progress.isRunning) {
+    const { totalImages, imagesWithVariants } = progress;
     const percentOptimized = totalImages > 0 
       ? Math.round((imagesWithVariants / totalImages) * 100) 
       : 0;
+    
+    console.log(`[Optimize GET] ⚡ Fast: ${imagesWithVariants}/${totalImages}`);
     
     return json({
       totalImages,
@@ -71,10 +101,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     });
   }
   
-  // If not running but we have recent data, return it
-  const now = Date.now();
-  if (optimizationProgress.lastChecked && (now - optimizationProgress.lastChecked) < 30000) {
-    const { totalImages, imagesWithVariants } = optimizationProgress;
+  // If we have recent completed progress, use it
+  if (progress && !progress.isRunning) {
+    const { totalImages, imagesWithVariants } = progress;
     const percentOptimized = totalImages > 0 
       ? Math.round((imagesWithVariants / totalImages) * 100) 
       : 100;
@@ -87,14 +116,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     });
   }
   
-  // Otherwise, do a full scan (slow but accurate)
-  const storage = getStorage(context);
+  console.log(`[Optimize GET] 🐢 No progress file, scanning...`);
+  
+  // No progress file - do a quick count from content index
   const contentIndex = await getContentIndex(storage);
   
   let totalImages = 0;
-  let imagesWithVariants = 0;
-  
-  // Count total images first (fast - just uses the content index)
   for (const gallery of contentIndex.galleryData || []) {
     for (const photo of gallery.photos || []) {
       if (!isImageFile(photo.filename)) continue;
@@ -103,54 +130,36 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     }
   }
   
-  // Spot-check a few random images to estimate optimization status
-  // This is much faster than checking every file
-  const sampleSize = Math.min(10, totalImages);
-  const allPhotos: { gallery: typeof contentIndex.galleryData[0]; photo: { filename: string } }[] = [];
-  
+  // Quick sample to estimate (check just 2 random images for speed)
+  const allPhotos: { galleryPath: string; filename: string }[] = [];
   for (const gallery of contentIndex.galleryData || []) {
+    const galleryPath = gallery.path || `galleries/${gallery.slug}`;
     for (const photo of gallery.photos || []) {
       if (!isImageFile(photo.filename)) continue;
       if (isVariantFile(photo.filename)) continue;
-      allPhotos.push({ gallery, photo });
+      allPhotos.push({ galleryPath, filename: photo.filename });
     }
   }
   
-  // Sample random photos
   let optimizedCount = 0;
-  for (let i = 0; i < sampleSize && allPhotos.length > 0; i++) {
+  const sampleSize = Math.min(2, allPhotos.length);
+  // Check in parallel for speed
+  const checks = [];
+  for (let i = 0; i < sampleSize; i++) {
     const idx = Math.floor(Math.random() * allPhotos.length);
-    const { gallery, photo } = allPhotos.splice(idx, 1)[0];
-    
-    const galleryPath = gallery.path || `galleries/${gallery.slug}`;
-    const variantFilename = getVariantFilename(photo.filename, 800);
-    const variantPath = `${galleryPath}/${variantFilename}`;
-    
-    try {
-      const exists = await storage.exists(variantPath);
-      if (exists) optimizedCount++;
-    } catch {
-      // Ignore errors in sampling
-    }
+    const { galleryPath, filename } = allPhotos[idx];
+    const variantPath = `${galleryPath}/${getVariantFilename(filename, 800)}`;
+    checks.push(storage.exists(variantPath).catch(() => false));
   }
+  const results = await Promise.all(checks);
+  optimizedCount = results.filter(Boolean).length;
   
-  // Extrapolate from sample
-  const sampleRatio = sampleSize > 0 ? optimizedCount / sampleSize : 0;
-  imagesWithVariants = Math.round(totalImages * sampleRatio);
-  
+  const imagesWithVariants = sampleSize > 0 
+    ? Math.round(totalImages * (optimizedCount / sampleSize)) 
+    : 0;
   const percentOptimized = totalImages > 0 
     ? Math.round((imagesWithVariants / totalImages) * 100) 
     : 100;
-  
-  // Update the progress cache
-  optimizationProgress = {
-    totalImages,
-    imagesWithVariants,
-    isRunning: false,
-    lastChecked: now,
-  };
-  
-  console.log(`[Optimize] Status (sampled): ${imagesWithVariants}/${totalImages} (${percentOptimized}%)`);
   
   return json({
     totalImages,
@@ -211,18 +220,34 @@ async function handleOptimizeAll(
   
   const totalImages = imagesToProcess.length;
   
-  // Initialize progress tracking
-  optimizationProgress = {
+  // Initialize progress in R2
+  let currentProgress = 0;
+  await saveProgress(storage, {
     totalImages,
     imagesWithVariants: 0,
     isRunning: true,
-    lastChecked: Date.now(),
-  };
+    startedAt: Date.now(),
+  });
   
   let processed = 0;
   let skipped = 0;
   let failed = 0;
   let variantsCreated = 0;
+  let lastProgressSave = Date.now();
+  
+  // Save progress to R2 (rate limited to every 500ms)
+  async function updateProgressFile() {
+    const now = Date.now();
+    if (now - lastProgressSave > 500) {
+      lastProgressSave = now;
+      await saveProgress(storage, {
+        totalImages,
+        imagesWithVariants: currentProgress,
+        isRunning: true,
+        startedAt: 0,
+      });
+    }
+  }
   
   // Process a single image
   async function processImage(item: { galleryPath: string; photo: { filename: string } }) {
@@ -233,7 +258,7 @@ async function handleOptimizeAll(
     try {
       if (await storage.exists(variantPath)) {
         skipped++;
-        optimizationProgress.imagesWithVariants++;
+        currentProgress++;
         return { status: 'skipped' as const };
       }
     } catch {
@@ -260,8 +285,8 @@ async function handleOptimizeAll(
       }));
       
       processed++;
-      optimizationProgress.imagesWithVariants++;
-      console.log(`[Optimize] ✅ ${photo.filename} (${result.variants.length} variants) - ${optimizationProgress.imagesWithVariants}/${totalImages}`);
+      currentProgress++;
+      console.log(`[Optimize] ✅ ${photo.filename} - ${currentProgress}/${totalImages}`);
       return { status: 'processed' as const };
     } catch (err) {
       console.error(`[Optimize] ❌ Failed ${photoPath}:`, err);
@@ -277,15 +302,27 @@ async function handleOptimizeAll(
     const batch = imagesToProcess.slice(i, i + PARALLEL_BATCH_SIZE);
     await Promise.all(batch.map(processImage));
     
+    // Save progress to R2 after each batch
+    await saveProgress(storage, {
+      totalImages,
+      imagesWithVariants: currentProgress,
+      isRunning: true,
+      startedAt: 0,
+    });
+    
     // Log batch progress
     const batchNum = Math.floor(i / PARALLEL_BATCH_SIZE) + 1;
     const totalBatches = Math.ceil(imagesToProcess.length / PARALLEL_BATCH_SIZE);
-    console.log(`[Optimize] 📦 Batch ${batchNum}/${totalBatches} complete`);
+    console.log(`[Optimize] 📦 Batch ${batchNum}/${totalBatches} - Progress: ${currentProgress}/${totalImages}`);
   }
   
-  // Mark optimization as complete
-  optimizationProgress.isRunning = false;
-  optimizationProgress.lastChecked = Date.now();
+  // Mark optimization as complete - save final state
+  await saveProgress(storage, {
+    totalImages,
+    imagesWithVariants: currentProgress,
+    isRunning: false,
+    startedAt: 0,
+  });
   
   console.log(`[Optimize] 🎉 Complete! Processed: ${processed}, Skipped: ${skipped}, Failed: ${failed}`);
   

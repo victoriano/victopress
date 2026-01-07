@@ -1848,21 +1848,20 @@ function ImageOptimizationPanel() {
       console.error("[Progress] Initial fetch failed:", e);
     }
     
-    // Start polling for progress updates every 2 seconds using direct fetch
+    // Start polling for progress updates every 500ms for smooth UI updates
     const pollInterval = setInterval(async () => {
       try {
         const res = await fetch("/api/admin/optimize", { credentials: "include" });
         const data = await res.json();
-        console.log("[Progress] Poll update:", data.imagesWithVariants, "/", data.totalImages);
         setLiveStatus({
           totalImages: data.totalImages || 0,
           imagesWithVariants: data.imagesWithVariants || 0,
           percentOptimized: data.percentOptimized || 0,
         });
       } catch (e) {
-        console.error("[Progress] Poll failed:", e);
+        // Silently ignore poll errors
       }
-    }, 2000);
+    }, 500);
     
     try {
       const response = await fetch("/api/admin/optimize", {
