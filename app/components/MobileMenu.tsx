@@ -127,7 +127,7 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
 
       {/* Mobile Menu Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 bg-white dark:bg-gray-950 z-[100] lg:hidden overflow-y-auto">
+        <div className="fixed inset-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm z-[100] lg:hidden overflow-y-auto">
           {/* Header - matches the mobile header exactly */}
           <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800">
             <Link 
@@ -283,12 +283,12 @@ function MobileNavSection({
       return "text-black dark:text-white font-bold";
     }
     if (isInPath && hasChildren && isExpanded) {
-      return "text-gray-400";
+      return "text-gray-600 dark:text-gray-400";
     }
     if (isInPath) {
       return "text-black dark:text-white font-bold";
     }
-    return depth > 0 ? "text-gray-400" : "text-black dark:text-white";
+    return depth > 0 ? "text-gray-600 dark:text-gray-400" : "text-black dark:text-white";
   };
 
   return (
@@ -309,7 +309,7 @@ function MobileNavSection({
         {hasChildren && (
           <button
             onClick={() => onToggle(item.slug)}
-            className="p-1 text-gray-400"
+            className="p-1 text-gray-600 dark:text-gray-400"
             aria-label={isExpanded ? "Collapse" : "Expand"}
           >
             <ChevronIcon className={`transform transition-transform ${isExpanded ? "rotate-90" : ""}`} />
@@ -358,7 +358,7 @@ function MobileNavLink({
       onClick={onClick}
       className={`
         block text-xs transition-colors
-        ${isActive ? "text-black font-bold dark:text-white" : "text-gray-400"}
+        ${isActive ? "text-black font-bold dark:text-white" : "text-gray-600 dark:text-gray-400"}
         hover:text-black dark:hover:text-white
       `}
     >
