@@ -1988,14 +1988,14 @@ function ImageOptimizationPanel() {
       <div className="pt-2">
         <button
           type="button"
-          onClick={handleOptimizeAll}
+          onClick={() => handleOptimizeAll(false)}
           disabled={isOptimizing || (status?.percentOptimized === 100)}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed"
         >
           {isOptimizing ? (
             <>
               <LoadingSpinner />
-              Optimizing... {status?.imagesWithVariants ?? 0}/{status?.totalImages ?? '?'} done
+              Optimizing... {liveStatus?.imagesWithVariants ?? 0}/{liveStatus?.totalImages ?? '?'} done
             </>
           ) : isLoading ? (
             <>
@@ -2024,43 +2024,9 @@ function ImageOptimizationPanel() {
         {/* Regenerate button - deletes old sizes and regenerates all */}
         <button
           type="button"
-          onClick={async () => {
-            if (!confirm("This will delete ALL existing variants (including old 400w, 1200w sizes) and regenerate them with new sizes (800w, 1600w, 2400w). Continue?")) {
-              return;
-            }
-            setIsOptimizing(true);
-            setOptimizeProgress(null);
-            
-            const pollInterval = setInterval(async () => {
-              try {
-                const res = await fetch("/api/admin/optimize", { credentials: "include" });
-                const data = await res.json();
-                setLiveStatus({
-                  totalImages: data.totalImages || 0,
-                  imagesWithVariants: data.imagesWithVariants || 0,
-                  percentOptimized: data.percentOptimized || 0,
-                });
-              } catch (e) {
-                console.error("Poll failed:", e);
-              }
-            }, 500);
-            
-            try {
-              const response = await fetch("/api/admin/optimize", {
-                method: "POST",
-                body: new URLSearchParams({ action: "cleanup-and-optimize" }),
-                credentials: "include",
-              });
-              const result = await response.json() as { stats?: { processed: number; skipped: number; failed: number; variantsCreated: number } };
-              if (result.stats) {
-                setOptimizeProgress(result.stats);
-              }
-              fetcher.load("/api/admin/optimize");
-            } catch (error) {
-              console.error("Regeneration failed:", error);
-            } finally {
-              clearInterval(pollInterval);
-              setIsOptimizing(false);
+          onClick={() => {
+            if (confirm("This will delete ALL existing variants (including old 400w, 1200w sizes) and regenerate them with new sizes (800w, 1600w, 2400w). Continue?")) {
+              handleOptimizeAll(true); // cleanup=true
             }
           }}
           disabled={isOptimizing}
