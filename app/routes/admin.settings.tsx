@@ -1780,150 +1780,268 @@ function ImageOptimizationPanel() {
   }>();
   
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [optimizeProgress, setOptimizeProgress] = useState<{
-    processed: number;
-    skipped: number;
-    failed: number;
-    variantsCreated: number;
-  } | null>(null);
+  const [shouldPause, setShouldPause] = useState(false);
   const [liveStatus, setLiveStatus] = useState<{
     totalImages: number;
     imagesWithVariants: number;
+    imagesNeedingOptimization: number;
     percentOptimized: number;
   } | null>(null);
   
-  // Fetch optimization status on mount  
+  // Job state for pause/resume
+  const [jobState, setJobState] = useState<{
+    status: "running" | "paused" | "completed" | null;
+    currentIndex: number;
+    totalImages: number;
+  } | null>(null);
+  
+  // Live processing log with variant URLs for preview
+  interface ProcessedImageLog {
+    filename: string;
+    status: "processed" | "skipped" | "failed";
+    originalSize?: number;
+    variants?: { width: number; size: number; url: string }[];
+  }
+  const [processedLog, setProcessedLog] = useState<ProcessedImageLog[]>([]);
+  
+  // Fetch optimization status and check for existing job on mount  
   React.useEffect(() => {
-    console.log("[Progress] Component mounted, fetching status...");
-    // Use direct fetch to avoid Remix fetcher issues
-    fetch("/api/admin/optimize", { credentials: "include" })
-      .then(res => res.json())
-      .then(data => {
-        console.log("[Progress] Initial load:", data);
+    const fetchStatus = async () => {
+      try {
+        // Fetch status
+        const statusRes = await fetch("/api/admin/optimize", { credentials: "include" });
+        const statusData = await statusRes.json() as {
+          totalImages?: number;
+          imagesWithVariants?: number;
+          imagesNeedingOptimization?: number;
+          percentOptimized?: number;
+        };
         setLiveStatus({
-          totalImages: data.totalImages || 0,
-          imagesWithVariants: data.imagesWithVariants || 0,
-          percentOptimized: data.percentOptimized || 0,
+          totalImages: statusData.totalImages || 0,
+          imagesWithVariants: statusData.imagesWithVariants || 0,
+          imagesNeedingOptimization: statusData.imagesNeedingOptimization || 0,
+          percentOptimized: statusData.percentOptimized || 0,
         });
-      })
-      .catch(err => console.error("[Progress] Initial load failed:", err));
+        
+        // Check for existing job (paused or interrupted)
+        const jobRes = await fetch("/api/admin/optimize", {
+          method: "POST",
+          body: new URLSearchParams({ action: "get-job" }),
+          credentials: "include",
+        });
+        const jobData = await jobRes.json() as {
+          job?: {
+            status: "running" | "paused" | "completed";
+            currentIndex: number;
+            totalImages: number;
+          };
+        };
+        if (jobData.job && jobData.job.status === "paused") {
+          setJobState({
+            status: jobData.job.status,
+            currentIndex: jobData.job.currentIndex,
+            totalImages: jobData.job.totalImages,
+          });
+        }
+      } catch (err) {
+        console.error("[Progress] Initial load failed:", err);
+      }
+    };
+    fetchStatus();
   }, []);
   
-  // Sync fetcher data to liveStatus on initial load
+  // Sync fetcher data to liveStatus
   React.useEffect(() => {
     if (fetcher.data) {
-      console.log("[Progress] Fetcher data received:", fetcher.data);
       setLiveStatus({
         totalImages: fetcher.data.totalImages || 0,
         imagesWithVariants: fetcher.data.imagesWithVariants || 0,
+        imagesNeedingOptimization: fetcher.data.imagesNeedingOptimization || 0,
         percentOptimized: fetcher.data.percentOptimized || 0,
       });
     }
   }, [fetcher.data]);
   
-  // Chunked optimization to avoid Cloudflare timeout (~30s limit)
-  // Processes 5 images per request, loops until done
-  // Also polls progress counter every 300ms for live UI updates
-  const handleOptimizeAll = async (cleanup = false) => {
+  // Browser-based optimization using Canvas + WebP
+  // Processes images entirely in the browser, uploads variants to server
+  const handleOptimizeAll = async (cleanup = false, startIndex = 0) => {
+    // Dynamic import to avoid loading in SSR
+    const { optimizeImageInBrowser, cleanupVariantUrls, formatFileSize } = await import("~/utils/browser-image-optimizer");
+    
     setIsOptimizing(true);
-    setOptimizeProgress(null);
+    setShouldPause(false);
+    setProcessedLog([]);
     
-    let offset = 0;
-    let totalProcessed = 0;
-    let totalSkipped = 0;
-    let totalFailed = 0;
-    let totalVariantsCreated = 0;
-    let hasMore = true;
-    let stopPolling = false;
-    
-    console.log(`[Optimize] Starting chunked optimization (cleanup=${cleanup})...`);
-    
-    // Start polling for real-time progress updates (reads tiny counter file)
-    const pollProgress = async () => {
-      while (!stopPolling) {
-        try {
-          const res = await fetch("/api/admin/optimize", { credentials: "include" });
-          const data = await res.json();
-          setLiveStatus({
-            totalImages: data.totalImages || 0,
-            imagesWithVariants: data.imagesWithVariants || 0,
-            percentOptimized: data.percentOptimized || 0,
-          });
-        } catch {
-          // Ignore poll errors
-        }
-        // Wait 300ms before next poll
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-    };
-    
-    // Start polling in background
-    pollProgress();
+    let processed = 0;
+    let skipped = 0;
+    let failed = 0;
     
     try {
-      while (hasMore) {
-        const response = await fetch("/api/admin/optimize", {
-          method: "POST",
-          body: new URLSearchParams({ 
-            action: "optimize-batch",
-            offset: String(offset),
-            limit: "5", // 5 images per request to stay under 30s timeout
-            cleanup: cleanup ? "true" : "false",
-          }),
-          credentials: "include",
-        });
-        
-        if (!response.ok) {
-          console.error(`[Optimize] Batch failed with status ${response.status}`);
+      // Get list of images to process
+      const listRes = await fetch("/api/admin/optimize", {
+        method: "POST",
+        body: new URLSearchParams({ 
+          action: "get-unoptimized",
+          cleanup: cleanup ? "true" : "false",
+        }),
+        credentials: "include",
+      });
+      
+      const listData = await listRes.json() as {
+        success: boolean;
+        images: { path: string; filename: string; galleryPath: string; url: string }[];
+        totalImages: number;
+        toProcess: number;
+      };
+      
+      if (!listData.success || !listData.images) {
+        throw new Error("Failed to get image list");
+      }
+      
+      const images = listData.images;
+      const total = images.length;
+      
+      setJobState({ status: "running", currentIndex: startIndex, totalImages: total });
+      
+      // Process each image in browser
+      for (let i = startIndex; i < total; i++) {
+        // Check if user clicked pause
+        if (shouldPause) {
+          // Save job state
+          await fetch("/api/admin/optimize", {
+            method: "POST",
+            body: new URLSearchParams({
+              action: "update-job",
+              currentIndex: String(i),
+              processed: String(processed),
+              skipped: String(skipped),
+              failed: String(failed),
+              status: "paused",
+            }),
+            credentials: "include",
+          });
+          setJobState({ status: "paused", currentIndex: i, totalImages: total });
           break;
         }
         
-        const result = await response.json() as {
-          success: boolean;
-          batch: {
-            processed: number;
-            skipped: number;
-            failed: number;
-            variantsCreated: number;
-          };
-          progress: {
-            totalImages: number;
-            processedSoFar: number;
-            percentComplete: number;
-          };
-          hasMore: boolean;
-          nextOffset: number | null;
-        };
+        const image = images[i];
+        const logEntry: ProcessedImageLog = { filename: image.filename, status: "processed" };
         
-        // Accumulate stats
-        totalProcessed += result.batch.processed;
-        totalSkipped += result.batch.skipped;
-        totalFailed += result.batch.failed;
-        totalVariantsCreated += result.batch.variantsCreated;
+        try {
+          // Process image in browser
+          const result = await optimizeImageInBrowser(image.url, image.filename);
+          
+          if (result.variants.length === 0) {
+            // Image too small, skip
+            logEntry.status = "skipped";
+            skipped++;
+          } else {
+            logEntry.originalSize = result.originalSize;
+            logEntry.variants = [];
+            
+            // Upload each variant
+            for (let vi = 0; vi < result.variants.length; vi++) {
+              const variant = result.variants[vi];
+              const variantPath = `${image.galleryPath}/${variant.filename}`;
+              const isLast = vi === result.variants.length - 1;
+              
+              const formData = new FormData();
+              formData.append("file", variant.blob, variant.filename);
+              formData.append("path", variantPath);
+              formData.append("originalPath", image.path);
+              if (isLast) formData.append("markOptimized", "true");
+              
+              await fetch("/api/admin/upload-variant", {
+                method: "POST",
+                body: formData,
+                credentials: "include",
+              });
+              
+              // Add variant with preview URL
+              logEntry.variants.push({
+                width: variant.width,
+                size: variant.size,
+                url: `/api/images/${variantPath}`,
+              });
+            }
+            
+            // Cleanup object URLs
+            cleanupVariantUrls(result.variants);
+            processed++;
+          }
+        } catch (err) {
+          console.error(`[Optimize] Failed ${image.filename}:`, err);
+          logEntry.status = "failed";
+          failed++;
+        }
         
-        hasMore = result.hasMore;
-        offset = result.nextOffset || 0;
+        // Update progress
+        setProcessedLog(prev => [logEntry, ...prev].slice(0, 15));
+        setJobState({ status: "running", currentIndex: i + 1, totalImages: total });
+        setLiveStatus(prev => prev ? {
+          ...prev,
+          imagesWithVariants: prev.imagesWithVariants + (logEntry.status === "processed" ? 1 : 0),
+          percentOptimized: Math.round(((prev.imagesWithVariants + (logEntry.status === "processed" ? 1 : 0)) / prev.totalImages) * 100),
+        } : null);
+        
+        // Update job progress every 5 images
+        if ((i + 1) % 5 === 0) {
+          await fetch("/api/admin/optimize", {
+            method: "POST",
+            body: new URLSearchParams({
+              action: "update-job",
+              currentIndex: String(i + 1),
+              processed: String(processed),
+              skipped: String(skipped),
+              failed: String(failed),
+              status: "running",
+            }),
+            credentials: "include",
+          });
+        }
       }
       
-      // Set final progress
-      setOptimizeProgress({
-        processed: totalProcessed,
-        skipped: totalSkipped,
-        failed: totalFailed,
-        variantsCreated: totalVariantsCreated,
-      });
+      // Mark complete if not paused
+      if (!shouldPause) {
+        await fetch("/api/admin/optimize", {
+          method: "POST",
+          body: new URLSearchParams({ action: "clear-job" }),
+          credentials: "include",
+        });
+        setJobState(null);
+      }
       
-      console.log(`[Optimize] ✅ Complete! Processed: ${totalProcessed}, Skipped: ${totalSkipped}, Failed: ${totalFailed}`);
-      
-      // Final status refresh
+      // Refresh status
       fetcher.load("/api/admin/optimize");
       
     } catch (error) {
       console.error("[Optimize] Error:", error);
     } finally {
-      stopPolling = true;
       setIsOptimizing(false);
     }
+  };
+  
+  // Handle pause button
+  const handlePause = () => {
+    setShouldPause(true);
+  };
+  
+  // Handle continue from paused job
+  const handleContinue = () => {
+    if (jobState && jobState.status === "paused") {
+      handleOptimizeAll(false, jobState.currentIndex);
+    }
+  };
+  
+  // Handle start over (clear job and start fresh)
+  const handleStartOver = async () => {
+    await fetch("/api/admin/optimize", {
+      method: "POST",
+      body: new URLSearchParams({ action: "clear-job" }),
+      credentials: "include",
+    });
+    setJobState(null);
+    setProcessedLog([]);
   };
   
   const status = liveStatus || fetcher.data;
@@ -1939,10 +2057,10 @@ function ImageOptimizationPanel() {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-white">
-              WebP Variant Generation
+              Browser-Based WebP Generation
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Uses @cf-wasm/photon to generate optimized WebP variants (800, 1600, 2400px) for Retina & 5K displays
+              Processes images in your browser (no server limits!) - generates 800, 1600, 2400px variants for Retina & 5K displays
             </p>
           </div>
         </div>
@@ -1966,16 +2084,16 @@ function ImageOptimizationPanel() {
       )}
       
       {/* Progress Bar */}
-      {status && status.totalImages > 0 && status.percentOptimized < 100 && (
+      {status && (status.totalImages ?? 0) > 0 && (status.percentOptimized ?? 100) < 100 && (
         <div className="space-y-2">
           <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>{isOptimizing ? "Processing..." : `${status.totalImages - status.imagesWithVariants} images need optimization`}</span>
-            <span>{status.imagesWithVariants}/{status.totalImages} ({status.percentOptimized}%)</span>
+            <span>{isOptimizing ? "Processing..." : `${(status.totalImages ?? 0) - (status.imagesWithVariants ?? 0)} images need optimization`}</span>
+            <span>{status.imagesWithVariants ?? 0}/{status.totalImages ?? 0} ({status.percentOptimized ?? 0}%)</span>
           </div>
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
             <div 
               className={`bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-300 ${isOptimizing ? 'animate-pulse' : ''}`}
-              style={{ width: `${Math.max(1, (status.imagesWithVariants / status.totalImages) * 100)}%` }}
+              style={{ width: `${Math.max(1, ((status.imagesWithVariants ?? 0) / (status.totalImages || 1)) * 100)}%` }}
             />
           </div>
         </div>
@@ -1991,105 +2109,153 @@ function ImageOptimizationPanel() {
         </div>
       )}
       
-      {/* Optimize All Button */}
-      <div className="pt-2">
-        <button
-          type="button"
-          onClick={() => handleOptimizeAll(false)}
-          disabled={isOptimizing || (status?.percentOptimized === 100)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed"
-        >
-          {isOptimizing ? (
-            <>
-              <LoadingSpinner />
-              Optimizing... {liveStatus?.imagesWithVariants ?? 0}/{liveStatus?.totalImages ?? '?'} done
-            </>
-          ) : isLoading ? (
-            <>
-              <LoadingSpinner />
-              Loading Status...
-            </>
-          ) : status?.percentOptimized === 100 ? (
-            <>
-              <CheckIcon className="w-5 h-5" />
-              All Images Optimized
-            </>
-          ) : (
-            <>
-              <ImageIcon className="w-5 h-5" />
-              Optimize All Images
-            </>
-          )}
-        </button>
-        
-        {status?.percentOptimized === 100 && (
-          <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-            All images have WebP variants. New uploads are optimized automatically.
-          </p>
-        )}
-        
-        {/* Regenerate button - deletes old sizes and regenerates all */}
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm("This will delete ALL existing variants (including old 400w, 1200w sizes) and regenerate them with new sizes (800w, 1600w, 2400w). Continue?")) {
-              handleOptimizeAll(true); // cleanup=true
-            }
-          }}
-          disabled={isOptimizing}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 mt-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-all cursor-pointer disabled:cursor-not-allowed"
-        >
-          {isOptimizing ? (
-            <>
-              <LoadingSpinner />
-              Regenerating...
-            </>
-          ) : (
-            <>
-              🔄 Regenerate All (delete old sizes)
-            </>
-          )}
-        </button>
-      </div>
-      
-      {/* Results */}
-      {optimizeProgress && (
-        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-          <div className="flex items-start gap-3">
-            <CheckIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-green-800 dark:text-green-200 font-medium">Optimization Complete</p>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                <div className="text-green-700 dark:text-green-300">
-                  <span className="font-semibold">{optimizeProgress.processed}</span> processed
-                </div>
-                <div className="text-green-700 dark:text-green-300">
-                  <span className="font-semibold">{optimizeProgress.variantsCreated}</span> variants created
-                </div>
-                {optimizeProgress.skipped > 0 && (
-                  <div className="text-gray-600 dark:text-gray-400">
-                    <span className="font-semibold">{optimizeProgress.skipped}</span> skipped
-                  </div>
+      {/* Live Processing Log */}
+      {processedLog.length > 0 && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 max-h-64 overflow-y-auto">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Processing Log</p>
+          <div className="space-y-2 font-mono text-xs">
+            {processedLog.slice(0, 15).map((img, i) => (
+              <div 
+                key={`${img.filename}-${i}`}
+                className={`flex flex-wrap items-center gap-2 ${
+                  img.status === "processed" ? "text-green-600 dark:text-green-400" :
+                  img.status === "skipped" ? "text-gray-500 dark:text-gray-400" :
+                  "text-red-500 dark:text-red-400"
+                }`}
+              >
+                <span className="flex-shrink-0">
+                  {img.status === "processed" ? "✅" : img.status === "skipped" ? "⏭️" : "❌"}
+                </span>
+                <span className="truncate max-w-[200px]">{img.filename}</span>
+                {img.status === "processed" && img.variants && img.originalSize && (
+                  <span className="flex-shrink-0 flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                    <span>{Math.round(img.originalSize / 1024)}KB →</span>
+                    {img.variants.map((v, vi) => (
+                      <a
+                        key={vi}
+                        href={v.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-purple-600 dark:text-purple-400 hover:underline"
+                        title={`Preview ${v.width}w variant (${Math.round(v.size / 1024)}KB)`}
+                      >
+                        {v.width}w
+                      </a>
+                    ))}
+                  </span>
                 )}
-                {optimizeProgress.failed > 0 && (
-                  <div className="text-red-600 dark:text-red-400">
-                    <span className="font-semibold">{optimizeProgress.failed}</span> failed
-                  </div>
+                {img.status === "skipped" && (
+                  <span className="text-gray-400 dark:text-gray-500">(too small)</span>
                 )}
               </div>
-            </div>
+            ))}
           </div>
         </div>
       )}
       
-      {/* Info about auto-optimization */}
-      <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-        <p><strong>Auto-optimization:</strong> New uploads automatically generate WebP variants</p>
-        <p><strong>Deletion:</strong> Variants are automatically deleted when original is removed</p>
+      {/* Action Buttons */}
+      <div className="pt-2 space-y-3">
+        {/* Paused state - show Continue button */}
+        {jobState?.status === "paused" && !isOptimizing && (
+          <>
+            <button
+              type="button"
+              onClick={handleContinue}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 cursor-pointer"
+            >
+              <ImageIcon className="w-5 h-5" />
+              Continue from {jobState.currentIndex}/{jobState.totalImages}
+            </button>
+            <button
+              type="button"
+              onClick={handleStartOver}
+              className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"
+            >
+              Start over →
+            </button>
+          </>
+        )}
+        
+        {/* Running state - show Pause button */}
+        {isOptimizing && (
+          <button
+            type="button"
+            onClick={handlePause}
+            disabled={shouldPause}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white rounded-xl font-medium transition-all cursor-pointer disabled:cursor-not-allowed"
+          >
+            {shouldPause ? (
+              <>
+                <LoadingSpinner />
+                Pausing...
+              </>
+            ) : (
+              <>
+                <span className="text-lg">⏸️</span>
+                Pause ({jobState?.currentIndex ?? 0}/{jobState?.totalImages ?? '?'})
+              </>
+            )}
+          </button>
+        )}
+        
+        {/* Normal state - show Optimize button */}
+        {!isOptimizing && jobState?.status !== "paused" && (
+          <>
+            <button
+              type="button"
+              onClick={() => handleOptimizeAll(false)}
+              disabled={status?.percentOptimized === 100 || isLoading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <>
+                  <LoadingSpinner />
+                  Loading Status...
+                </>
+              ) : status?.percentOptimized === 100 ? (
+                <>
+                  <CheckIcon className="w-5 h-5" />
+                  All Photos Optimized
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="w-5 h-5" />
+                  Optimize {status?.imagesNeedingOptimization ?? 0} photos
+                </>
+              )}
+            </button>
+            
+            {status && (status.imagesNeedingOptimization ?? 0) > 0 && (
+              <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                {status.imagesNeedingOptimization ?? 0} photos detected without optimizations
+              </p>
+            )}
+            
+            {status?.percentOptimized === 100 && (
+              <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                All photos have WebP variants. New uploads are optimized automatically.
+              </p>
+            )}
+            
+            {/* Regenerate link */}
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm("This will delete ALL existing variants and regenerate them. Continue?")) {
+                  handleOptimizeAll(true);
+                }
+              }}
+              className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"
+            >
+              Regenerate all {status?.totalImages ?? 0} photos →
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
 }
+
 
 // Content Index Panel Component
 function ContentIndexPanel({ 

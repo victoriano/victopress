@@ -35,8 +35,98 @@ function getVariantFilename(originalFilename: string, width: number): string {
   return `${nameWithoutExt}_${width}w.webp`;
 }
 
-// Simple progress counter file - just stores "current/total" for fast reads
+// ============================================================================
+// OPTIMIZATION INDEX - Tracks which images have been optimized
+// Single JSON file for fast bulk lookups (no per-image network calls)
+// ============================================================================
+
+const OPTIMIZATION_INDEX_FILE = ".optimization-index.json";
 const PROGRESS_COUNTER_FILE = ".opt-progress.txt";
+
+interface OptimizationIndex {
+  version: number;
+  variantWidths: number[]; // [800, 1600, 2400] - to detect if widths changed
+  optimizedImages: string[]; // List of optimized image paths
+  lastUpdated: string;
+}
+
+// Load optimization index (single file read)
+async function getOptimizationIndex(storage: ReturnType<typeof getStorage>): Promise<OptimizationIndex | null> {
+  try {
+    const data = await storage.get(OPTIMIZATION_INDEX_FILE);
+    if (!data) return null;
+    const text = new TextDecoder().decode(data);
+    return JSON.parse(text) as OptimizationIndex;
+  } catch {
+    return null;
+  }
+}
+
+// Save optimization index
+async function saveOptimizationIndex(storage: ReturnType<typeof getStorage>, index: OptimizationIndex): Promise<void> {
+  const json = JSON.stringify(index);
+  await storage.put(OPTIMIZATION_INDEX_FILE, new TextEncoder().encode(json), "application/json");
+}
+
+// Add image to optimization index
+async function markImageOptimized(storage: ReturnType<typeof getStorage>, imagePath: string): Promise<void> {
+  let index = await getOptimizationIndex(storage);
+  if (!index) {
+    index = {
+      version: 1,
+      variantWidths: [...CURRENT_VARIANT_WIDTHS],
+      optimizedImages: [],
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+  if (!index.optimizedImages.includes(imagePath)) {
+    index.optimizedImages.push(imagePath);
+    index.lastUpdated = new Date().toISOString();
+    await saveOptimizationIndex(storage, index);
+  }
+}
+
+// Batch update optimization index (more efficient for bulk operations)
+async function markImagesOptimized(storage: ReturnType<typeof getStorage>, imagePaths: string[]): Promise<void> {
+  let index = await getOptimizationIndex(storage);
+  if (!index) {
+    index = {
+      version: 1,
+      variantWidths: [...CURRENT_VARIANT_WIDTHS],
+      optimizedImages: [],
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+  const existingSet = new Set(index.optimizedImages);
+  for (const path of imagePaths) {
+    existingSet.add(path);
+  }
+  index.optimizedImages = Array.from(existingSet);
+  index.lastUpdated = new Date().toISOString();
+  await saveOptimizationIndex(storage, index);
+}
+
+// Clear optimization index (for full re-optimization)
+async function clearOptimizationIndex(storage: ReturnType<typeof getStorage>): Promise<void> {
+  try {
+    await storage.delete(OPTIMIZATION_INDEX_FILE);
+  } catch {
+    // Ignore
+  }
+}
+
+// Check if image is optimized (uses in-memory Set for fast lookups)
+function isImageOptimized(index: OptimizationIndex | null, imagePath: string): boolean {
+  if (!index) return false;
+  // Check if variant widths match current config
+  const widthsMatch = JSON.stringify(index.variantWidths) === JSON.stringify([...CURRENT_VARIANT_WIDTHS]);
+  if (!widthsMatch) return false; // Needs re-optimization with new widths
+  return index.optimizedImages.includes(imagePath);
+}
+
+// ============================================================================
+// PROGRESS COUNTER - For real-time progress bar updates
+// ============================================================================
 
 // Read progress counter (fast - just a tiny text file)
 async function getProgressCounter(storage: ReturnType<typeof getStorage>): Promise<{ current: number; total: number } | null> {
@@ -67,40 +157,43 @@ async function clearProgressCounter(storage: ReturnType<typeof getStorage>): Pro
 
 /**
  * GET - Get optimization status
- * First checks for live progress counter (updated every image), then falls back to sampling
+ * 
+ * Priority:
+ * 1. Progress counter (real-time during optimization)
+ * 2. Optimization index (accurate count of optimized images)
+ * 3. Fallback to 0% if no data
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
   
   const storage = getStorage(context);
   
-  // Check for active optimization progress counter (super fast - tiny text file)
+  // 1. Check for active progress counter (real-time updates during optimization)
   const counter = await getProgressCounter(storage);
-  
-  if (counter) {
+  if (counter && counter.current < counter.total) {
     const { current, total } = counter;
-    const percentOptimized = total > 0 
-      ? Math.round((current / total) * 100) 
-      : 0;
+    const percentOptimized = total > 0 ? Math.round((current / total) * 100) : 0;
     
-    console.log(`[Optimize GET] ⚡ Counter: ${current}/${total}`);
+    console.log(`[Optimize GET] ⚡ Progress: ${current}/${total}`);
     
     return json({
       totalImages: total,
       imagesWithVariants: current,
       imagesNeedingOptimization: total - current,
       percentOptimized,
-      isRunning: current < total, // Running if not yet complete
+      isRunning: true,
     });
   }
   
-  console.log(`[Optimize GET] 🐢 No counter, sampling...`);
+  // 2. Load optimization index and content index (2 file reads, no per-image calls)
+  const [optIndex, contentIndex] = await Promise.all([
+    getOptimizationIndex(storage),
+    getContentIndex(storage),
+  ]);
   
-  // No progress counter - do a quick count from content index
-  const contentIndex = await getContentIndex(storage);
-  
+  // Count total images from content index
   let totalImages = 0;
-  const allPhotos: { galleryPath: string; filename: string }[] = [];
+  const allImagePaths: string[] = [];
   
   for (const gallery of contentIndex.galleryData || []) {
     const galleryPath = gallery.path || `galleries/${gallery.slug}`;
@@ -108,29 +201,28 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       if (!isImageFile(photo.filename)) continue;
       if (isVariantFile(photo.filename)) continue;
       totalImages++;
-      allPhotos.push({ galleryPath, filename: photo.filename });
+      allImagePaths.push(`${galleryPath}/${photo.filename}`);
     }
   }
   
-  // Quick sample to estimate (check 3 random images)
-  let optimizedCount = 0;
-  const sampleSize = Math.min(3, allPhotos.length);
-  const checks = [];
-  for (let i = 0; i < sampleSize; i++) {
-    const idx = Math.floor(Math.random() * allPhotos.length);
-    const { galleryPath, filename } = allPhotos[idx];
-    const variantPath = `${galleryPath}/${getVariantFilename(filename, 800)}`;
-    checks.push(storage.exists(variantPath).catch(() => false));
+  // Count optimized images from index (instant - no network calls)
+  let imagesWithVariants = 0;
+  if (optIndex) {
+    // Check if variant widths match current config
+    const widthsMatch = JSON.stringify(optIndex.variantWidths) === JSON.stringify([...CURRENT_VARIANT_WIDTHS]);
+    if (widthsMatch) {
+      // Count how many of our images are in the optimized set
+      const optimizedSet = new Set(optIndex.optimizedImages);
+      imagesWithVariants = allImagePaths.filter(p => optimizedSet.has(p)).length;
+    }
+    // If widths don't match, all images need re-optimization (imagesWithVariants stays 0)
   }
-  const results = await Promise.all(checks);
-  optimizedCount = results.filter(Boolean).length;
   
-  const imagesWithVariants = sampleSize > 0 
-    ? Math.round(totalImages * (optimizedCount / sampleSize)) 
-    : 0;
   const percentOptimized = totalImages > 0 
     ? Math.round((imagesWithVariants / totalImages) * 100) 
     : 100;
+  
+  console.log(`[Optimize GET] 📊 Index: ${imagesWithVariants}/${totalImages} (${percentOptimized}%)`);
   
   return json({
     totalImages,
@@ -160,6 +252,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return handleCleanupOldSizes(context);
     case "cleanup-and-optimize":
       return handleCleanupAndOptimize(context);
+    
+    // Browser-based optimization actions
+    case "get-unoptimized":
+      return handleGetUnoptimized(context, formData);
+    case "get-job":
+      return handleGetJob(context);
+    case "pause-job":
+      return handlePauseJob(context);
+    case "update-job":
+      return handleUpdateJob(context, formData);
+    case "clear-job":
+      return handleClearJob(context);
     case "optimize-gallery":
       return handleOptimizeGallery(formData, context);
     case "optimize-image":
@@ -196,31 +300,45 @@ async function handleOptimizeBatch(
 ) {
   const { processImageServer } = await import("~/lib/image-optimizer.server");
   const storage = getStorage(context);
-  const contentIndex = await getContentIndex(storage);
   
   const offset = parseInt(formData.get("offset") as string || "0", 10);
   const limit = parseInt(formData.get("limit") as string || String(MAX_IMAGES_PER_REQUEST), 10);
   const cleanup = formData.get("cleanup") === "true";
   
-  // Collect all images that need optimization
-  const allImages: { galleryPath: string; filename: string }[] = [];
+  // Load content index and optimization index in parallel (2 file reads)
+  const [contentIndex, optIndex] = await Promise.all([
+    getContentIndex(storage),
+    getOptimizationIndex(storage),
+  ]);
+  
+  // Build set of already-optimized images for fast lookup
+  const optimizedSet = new Set(optIndex?.optimizedImages || []);
+  const widthsMatch = optIndex 
+    ? JSON.stringify(optIndex.variantWidths) === JSON.stringify([...CURRENT_VARIANT_WIDTHS])
+    : false;
+  
+  // Collect all images
+  const allImages: { galleryPath: string; filename: string; imagePath: string }[] = [];
   
   for (const gallery of contentIndex.galleryData || []) {
     const galleryPath = gallery.path || `galleries/${gallery.slug}`;
     for (const photo of gallery.photos || []) {
       if (!isImageFile(photo.filename)) continue;
       if (isVariantFile(photo.filename)) continue;
-      allImages.push({ galleryPath, filename: photo.filename });
+      const imagePath = `${galleryPath}/${photo.filename}`;
+      allImages.push({ galleryPath, filename: photo.filename, imagePath });
     }
   }
   
   const totalImages = allImages.length;
   const batchImages = allImages.slice(offset, offset + limit);
   
-  // Initialize or update progress counter
-  // If this is the first batch (offset=0), start fresh
+  // Initialize progress counter and clear optimization index on first batch
   if (offset === 0) {
     await setProgressCounter(storage, 0, totalImages);
+    if (cleanup) {
+      await clearOptimizationIndex(storage);
+    }
   }
   
   let processed = 0;
@@ -228,9 +346,19 @@ async function handleOptimizeBatch(
   let failed = 0;
   let variantsCreated = 0;
   let variantsDeleted = 0;
-  let currentProgress = offset; // Track overall progress
+  let currentProgress = offset;
+  const newlyOptimized: string[] = [];
   
-  for (const { galleryPath, filename } of batchImages) {
+  // Track processed images for UI display
+  interface ProcessedImageInfo {
+    filename: string;
+    status: "processed" | "skipped" | "failed";
+    variants?: { width: number; size: number }[];
+    originalSize?: number;
+  }
+  const processedImages: ProcessedImageInfo[] = [];
+  
+  for (const { galleryPath, filename, imagePath } of batchImages) {
     // If cleanup mode, delete old and current variants first
     if (cleanup) {
       for (const width of [...OLD_VARIANT_WIDTHS, ...CURRENT_VARIANT_WIDTHS]) {
@@ -243,55 +371,75 @@ async function handleOptimizeBatch(
         } catch { /* ignore */ }
       }
     } else {
-      // Skip if already optimized
-      const variantPath = `${galleryPath}/${getVariantFilename(filename, 800)}`;
-      try {
-        if (await storage.exists(variantPath)) {
-          skipped++;
-          currentProgress++;
-          // Update progress counter after each skip
-          await setProgressCounter(storage, currentProgress, totalImages);
-          continue;
-        }
-      } catch { /* ignore */ }
+      // Skip if already optimized (instant check from in-memory Set, no network!)
+      if (widthsMatch && optimizedSet.has(imagePath)) {
+        skipped++;
+        currentProgress++;
+        processedImages.push({ filename, status: "skipped" });
+        await setProgressCounter(storage, currentProgress, totalImages);
+        continue;
+      }
     }
     
     // Process the image
-    const photoPath = `${galleryPath}/${filename}`;
     try {
-      const imageData = await storage.get(photoPath);
+      const imageData = await storage.get(imagePath);
       if (!imageData) {
         failed++;
         currentProgress++;
+        processedImages.push({ filename, status: "failed" });
         await setProgressCounter(storage, currentProgress, totalImages);
         continue;
       }
       
       const result = await processImageServer(imageData, filename);
       
-      // Save variants
+      // Save variants and track sizes
+      const variantSizes: { width: number; size: number }[] = [];
       for (const variant of result.variants) {
         const savePath = `${galleryPath}/${variant.filename}`;
         await storage.put(savePath, variant.data.buffer as ArrayBuffer, "image/webp");
         variantsCreated++;
+        variantSizes.push({ width: variant.width, size: variant.size });
       }
       
       processed++;
       currentProgress++;
+      newlyOptimized.push(imagePath);
+      processedImages.push({
+        filename,
+        status: "processed",
+        variants: variantSizes,
+        originalSize: imageData.byteLength,
+      });
       
       // Update progress counter after each image
       await setProgressCounter(storage, currentProgress, totalImages);
-      console.log(`[Batch] ✅ ${filename} - ${currentProgress}/${totalImages}`);
+      
+      // Log with size info
+      const sizeSummary = variantSizes.map(v => `${v.width}w:${Math.round(v.size/1024)}KB`).join(", ");
+      console.log(`[Batch] ✅ ${filename} (${Math.round(imageData.byteLength/1024)}KB → ${sizeSummary}) - ${currentProgress}/${totalImages}`);
     } catch (err) {
-      console.error(`[Batch] ❌ Failed ${photoPath}:`, err);
+      console.error(`[Batch] ❌ Failed ${imagePath}:`, err);
       failed++;
       currentProgress++;
+      processedImages.push({ filename, status: "failed" });
       await setProgressCounter(storage, currentProgress, totalImages);
     }
   }
   
+  // Batch update the optimization index with newly optimized images
+  if (newlyOptimized.length > 0) {
+    await markImagesOptimized(storage, newlyOptimized);
+  }
+  
   const nextOffset = offset + limit;
   const hasMore = nextOffset < totalImages;
+  
+  // Clear progress counter when done (so next GET uses the optimization index)
+  if (!hasMore) {
+    await clearProgressCounter(storage);
+  }
   
   return json({
     success: true,
@@ -306,9 +454,11 @@ async function handleOptimizeBatch(
     },
     progress: {
       totalImages,
-      processedSoFar: Math.min(nextOffset, totalImages),
-      percentComplete: Math.round((Math.min(nextOffset, totalImages) / totalImages) * 100),
+      processedSoFar: currentProgress,
+      percentComplete: Math.round((currentProgress / totalImages) * 100),
     },
+    // Detailed info about each processed image for UI display
+    processedImages,
     hasMore,
     nextOffset: hasMore ? nextOffset : null,
   });
@@ -346,6 +496,9 @@ async function handleCleanupOldSizes(
       }
     }
   }
+  
+  // Clear optimization index since we deleted variants
+  await clearOptimizationIndex(storage);
   
   console.log(`[Cleanup] ✅ Deleted ${deletedCount} old variants`);
   
@@ -684,4 +837,213 @@ async function handleOptimizeImage(
       error: err instanceof Error ? err.message : "Processing failed" 
     }, { status: 500 });
   }
+}
+
+// ============================================================================
+// BROWSER-BASED OPTIMIZATION HANDLERS
+// ============================================================================
+
+const JOB_FILE = ".optimization-job.json";
+
+interface OptimizationJob {
+  status: "running" | "paused" | "completed";
+  currentIndex: number;
+  totalImages: number;
+  stats: {
+    processed: number;
+    skipped: number;
+    failed: number;
+  };
+  cleanup: boolean;
+  startedAt: string;
+  updatedAt: string;
+}
+
+async function getJob(storage: ReturnType<typeof getStorage>): Promise<OptimizationJob | null> {
+  try {
+    const data = await storage.get(JOB_FILE);
+    if (!data) return null;
+    const text = new TextDecoder().decode(data);
+    return JSON.parse(text) as OptimizationJob;
+  } catch {
+    return null;
+  }
+}
+
+async function saveJob(storage: ReturnType<typeof getStorage>, job: OptimizationJob): Promise<void> {
+  const jsonStr = JSON.stringify(job);
+  await storage.put(JOB_FILE, new TextEncoder().encode(jsonStr), "application/json");
+}
+
+async function clearJob(storage: ReturnType<typeof getStorage>): Promise<void> {
+  try {
+    await storage.delete(JOB_FILE);
+  } catch {
+    // Ignore
+  }
+}
+
+/**
+ * Get list of images needing optimization (for browser-based processing)
+ */
+async function handleGetUnoptimized(
+  context: Parameters<typeof getStorage>[0],
+  formData: FormData
+) {
+  const storage = getStorage(context);
+  const cleanup = formData.get("cleanup") === "true";
+  
+  // Load indexes
+  const [optIndex, contentIndex] = await Promise.all([
+    getOptimizationIndex(storage),
+    getContentIndex(storage),
+  ]);
+  
+  // Build optimized set for fast lookup
+  const optimizedSet = new Set(optIndex?.optimizedImages || []);
+  const widthsMatch = optIndex 
+    ? JSON.stringify(optIndex.variantWidths) === JSON.stringify([...CURRENT_VARIANT_WIDTHS])
+    : false;
+  
+  // Collect images needing optimization
+  interface ImageInfo {
+    path: string;
+    filename: string;
+    galleryPath: string;
+    url: string;
+  }
+  const unoptimized: ImageInfo[] = [];
+  const allImages: ImageInfo[] = [];
+  
+  for (const gallery of contentIndex.galleryData || []) {
+    const galleryPath = gallery.path || `galleries/${gallery.slug}`;
+    for (const photo of gallery.photos || []) {
+      if (!isImageFile(photo.filename)) continue;
+      if (isVariantFile(photo.filename)) continue;
+      
+      const imagePath = `${galleryPath}/${photo.filename}`;
+      const imageInfo: ImageInfo = {
+        path: imagePath,
+        filename: photo.filename,
+        galleryPath,
+        url: `/api/images/${encodeURIComponent(imagePath).replace(/%2F/g, "/")}`,
+      };
+      
+      allImages.push(imageInfo);
+      
+      // If cleanup mode, include all images
+      // Otherwise, only include unoptimized
+      if (cleanup) {
+        unoptimized.push(imageInfo);
+      } else if (!widthsMatch || !optimizedSet.has(imagePath)) {
+        unoptimized.push(imageInfo);
+      }
+    }
+  }
+  
+  // Create/update job file
+  const job: OptimizationJob = {
+    status: "running",
+    currentIndex: 0,
+    totalImages: unoptimized.length,
+    stats: { processed: 0, skipped: 0, failed: 0 },
+    cleanup,
+    startedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await saveJob(storage, job);
+  
+  // If cleanup mode, clear the optimization index
+  if (cleanup) {
+    await clearOptimizationIndex(storage);
+  }
+  
+  console.log(`[GetUnoptimized] Found ${unoptimized.length} images to process (cleanup=${cleanup})`);
+  
+  return json({
+    success: true,
+    images: unoptimized,
+    totalImages: allImages.length,
+    toProcess: unoptimized.length,
+    cleanup,
+  });
+}
+
+/**
+ * Get current job state
+ */
+async function handleGetJob(context: Parameters<typeof getStorage>[0]) {
+  const storage = getStorage(context);
+  const job = await getJob(storage);
+  
+  if (!job) {
+    return json({ success: true, job: null });
+  }
+  
+  return json({ success: true, job });
+}
+
+/**
+ * Pause the current job
+ */
+async function handlePauseJob(context: Parameters<typeof getStorage>[0]) {
+  const storage = getStorage(context);
+  const job = await getJob(storage);
+  
+  if (!job) {
+    return json({ success: false, error: "No active job" }, { status: 404 });
+  }
+  
+  job.status = "paused";
+  job.updatedAt = new Date().toISOString();
+  await saveJob(storage, job);
+  
+  console.log(`[PauseJob] Paused at ${job.currentIndex}/${job.totalImages}`);
+  
+  return json({ success: true, job });
+}
+
+/**
+ * Update job progress (called by browser after each image)
+ */
+async function handleUpdateJob(
+  context: Parameters<typeof getStorage>[0],
+  formData: FormData
+) {
+  const storage = getStorage(context);
+  const job = await getJob(storage);
+  
+  if (!job) {
+    return json({ success: false, error: "No active job" }, { status: 404 });
+  }
+  
+  // Update job with progress
+  const currentIndex = parseInt(formData.get("currentIndex") as string || "0", 10);
+  const processed = parseInt(formData.get("processed") as string || "0", 10);
+  const skipped = parseInt(formData.get("skipped") as string || "0", 10);
+  const failed = parseInt(formData.get("failed") as string || "0", 10);
+  const status = formData.get("status") as "running" | "paused" | "completed" | null;
+  
+  job.currentIndex = currentIndex;
+  job.stats.processed = processed;
+  job.stats.skipped = skipped;
+  job.stats.failed = failed;
+  if (status) job.status = status;
+  job.updatedAt = new Date().toISOString();
+  
+  await saveJob(storage, job);
+  
+  return json({ success: true, job });
+}
+
+/**
+ * Clear the job file
+ */
+async function handleClearJob(context: Parameters<typeof getStorage>[0]) {
+  const storage = getStorage(context);
+  await clearJob(storage);
+  
+  console.log("[ClearJob] Job file cleared");
+  
+  return json({ success: true });
 }

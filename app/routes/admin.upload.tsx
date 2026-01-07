@@ -54,10 +54,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
     variantsCreated?: number;
   }> = [];
   
-  // Import server-side image processor
-  const { processImageServer, isVariantFile, isImageFile } = await import(
-    "~/lib/image-optimizer.server"
-  );
+  // Helper to check if file is a variant
+  const isVariantFile = (filename: string) => /_\d+w\.webp$/i.test(filename);
   
   // Separate original files from pre-generated variants (from browser)
   const originalFiles: File[] = [];
@@ -89,32 +87,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
       const buffer = await file.arrayBuffer();
       await storage.put(destPath, buffer, file.type);
       
-      let variantsCreated = 0;
-      
-      // Generate WebP variants server-side if requested and it's an image
-      if (generateVariantsFlag && isImageFile(file.name)) {
-        try {
-          const processed = await processImageServer(buffer, file.name);
-          const dir = destPath.substring(0, destPath.lastIndexOf("/"));
-          
-          for (const variant of processed.variants) {
-            const variantPath = `${dir}/${variant.filename}`;
-            await storage.put(variantPath, variant.data.buffer as ArrayBuffer, "image/webp");
-            variantsCreated++;
-          }
-          
-          console.log(`[Upload] Generated ${variantsCreated} variants for ${file.name}`);
-        } catch (variantError) {
-          console.error(`[Upload] Failed to generate variants for ${file.name}:`, variantError);
-          // Non-fatal - original is still uploaded
-        }
-      }
+      // Variants are now generated in the browser and uploaded separately via /api/admin/upload-variant
       
       results.push({ 
         name: file.name, 
         status: "success", 
         path: destPath,
-        variantsCreated,
+        variantsCreated: 0, // Variants are counted separately via upload-variant endpoint
       });
     } catch (error) {
       results.push({
@@ -224,20 +203,70 @@ export default function AdminUpload() {
     }
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  // Processing state for browser-based optimization
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
+  
+  const handleSubmit = useCallback(async () => {
     if (files.length === 0) return;
     
     const formData = new FormData();
     formData.append("gallery", selectedGallery);
-    formData.append("generateVariants", generateVariants ? "true" : "false");
+    formData.append("generateVariants", "false"); // We'll handle variants in browser
     
-    // Just upload original files - server will generate variants
+    // Upload original files first
     files.forEach((file) => formData.append("files", file));
     
     fetcher.submit(formData, {
       method: "POST",
       encType: "multipart/form-data",
     });
+    
+    // If generateVariants is enabled, process in browser after upload starts
+    if (generateVariants) {
+      setIsProcessing(true);
+      setProcessingProgress({ current: 0, total: files.length });
+      
+      try {
+        const { optimizeImageInBrowser, cleanupVariantUrls } = await import("~/utils/browser-image-optimizer");
+        const galleryPath = selectedGallery ? `galleries/${selectedGallery}` : "galleries/uploads";
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          setProcessingProgress({ current: i + 1, total: files.length });
+          
+          try {
+            const result = await optimizeImageInBrowser(file, file.name);
+            
+            // Upload each variant
+            for (let vi = 0; vi < result.variants.length; vi++) {
+              const variant = result.variants[vi];
+              const isLast = vi === result.variants.length - 1;
+              
+              const variantFormData = new FormData();
+              variantFormData.append("file", variant.blob, variant.filename);
+              variantFormData.append("path", `${galleryPath}/${variant.filename}`);
+              variantFormData.append("originalPath", `${galleryPath}/${file.name}`);
+              if (isLast) variantFormData.append("markOptimized", "true");
+              
+              await fetch("/api/admin/upload-variant", {
+                method: "POST",
+                body: variantFormData,
+                credentials: "include",
+              });
+            }
+            
+            cleanupVariantUrls(result.variants);
+          } catch (err) {
+            console.error(`[Upload] Failed to optimize ${file.name}:`, err);
+          }
+        }
+      } catch (err) {
+        console.error("[Upload] Browser optimization failed:", err);
+      } finally {
+        setIsProcessing(false);
+      }
+    }
   }, [files, selectedGallery, fetcher, generateVariants]);
 
   const isUploading = fetcher.state !== "idle";
@@ -310,7 +339,7 @@ export default function AdminUpload() {
                 Generate optimized WebP variants
               </span>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Creates 400px, 800px, 1200px, and 1600px versions for faster loading
+                Creates 800px, 1600px, and 2400px WebP versions for faster loading (processed in your browser)
               </p>
             </div>
           </label>
@@ -399,36 +428,59 @@ export default function AdminUpload() {
             </div>
 
             {/* Upload Button */}
-            <div className="mt-6 flex items-center gap-4">
-              <button
-                onClick={handleSubmit}
-                disabled={isUploading}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isUploading ? (
-                  <>
-                    <LoadingIcon />
-                    Uploading & Processing...
-                  </>
-                ) : (
-                  <>
-                    <UploadIcon />
-                    Upload {files.length} photo{files.length !== 1 ? "s" : ""}
-                    {generateVariants && <span className="text-xs opacity-70 ml-1">(+ WebP variants)</span>}
-                  </>
-                )}
-              </button>
-              
-              {fetcher.data && "message" in fetcher.data && (
-                <p
-                  className={`text-sm ${
-                    "success" in fetcher.data && fetcher.data.success
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-red-600 dark:text-red-400"
-                  }`}
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleSubmit}
+                  disabled={isUploading || isProcessing}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {fetcher.data.message}
-                </p>
+                  {isUploading ? (
+                    <>
+                      <LoadingIcon />
+                      Uploading...
+                    </>
+                  ) : isProcessing ? (
+                    <>
+                      <LoadingIcon />
+                      Optimizing {processingProgress.current}/{processingProgress.total}...
+                    </>
+                  ) : (
+                    <>
+                      <UploadIcon />
+                      Upload {files.length} photo{files.length !== 1 ? "s" : ""}
+                      {generateVariants && <span className="text-xs opacity-70 ml-1">(+ WebP variants)</span>}
+                    </>
+                  )}
+                </button>
+                
+                {fetcher.data && "message" in fetcher.data && !isProcessing && (
+                  <p
+                    className={`text-sm ${
+                      "success" in fetcher.data && fetcher.data.success
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {fetcher.data.message}
+                  </p>
+                )}
+              </div>
+              
+              {/* Processing Progress Bar */}
+              {isProcessing && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>Generating WebP variants in browser...</span>
+                    <span>{processingProgress.current}/{processingProgress.total}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${(processingProgress.current / processingProgress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
               )}
             </div>
           </div>
