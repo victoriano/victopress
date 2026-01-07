@@ -197,7 +197,7 @@ export default function AdminGalleries() {
           </div>
           <div className="flex items-center gap-2">
             {/* View toggle */}
-            <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 mr-2">
+            <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 sm:mr-2">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`p-1.5 rounded ${viewMode === "grid" ? "bg-white dark:bg-gray-700 shadow-sm" : ""}`}
@@ -216,17 +216,19 @@ export default function AdminGalleries() {
             <button
               type="button"
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium"
+              title="New Gallery"
+              className="inline-flex items-center gap-2 px-2 sm:px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium"
             >
               <PlusIcon />
-              New Gallery
+              <span className="hidden sm:inline">New Gallery</span>
             </button>
             <Link
               to="/admin/upload"
-              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
+              title="Upload"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
             >
               <UploadIcon />
-              Upload
+              <span>Upload</span>
             </Link>
           </div>
         </div>
