@@ -116,18 +116,25 @@ export function OptimizedImage({
   const [useOriginal, setUseOriginal] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Check if image is already loaded (cached) on mount
-  useEffect(() => {
-    if (imgRef.current?.complete && imgRef.current?.naturalHeight > 0) {
-      setIsLoaded(true);
-    }
-  }, []);
-
-  // Reset state when src changes
+  // Reset state when src changes, then check if already cached
   useEffect(() => {
     setIsLoaded(false);
     setHasError(false);
     setUseOriginal(false);
+    
+    // Check if image is already loaded (cached) after a microtask
+    // This handles cases where the browser has the image cached
+    const checkLoaded = () => {
+      if (imgRef.current?.complete && imgRef.current?.naturalHeight > 0) {
+        setIsLoaded(true);
+      }
+    };
+    
+    // Check immediately and after a short delay (for hydration)
+    checkLoaded();
+    const timeoutId = setTimeout(checkLoaded, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, [src]);
 
   // Normalize src path
@@ -181,6 +188,7 @@ export function OptimizedImage({
       )}
 
       <img
+        key={defaultSrc}
         ref={imgRef}
         src={defaultSrc}
         srcSet={srcSet}

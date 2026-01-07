@@ -11,7 +11,7 @@ import { useLoaderData, Link, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { getStorage, getNavigationFromIndex, getHomePhotosFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useState } from "react";
 import yaml from "js-yaml";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
 import { getOptimizedImageUrl, getOriginalImageUrl } from "~/utils/image-optimization";
@@ -116,56 +116,57 @@ export default function FeaturedPhotoPage() {
   } = useLoaderData<typeof loader>();
 
   const navigate = useNavigate();
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [useOriginal, setUseOriginal] = useState(false);
   
   // Current URL with fallback support
   const currentPhotoUrl = useOriginal ? originalPhotoUrl : photoUrl;
-  const previousPhotoUrl = useRef(currentPhotoUrl);
+  
+  // Track the URL that's finished loading (to prevent flash when navigating)
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  
+  // Preload adjacent photos for instant navigation
+  usePhotoPreloading([prevPhotoUrl, nextPhotoUrl]);
   
   // Reset fallback when photo changes
   useEffect(() => {
     setUseOriginal(false);
-    setIsImageLoaded(false);
   }, [photo.filename]);
 
-  // Preload adjacent photos
-  usePhotoPreloading([prevPhotoUrl, nextPhotoUrl]);
-
-  // Handle image loading state - reset when current URL changes (including fallback)
+  // When current URL changes, preload it and only show when ready
   useEffect(() => {
-    if (currentPhotoUrl !== previousPhotoUrl.current) {
-      setIsImageLoaded(false);
-      previousPhotoUrl.current = currentPhotoUrl;
-    }
-  }, [currentPhotoUrl]);
+    if (currentPhotoUrl === loadedUrl) return;
+    
+    // Preload the new image before displaying
+    const img = new Image();
+    img.onload = () => {
+      setLoadedUrl(currentPhotoUrl);
+    };
+    img.onerror = () => {
+      // On error, try original or just show anyway
+      if (!useOriginal) {
+        setUseOriginal(true);
+      } else {
+        setLoadedUrl(currentPhotoUrl);
+      }
+    };
+    img.src = currentPhotoUrl;
+  }, [currentPhotoUrl, loadedUrl, useOriginal]);
+  
+  // Use the loaded URL, or fall back to current URL for initial render
+  const displayUrl = loadedUrl || currentPhotoUrl;
 
-  // Navigation with transition
-  const navigateWithTransition = useCallback(
-    (url: string) => {
-      setIsTransitioning(true);
-      // Small delay for fade-out animation
-      setTimeout(() => {
-        navigate(url);
-        setIsTransitioning(false);
-      }, 150);
-    },
-    [navigate]
-  );
-
-  // Keyboard navigation
+  // Keyboard navigation - navigate directly without transition delay
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft" && prevIndex !== null) {
-        navigateWithTransition(`/featured/${prevIndex}`);
+        navigate(`/featured/${prevIndex}`);
       } else if (e.key === "ArrowRight" && nextIndex !== null) {
-        navigateWithTransition(`/featured/${nextIndex}`);
+        navigate(`/featured/${nextIndex}`);
       } else if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Escape") {
         navigate("/");
       }
     },
-    [navigate, navigateWithTransition, prevIndex, nextIndex]
+    [navigate, prevIndex, nextIndex]
   );
 
   useEffect(() => {
@@ -201,27 +202,14 @@ export default function FeaturedPhotoPage() {
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
         {/* Photo with invisible tap zones for navigation */}
-        <div className="relative bg-gray-100 dark:bg-gray-900 min-h-[40vh]">
-          {/* Loading spinner */}
-          {!isImageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center z-0">
-              <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
-            </div>
-          )}
+        <div className="relative bg-white dark:bg-black min-h-[40vh]">
           <img
-            src={currentPhotoUrl}
+            key={displayUrl}
+            src={displayUrl}
             alt={photo.title || photo.filename}
-            className={`w-full object-contain select-none transition-opacity duration-300 ease-out ${
-              isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
-            }`}
-            onLoad={() => {
-              console.log(`[Featured] Mobile image loaded: ${currentPhotoUrl}`);
-              setIsImageLoaded(true);
-            }}
+            className="w-full object-contain select-none"
             onError={() => {
-              console.warn(`[Featured] Mobile image failed: ${currentPhotoUrl}`);
               if (!useOriginal) {
-                console.log(`[Featured] Falling back to original: ${originalPhotoUrl}`);
                 setUseOriginal(true);
               }
             }}
@@ -231,13 +219,13 @@ export default function FeaturedPhotoPage() {
             <Link
               to={prevIndex !== null ? `/featured/${prevIndex}` : "#"}
               onClick={(e) => prevIndex === null && e.preventDefault()}
-              className={`w-1/2 h-full ${prevIndex === null ? "pointer-events-none" : ""}`}
+              className={`w-1/2 h-full focus:outline-none ${prevIndex === null ? "pointer-events-none" : ""}`}
               aria-label="Previous photo"
             />
             <Link
               to={nextIndex !== null ? `/featured/${nextIndex}` : "#"}
               onClick={(e) => nextIndex === null && e.preventDefault()}
-              className={`w-1/2 h-full ${nextIndex === null ? "pointer-events-none" : ""}`}
+              className={`w-1/2 h-full focus:outline-none ${nextIndex === null ? "pointer-events-none" : ""}`}
               aria-label="Next photo"
             />
           </div>
@@ -309,26 +297,13 @@ export default function FeaturedPhotoPage() {
       {/* Desktop layout - centered with clickable zones */}
       <div className="hidden lg:flex lg:flex-col lg:h-screen">
         <div className="flex-1 flex items-center justify-center overflow-hidden pt-8 pb-8 px-8 relative bg-white dark:bg-black">
-          {/* Loading indicator */}
-          {!isImageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-10 h-10 border-2 border-gray-200 dark:border-gray-700 border-t-gray-500 dark:border-t-gray-400 rounded-full animate-spin" />
-            </div>
-          )}
           <img
-            src={currentPhotoUrl}
+            key={displayUrl}
+            src={displayUrl}
             alt={photo.title || photo.filename}
-            className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-opacity duration-300 ease-out ${
-              isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
-            }`}
-            onLoad={() => {
-              console.log(`[Featured] Desktop image loaded: ${currentPhotoUrl}`);
-              setIsImageLoaded(true);
-            }}
+            className="max-h-full max-w-full object-contain pointer-events-none select-none"
             onError={() => {
-              console.warn(`[Featured] Desktop image failed: ${currentPhotoUrl}`);
               if (!useOriginal) {
-                console.log(`[Featured] Falling back to original: ${originalPhotoUrl}`);
                 setUseOriginal(true);
               }
             }}
@@ -338,10 +313,9 @@ export default function FeaturedPhotoPage() {
           <div className="absolute inset-0 flex">
             {/* Left zone - Previous */}
             {prevIndex !== null ? (
-              <button
-                type="button"
-                onClick={() => navigateWithTransition(`/featured/${prevIndex}`)}
-                className="w-1/3 h-full cursor-prev bg-transparent border-0"
+              <Link
+                to={`/featured/${prevIndex}`}
+                className="w-1/3 h-full cursor-prev focus:outline-none"
                 aria-label="Previous photo"
               />
             ) : (
@@ -351,16 +325,15 @@ export default function FeaturedPhotoPage() {
             {/* Center zone - Thumbnails */}
             <Link
               to="/"
-              className="w-1/3 h-full cursor-thumbnails"
+              className="w-1/3 h-full cursor-thumbnails focus:outline-none"
               aria-label="Show thumbnails"
             />
             
             {/* Right zone - Next */}
             {nextIndex !== null ? (
-              <button
-                type="button"
-                onClick={() => navigateWithTransition(`/featured/${nextIndex}`)}
-                className="w-1/3 h-full cursor-next bg-transparent border-0"
+              <Link
+                to={`/featured/${nextIndex}`}
+                className="w-1/3 h-full cursor-next focus:outline-none"
                 aria-label="Next photo"
               />
             ) : (

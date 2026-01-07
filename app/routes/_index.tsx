@@ -93,13 +93,14 @@ export default function Index() {
       socialLinks={socialLinks}
     >
       <PhotoGrid>
-        {photos.map((photo) => (
+        {photos.map((photo, index) => (
           <PhotoItem
             key={`${photo.gallerySlug}-${photo.id}-${photo.homeIndex}`}
             src={`/api/images/${photo.path}`}
             alt={photo.title || photo.filename}
             aspectRatio="auto"
             href={`/featured/${photo.homeIndex}`}
+            priority={index < 8}
           />
         ))}
       </PhotoGrid>
