@@ -40,6 +40,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return handleDelete(formData, context);
     case "move":
       return handleMove(formData, context);
+    case "reorder":
+      return handleReorder(formData, context);
     default:
       return json({ success: false, error: "Unknown action" }, { status: 400 });
   }
@@ -319,6 +321,96 @@ async function handleMove(
     message: `Gallery moved successfully (${movedCount} files)`,
     newSlug: toSlug,
     moved: movedCount,
+  });
+}
+
+/**
+ * Reorder galleries - update order values for multiple galleries at once
+ */
+async function handleReorder(
+  formData: FormData,
+  context: { cloudflare?: { env?: Record<string, unknown> } }
+) {
+  const orderJson = formData.get("order") as string;
+  const parentPath = formData.get("parentPath") as string | null;
+  
+  console.log("[Gallery Reorder] Starting reorder...", { orderJson, parentPath });
+  
+  if (!orderJson) {
+    return json({ success: false, error: "Order is required" }, { status: 400 });
+  }
+  
+  let order: string[];
+  try {
+    order = JSON.parse(orderJson);
+    if (!Array.isArray(order)) {
+      throw new Error("Order must be an array");
+    }
+  } catch {
+    return json({ success: false, error: "Invalid order format" }, { status: 400 });
+  }
+  
+  const storage = getStorage(context);
+  const results: Array<{ slug: string; success: boolean; error?: string }> = [];
+  
+  // Update each gallery's order in its gallery.yaml
+  for (let i = 0; i < order.length; i++) {
+    const slug = order[i];
+    const galleryPath = `galleries/${slug}`;
+    const yamlPath = `${galleryPath}/gallery.yaml`;
+    const newOrder = i + 1; // 1-indexed order
+    
+    try {
+      // Get existing metadata
+      let existingMetadata: GalleryMetadata = {};
+      const existingYaml = await storage.getText(yamlPath);
+      
+      if (existingYaml) {
+        try {
+          existingMetadata = yaml.parse(existingYaml) || {};
+        } catch {
+          // Invalid YAML, start fresh
+        }
+      } else {
+        // No gallery.yaml exists - this is a virtual folder
+        // Create a basic gallery.yaml with just the title and order
+        const slugParts = slug.split("/");
+        const folderName = slugParts[slugParts.length - 1];
+        existingMetadata = {
+          title: folderName.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
+        };
+      }
+      
+      // Update order
+      existingMetadata.order = newOrder;
+      
+      // Write updated YAML
+      const yamlContent = yaml.stringify(existingMetadata);
+      await storage.put(yamlPath, yamlContent);
+      
+      // Fast index update - only update this gallery's order, don't rebuild everything
+      await updateGalleryMetadataInIndex(storage, galleryPath, {
+        order: newOrder,
+      });
+      
+      results.push({ slug, success: true });
+    } catch (err) {
+      results.push({
+        slug,
+        success: false,
+        error: err instanceof Error ? err.message : "Failed to update order",
+      });
+    }
+  }
+  
+  const successCount = results.filter(r => r.success).length;
+  
+  console.log(`[Gallery Reorder] Complete: ${successCount}/${order.length} galleries updated`, results);
+  
+  return json({
+    success: successCount > 0,
+    message: `Updated order for ${successCount} of ${order.length} galleries`,
+    results,
   });
 }
 

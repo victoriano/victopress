@@ -2,19 +2,38 @@
  * Admin - Galleries Explorer
  * 
  * File explorer-like interface for navigating galleries.
- * Shows folders hierarchically like Finder/Explorer.
+ * Shows folders and galleries at the same level with drag-and-drop reordering.
  * 
  * GET /admin/galleries
  * GET /admin/galleries?path=geographies/europe
  */
 
 import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
-import { useLoaderData, Link, useFetcher, useNavigate, useSearchParams } from "@remix-run/react";
+import { useLoaderData, Link, useFetcher, useNavigate, useSearchParams, useRevalidator } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getContentIndex } from "~/lib/content-engine";
 import { useState, useEffect, useCallback, useMemo } from "react";
+
+// Drag and drop
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface GalleryItem {
   slug: string;
@@ -27,6 +46,8 @@ interface GalleryItem {
   path: string;
   tags?: string[];
   isProtected?: boolean;
+  hasChildren?: boolean;
+  isFolder?: boolean;
 }
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
@@ -62,8 +83,20 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     return !remainder.includes("/");
   });
   
+  // Mark folders (galleries that have children or are parent galleries)
+  const galleriesWithFolderInfo = galleriesAtLevel.map(gallery => {
+    const hasChildren = allGalleries.some((g: GalleryItem) => 
+      g.slug.startsWith(gallery.slug + "/")
+    );
+    return {
+      ...gallery,
+      hasChildren,
+      isFolder: gallery.isParentGallery || hasChildren,
+    };
+  });
+  
   // Sort by order, then by title
-  const sortedGalleries = [...galleriesAtLevel].sort((a, b) => {
+  const sortedGalleries = [...galleriesWithFolderInfo].sort((a, b) => {
     const orderA = a.order ?? 999;
     const orderB = b.order ?? 999;
     if (orderA !== orderB) return orderA - orderB;
@@ -98,8 +131,113 @@ export default function AdminGalleries() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fetcher = useFetcher();
+  const reorderFetcher = useFetcher();
+  const revalidator = useRevalidator();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  
+  // Track ordered galleries (for drag and drop)
+  const [orderedGalleries, setOrderedGalleries] = useState(galleries);
+  
+  // Update ordered galleries when data changes
+  useEffect(() => {
+    setOrderedGalleries(galleries);
+  }, [galleries]);
+  
+  // Gallery IDs for sortable context
+  const galleryIds = useMemo(() => orderedGalleries.map((g) => g.slug), [orderedGalleries]);
+  
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  // Handle drag end - reorder galleries
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    console.log("[Galleries] Drag end:", { activeId: active.id, overId: over?.id });
+    
+    if (over && active.id !== over.id) {
+      setOrderedGalleries((items) => {
+        const oldIndex = items.findIndex((g) => g.slug === active.id);
+        const newIndex = items.findIndex((g) => g.slug === over.id);
+        console.log("[Galleries] Reordering from index", oldIndex, "to", newIndex);
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        console.log("[Galleries] New order:", newOrder.map(g => g.slug));
+        return newOrder;
+      });
+    }
+  }, []);
+  
+  // Save reordered galleries
+  const saveGalleryOrder = useCallback(() => {
+    const order = orderedGalleries.map((g) => g.slug);
+    console.log("[Galleries] Saving gallery order:", order);
+    
+    const formData = new FormData();
+    formData.append("action", "reorder");
+    formData.append("order", JSON.stringify(order));
+    if (currentPath) {
+      formData.append("parentPath", currentPath);
+    }
+
+    reorderFetcher.submit(formData, {
+      method: "POST",
+      action: "/api/admin/galleries",
+    });
+
+    // Note: Don't exit reorder mode here - wait for success in useEffect
+  }, [orderedGalleries, currentPath, reorderFetcher]);
+  
+  // Cancel reorder
+  const cancelReorder = useCallback(() => {
+    setOrderedGalleries(galleries);
+    setIsReorderMode(false);
+  }, [galleries]);
+  
+  // Check if order has changed
+  const hasOrderChanged = useMemo(() => {
+    if (orderedGalleries.length !== galleries.length) {
+      console.log("[Galleries] Order changed: length mismatch");
+      return true;
+    }
+    const changed = orderedGalleries.some((g, i) => g.slug !== galleries[i]?.slug);
+    if (changed) {
+      console.log("[Galleries] Order changed:", 
+        orderedGalleries.map(g => g.slug).join(", "), 
+        "vs original:", 
+        galleries.map(g => g.slug).join(", ")
+      );
+    }
+    return changed;
+  }, [orderedGalleries, galleries]);
+  
+  // Track if we've already revalidated for the current successful response
+  const [lastRevalidatedData, setLastRevalidatedData] = useState<unknown>(null);
+  
+  // Handle successful reorder save - exit reorder mode and revalidate data
+  useEffect(() => {
+    if (reorderFetcher.state === "idle" && reorderFetcher.data) {
+      if (reorderFetcher.data.success && reorderFetcher.data !== lastRevalidatedData) {
+        console.log("[Galleries] Revalidating after successful reorder...");
+        setLastRevalidatedData(reorderFetcher.data);
+        setIsReorderMode(false);
+        // Revalidate the page data to get the new order
+        revalidator.revalidate();
+      } else if (reorderFetcher.data.error) {
+        console.error("[Galleries] Reorder failed:", reorderFetcher.data.error);
+      }
+    }
+  }, [reorderFetcher.data, reorderFetcher.state, revalidator, lastRevalidatedData]);
   
   // Build breadcrumb trail
   const breadcrumbs = useMemo(() => {
@@ -147,27 +285,6 @@ export default function AdminGalleries() {
     return `/admin/galleries?path=${encodeURIComponent(currentPath.slice(0, lastSlash))}`;
   }, [currentPath]);
 
-  // Separate folders (parent galleries or galleries with children) from leaf galleries
-  const { folders, leafGalleries } = useMemo(() => {
-    const folders: typeof galleries = [];
-    const leafGalleries: typeof galleries = [];
-    
-    for (const gallery of galleries) {
-      // Check if this gallery has children
-      const hasChildren = allGalleries.some((g: GalleryItem) => 
-        g.slug.startsWith(gallery.slug + "/")
-      );
-      
-      if (gallery.isParentGallery || hasChildren) {
-        folders.push({ ...gallery, hasChildren: true });
-      } else {
-        leafGalleries.push(gallery);
-      }
-    }
-    
-    return { folders, leafGalleries };
-  }, [galleries, allGalleries]);
-
   return (
     <AdminLayout username={username || undefined}>
       <div className="p-6 lg:p-8">
@@ -189,7 +306,7 @@ export default function AdminGalleries() {
               </h1>
               <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
                 {currentPath 
-                  ? `${folders.length} folders, ${leafGalleries.length} galleries`
+                  ? `${galleries.length} items`
                   : `${totalGalleries} galleries, ${totalPhotos} photos`
                 }
               </p>
@@ -296,82 +413,141 @@ export default function AdminGalleries() {
               Upload Photos
             </Link>
           </div>
+        ) : galleries.length === 0 && currentFolder ? (
+          /* Empty folder state */
+          <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
+            <FolderOpenIcon />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2 mt-4">
+              This folder is empty
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              Create a new gallery or subfolder inside "{currentFolder.title}"
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium"
+            >
+              <PlusIcon />
+              New Gallery
+            </button>
+          </div>
         ) : (
           <>
-            {/* Folders Section */}
-            {folders.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                  Folders
-                </h2>
-                {viewMode === "grid" ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                    {folders.map((folder) => (
-                      <FolderCard 
-                        key={folder.slug} 
-                        folder={folder} 
-                      />
-                    ))}
+            {/* Toolbar */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                {isReorderMode ? (
+                  <div className="flex items-center gap-2">
+                    <DragIcon />
+                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                      Drag to reorder ({galleries.length} items)
+                    </span>
                   </div>
                 ) : (
-                  <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                    {folders.map((folder, idx) => (
-                      <FolderRow 
-                        key={folder.slug} 
-                        folder={folder}
-                        isLast={idx === folders.length - 1}
-                      />
-                    ))}
-                  </div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {galleries.length} items
+                  </span>
                 )}
+              </div>
+              
+              {/* Reorder mode controls */}
+              {isReorderMode ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={cancelReorder}
+                    className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveGalleryOrder}
+                    disabled={!hasOrderChanged || reorderFetcher.state !== "idle"}
+                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {reorderFetcher.state !== "idle" ? (
+                      <>
+                        <LoadingSpinner />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Order"
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsReorderMode(true)}
+                  className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <DragIcon />
+                  Reorder
+                </button>
+              )}
+            </div>
+            
+            {/* Reorder feedback */}
+            {reorderFetcher.data && (
+              <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${
+                reorderFetcher.data.success 
+                  ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                  : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
+              }`}>
+                {reorderFetcher.data.message || reorderFetcher.data.error}
               </div>
             )}
             
-            {/* Galleries Section (leaf galleries with photos) */}
-            {leafGalleries.length > 0 && (
-              <div>
-                <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                  {folders.length > 0 ? "Galleries" : ""}
-                </h2>
-                {viewMode === "grid" ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {leafGalleries.map((gallery) => (
-                      <GalleryCard key={gallery.slug} gallery={gallery} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                    {leafGalleries.map((gallery, idx) => (
-                      <GalleryRow 
-                        key={gallery.slug} 
-                        gallery={gallery}
-                        isLast={idx === leafGalleries.length - 1}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Empty folder state */}
-            {galleries.length === 0 && currentFolder && (
-              <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
-                <FolderOpenIcon />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2 mt-4">
-                  This folder is empty
-                </h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Create a new gallery or subfolder inside "{currentFolder.title}"
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium"
-                >
-                  <PlusIcon />
-                  New Gallery
-                </button>
-              </div>
+            {/* Unified Gallery/Folder Grid with drag and drop */}
+            {isReorderMode ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={galleryIds} strategy={rectSortingStrategy}>
+                  {viewMode === "grid" ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                      {orderedGalleries.map((gallery) => (
+                        <SortableGalleryCard
+                          key={gallery.slug}
+                          gallery={gallery}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                      {orderedGalleries.map((gallery, idx) => (
+                        <SortableGalleryRow
+                          key={gallery.slug}
+                          gallery={gallery}
+                          isLast={idx === orderedGalleries.length - 1}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </SortableContext>
+              </DndContext>
+            ) : (
+              viewMode === "grid" ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                  {galleries.map((gallery) => (
+                    <GalleryCard key={gallery.slug} gallery={gallery} />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                  {galleries.map((gallery, idx) => (
+                    <GalleryRow
+                      key={gallery.slug}
+                      gallery={gallery}
+                      isLast={idx === galleries.length - 1}
+                    />
+                  ))}
+                </div>
+              )
             )}
           </>
         )}
@@ -385,161 +561,203 @@ function encodeImagePath(path: string): string {
   return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
 }
 
-// Folder Card Component (for grid view)
-function FolderCard({ folder }: { folder: GalleryItem }) {
-  const coverUrl = folder.cover 
-    ? `/api/images/${encodeImagePath(folder.cover)}`
+// Unified Gallery Card Component (for grid view)
+function GalleryCard({ gallery }: { gallery: GalleryItem }) {
+  const coverUrl = gallery.cover 
+    ? `/api/images/${encodeImagePath(gallery.cover)}`
     : null;
 
-  // Get child count from description or calculate
-  const childInfo = folder.isParentGallery ? "Container" : `${folder.photoCount} photos`;
+  const isFolder = gallery.isFolder;
+  const linkTo = isFolder
+    ? `/admin/galleries?path=${encodeURIComponent(gallery.slug)}`
+    : `/admin/galleries/${gallery.slug}`;
 
   return (
     <Link
-      to={`/admin/galleries?path=${encodeURIComponent(folder.slug)}`}
-      className="group text-left bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all block"
+      to={linkTo}
+      className="group text-left bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md transition-all block"
     >
-      {/* Folder Preview */}
-      <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 p-4 flex items-center justify-center relative overflow-hidden">
+      {/* Preview */}
+      <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 relative overflow-hidden">
         {coverUrl ? (
-          <>
-            <img
-              src={coverUrl}
-              alt={folder.title}
-              className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity"
-            />
-            <div className="relative">
-              <FolderIconLarge />
-            </div>
-          </>
+          <img
+            src={coverUrl}
+            alt={gallery.title}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${isFolder ? 'opacity-60' : ''}`}
+          />
+        ) : isFolder ? (
+          <div className="w-full h-full flex items-center justify-center">
+            <FolderIconLarge />
+          </div>
         ) : (
-          <FolderIconLarge />
+          <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <GalleryIcon />
+          </div>
+        )}
+        
+        {/* Folder overlay icon */}
+        {isFolder && coverUrl && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-white/80 dark:bg-gray-900/80 rounded-full p-3 shadow-lg">
+              <FolderIconSmall />
+            </div>
+          </div>
+        )}
+        
+        {/* Protected badge */}
+        {gallery.isProtected && (
+          <div className="absolute top-2 right-2">
+            <span className="px-2 py-1 text-xs font-medium bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 rounded shadow-sm">
+              Protected
+            </span>
+          </div>
         )}
       </div>
       
       {/* Info */}
       <div className="p-3">
-        <h3 className="font-medium text-gray-900 dark:text-white truncate text-sm">
-          {folder.title}
-        </h3>
+        <div className="flex items-center gap-1.5">
+          {isFolder && <FolderIconTiny />}
+          <h3 className="font-medium text-gray-900 dark:text-white truncate text-sm flex-1">
+            {gallery.title}
+          </h3>
+        </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          {childInfo}
+          {isFolder 
+            ? gallery.isParentGallery ? "Folder" : `${gallery.photoCount} photos`
+            : `${gallery.photoCount} photos`
+          }
         </p>
       </div>
     </Link>
   );
 }
 
-// Folder Row Component (for list view)
-function FolderRow({ folder, isLast }: { folder: GalleryItem; isLast: boolean }) {
-  return (
-    <Link
-      to={`/admin/galleries?path=${encodeURIComponent(folder.slug)}`}
-      className={`w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-left block ${
-        !isLast ? "border-b border-gray-100 dark:border-gray-800" : ""
-      }`}
-    >
-      <div className="flex-shrink-0 text-amber-500">
-        <FolderIconSmall />
-      </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-gray-900 dark:text-white truncate">
-          {folder.title}
-        </h3>
-        {folder.description && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-            {folder.description}
-          </p>
-        )}
-      </div>
-      <div className="flex-shrink-0 text-sm text-gray-400 dark:text-gray-500">
-        {folder.isParentGallery ? "Folder" : `${folder.photoCount} photos`}
-      </div>
-      <ChevronRightIcon />
-    </Link>
-  );
-}
+// Sortable Gallery Card for drag-and-drop (grid view)
+function SortableGalleryCard({ gallery }: { gallery: GalleryItem }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: gallery.slug });
 
-// Gallery Card Component (for grid view - leaf galleries)
-function GalleryCard({ gallery }: { gallery: GalleryItem }) {
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 1,
+  };
+
   const coverUrl = gallery.cover 
     ? `/api/images/${encodeImagePath(gallery.cover)}`
     : null;
 
+  const isFolder = gallery.isFolder;
+
   return (
-    <Link
-      to={`/admin/galleries/${gallery.slug}`}
-      className="group bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`group text-left bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden cursor-grab active:cursor-grabbing ${
+        isDragging ? "ring-2 ring-blue-500 shadow-lg" : ""
+      }`}
     >
-      {/* Cover Image */}
-      <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800 overflow-hidden">
+      {/* Preview */}
+      <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 relative overflow-hidden">
         {coverUrl ? (
           <img
             src={coverUrl}
             alt={gallery.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className={`w-full h-full object-cover pointer-events-none ${isFolder ? 'opacity-60' : ''}`}
+            draggable={false}
           />
+        ) : isFolder ? (
+          <div className="w-full h-full flex items-center justify-center">
+            <FolderIconLarge />
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">
             <GalleryIcon />
           </div>
         )}
+        
+        {/* Folder overlay icon */}
+        {isFolder && coverUrl && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-white/80 dark:bg-gray-900/80 rounded-full p-3 shadow-lg">
+              <FolderIconSmall />
+            </div>
+          </div>
+        )}
+        
+        {/* Drag indicator overlay */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-gray-900/90 rounded-full p-2 shadow-lg">
+            <DragIcon />
+          </div>
+        </div>
       </div>
       
       {/* Info */}
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-gray-900 dark:text-white truncate">
-              {gallery.title}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {gallery.photoCount} photos
-            </p>
-          </div>
-          {gallery.isProtected && (
-            <span className="flex-shrink-0 px-2 py-1 text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded">
-              Protected
-            </span>
-          )}
+      <div className="p-3">
+        <div className="flex items-center gap-1.5">
+          {isFolder && <FolderIconTiny />}
+          <h3 className="font-medium text-gray-900 dark:text-white truncate text-sm flex-1">
+            {gallery.title}
+          </h3>
         </div>
-        
-        {gallery.description && (
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-            {gallery.description}
-          </p>
-        )}
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          {isFolder 
+            ? gallery.isParentGallery ? "Folder" : `${gallery.photoCount} photos`
+            : `${gallery.photoCount} photos`
+          }
+        </p>
       </div>
-    </Link>
+    </div>
   );
 }
 
-// Gallery Row Component (for list view)
+// Unified Gallery Row Component (for list view)
 function GalleryRow({ gallery, isLast }: { gallery: GalleryItem; isLast: boolean }) {
   const coverUrl = gallery.cover 
     ? `/api/images/${encodeImagePath(gallery.cover)}`
     : null;
 
+  const isFolder = gallery.isFolder;
+  const linkTo = isFolder
+    ? `/admin/galleries?path=${encodeURIComponent(gallery.slug)}`
+    : `/admin/galleries/${gallery.slug}`;
+
   return (
     <Link
-      to={`/admin/galleries/${gallery.slug}`}
+      to={linkTo}
       className={`flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors ${
         !isLast ? "border-b border-gray-100 dark:border-gray-800" : ""
       }`}
     >
-      <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+      <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
         {coverUrl ? (
-          <img src={coverUrl} alt={gallery.title} className="w-full h-full object-cover" />
+          <img src={coverUrl} alt={gallery.title} className={`w-full h-full object-cover ${isFolder ? 'opacity-60' : ''}`} />
+        ) : isFolder ? (
+          <FolderIconSmall />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
+          <div className="text-gray-400">
             <ImageIcon />
           </div>
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-gray-900 dark:text-white truncate">
-          {gallery.title}
-        </h3>
+        <div className="flex items-center gap-2">
+          {isFolder && <FolderIconTiny />}
+          <h3 className="font-medium text-gray-900 dark:text-white truncate">
+            {gallery.title}
+          </h3>
+        </div>
         {gallery.description && (
           <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
             {gallery.description}
@@ -547,15 +765,91 @@ function GalleryRow({ gallery, isLast }: { gallery: GalleryItem; isLast: boolean
         )}
       </div>
       <div className="flex-shrink-0 flex items-center gap-4">
-        {gallery.isProtected && (
-          <LockIcon />
-        )}
+        {gallery.isProtected && <LockIcon />}
         <span className="text-sm text-gray-400 dark:text-gray-500">
           {gallery.photoCount} photos
         </span>
         <ChevronRightIcon />
       </div>
     </Link>
+  );
+}
+
+// Sortable Gallery Row for drag-and-drop (list view)
+function SortableGalleryRow({ gallery, isLast }: { gallery: GalleryItem; isLast: boolean }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: gallery.slug });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 1,
+  };
+
+  const coverUrl = gallery.cover 
+    ? `/api/images/${encodeImagePath(gallery.cover)}`
+    : null;
+
+  const isFolder = gallery.isFolder;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`flex items-center gap-4 p-4 bg-white dark:bg-gray-950 cursor-grab active:cursor-grabbing ${
+        !isLast ? "border-b border-gray-100 dark:border-gray-800" : ""
+      } ${isDragging ? "ring-2 ring-blue-500 shadow-lg rounded-lg" : ""}`}
+    >
+      {/* Drag handle */}
+      <div className="flex-shrink-0 text-gray-400 dark:text-gray-500">
+        <DragIcon />
+      </div>
+      
+      <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+        {coverUrl ? (
+          <img 
+            src={coverUrl} 
+            alt={gallery.title} 
+            className={`w-full h-full object-cover ${isFolder ? 'opacity-60' : ''}`}
+            draggable={false}
+          />
+        ) : isFolder ? (
+          <FolderIconSmall />
+        ) : (
+          <div className="text-gray-400">
+            <ImageIcon />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          {isFolder && <FolderIconTiny />}
+          <h3 className="font-medium text-gray-900 dark:text-white truncate">
+            {gallery.title}
+          </h3>
+        </div>
+        {gallery.description && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+            {gallery.description}
+          </p>
+        )}
+      </div>
+      <div className="flex-shrink-0 flex items-center gap-4">
+        {gallery.isProtected && <LockIcon />}
+        <span className="text-sm text-gray-400 dark:text-gray-500">
+          {gallery.photoCount} photos
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -622,6 +916,14 @@ function FolderIconLarge() {
 function FolderIconSmall() {
   return (
     <svg className="w-6 h-6 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M19.5 21a3 3 0 003-3v-9a3 3 0 00-3-3h-5.379a1.5 1.5 0 01-1.06-.44l-1.122-1.121A3 3 0 009.879 3H4.5a3 3 0 00-3 3v12a3 3 0 003 3h15z" />
+    </svg>
+  );
+}
+
+function FolderIconTiny() {
+  return (
+    <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
       <path d="M19.5 21a3 3 0 003-3v-9a3 3 0 00-3-3h-5.379a1.5 1.5 0 01-1.06-.44l-1.122-1.121A3 3 0 009.879 3H4.5a3 3 0 00-3 3v12a3 3 0 003 3h15z" />
     </svg>
   );
@@ -703,6 +1005,23 @@ function LockIcon() {
   return (
     <svg className="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+    </svg>
+  );
+}
+
+function DragIcon() {
+  return (
+    <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+    </svg>
+  );
+}
+
+function LoadingSpinner() {
+  return (
+    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
     </svg>
   );
 }
