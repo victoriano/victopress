@@ -20,7 +20,7 @@ import { Layout } from "~/components/Layout";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { useEffect, useCallback, useState, useRef } from "react";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
-import { getOptimizedImageUrl } from "~/utils/image-optimization";
+import { getOptimizedImageUrl, getOriginalImageUrl } from "~/utils/image-optimization";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.photo) {
@@ -86,21 +86,17 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const prevPhoto = photoIndex > 0 ? photos[photoIndex - 1] : null;
   const nextPhoto = photoIndex < photos.length - 1 ? photos[photoIndex + 1] : null;
 
-  // Generate optimized image URLs using Cloudflare Image Resizing
-  // Main image: high quality, responsive width
-  const photoUrl = getOptimizedImageUrl(photo.path, {
-    width: 1600,
-    quality: 85,
-    format: "auto",
-    fit: "scale-down",
-  });
+  // Generate optimized image URLs using pre-generated WebP variants
+  // Uses 1600w variant (good balance of quality and size)
+  const photoUrl = getOptimizedImageUrl(photo.path, { width: 1600 });
+  const originalPhotoUrl = getOriginalImageUrl(photo.path); // Fallback
   
-  // Preload URLs for adjacent photos
+  // Preload URLs for adjacent photos (same 1600w variant)
   const prevPhotoUrl = prevPhoto 
-    ? getOptimizedImageUrl(prevPhoto.path, { width: 1600, quality: 80, format: "auto" })
+    ? getOptimizedImageUrl(prevPhoto.path, { width: 1600 })
     : null;
   const nextPhotoUrl = nextPhoto
-    ? getOptimizedImageUrl(nextPhoto.path, { width: 1600, quality: 80, format: "auto" })
+    ? getOptimizedImageUrl(nextPhoto.path, { width: 1600 })
     : null;
 
   const siteName = "Victoriano Izquierdo";
@@ -110,6 +106,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   return json({
     photo,
     photoUrl,
+    originalPhotoUrl,
     prevPhotoUrl,
     nextPhotoUrl,
     gallery: {
@@ -138,6 +135,7 @@ export default function PhotoPage() {
   const {
     photo,
     photoUrl,
+    originalPhotoUrl,
     prevPhotoUrl,
     nextPhotoUrl,
     gallery,
@@ -152,6 +150,15 @@ export default function PhotoPage() {
   } = useLoaderData<typeof loader>();
 
   const navigate = useNavigate();
+  
+  // Fallback to original if WebP variant doesn't exist
+  const [useOriginal, setUseOriginal] = useState(false);
+  const currentPhotoUrl = useOriginal ? originalPhotoUrl : photoUrl;
+  
+  // Reset fallback when photo changes
+  useEffect(() => {
+    setUseOriginal(false);
+  }, [photo.filename]);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const previousPhotoUrl = useRef(photoUrl);
@@ -235,12 +242,13 @@ export default function PhotoPage() {
             </div>
           )}
           <img
-            src={photoUrl}
+            src={currentPhotoUrl}
             alt={photo.title || photo.filename}
             className={`w-full object-contain select-none transition-opacity duration-300 ease-out ${
               isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
             }`}
             onLoad={() => setIsImageLoaded(true)}
+            onError={() => !useOriginal && setUseOriginal(true)}
           />
           {/* Invisible tap zones - left half = prev, right half = next */}
           <div className="absolute inset-0 flex z-10">
@@ -332,12 +340,13 @@ export default function PhotoPage() {
             </div>
           )}
           <img
-            src={photoUrl}
+            src={currentPhotoUrl}
             alt={photo.title || photo.filename}
             className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-opacity duration-300 ease-out ${
               isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
             }`}
             onLoad={() => setIsImageLoaded(true)}
+            onError={() => !useOriginal && setUseOriginal(true)}
           />
           
           {/* Clickable overlay zones */}

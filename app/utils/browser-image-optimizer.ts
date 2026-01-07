@@ -6,7 +6,9 @@
  */
 
 export const VARIANT_WIDTHS = [800, 1600, 2400] as const;
-export const WEBP_QUALITY = 0.85;
+// Lower quality for better compression - Canvas API needs lower values
+// 0.70-0.75 produces good quality while keeping files small
+export const WEBP_QUALITY = 0.72;
 
 export interface ImageVariant {
   width: number;
@@ -136,6 +138,12 @@ export async function optimizeImageInBrowser(
     
     // Convert to WebP
     const blob = await canvasToWebP(canvas, WEBP_QUALITY);
+    
+    // Skip if WebP is larger than original (shouldn't happen but Canvas API can be inefficient)
+    if (source instanceof File && blob.size > source.size) {
+      console.log(`[Optimizer] Skipping ${targetWidth}w - WebP (${Math.round(blob.size/1024)}KB) larger than original (${Math.round(source.size/1024)}KB)`);
+      continue;
+    }
     
     // Create object URL for preview
     const url = URL.createObjectURL(blob);

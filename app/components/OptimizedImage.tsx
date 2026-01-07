@@ -141,10 +141,10 @@ export function OptimizedImage({
     ? SRCSET_WIDTHS.map((w) => `${getVariantUrl(imagePath, w)} ${w}w`).join(", ")
     : undefined;
 
-  // Default src - use 1200w variant or original
+  // Default src - use 1600w variant (middle size) or original
   const defaultSrc = useOriginal 
     ? getOriginalUrl(imagePath)
-    : getVariantUrl(imagePath, 1200);
+    : getVariantUrl(imagePath, 1600);
 
   // Placeholder styles
   const placeholderStyles = aspectRatio
@@ -213,7 +213,7 @@ export function getOptimizedImageUrl(
     width?: number;
   } = {}
 ): string {
-  const width = options.width || 1200;
+  const width = options.width || 1600; // Default to middle variant
   
   // Normalize the path
   let basePath = src;
