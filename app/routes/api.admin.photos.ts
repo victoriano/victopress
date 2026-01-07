@@ -65,6 +65,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return handleToggleVisibility(formData, context);
     case "bulk-update":
       return handleBulkUpdate(formData, context);
+    case "get-variants":
+      return handleGetVariants(formData, context);
+    case "delete-variants":
+      return handleDeleteVariants(formData, context);
+    case "regenerate-variants":
+      return handleRegenerateVariants(formData, context);
     default:
       return json({ success: false, error: "Unknown action" }, { status: 400 });
   }
@@ -637,6 +643,202 @@ async function removePhotosFromYaml(
     await storage.put(yamlPath, yaml.stringify(photosArray));
   } catch {
     // YAML parsing failed, ignore
+  }
+}
+
+// Variant widths must match image-optimizer.server.ts
+const VARIANT_WIDTHS = [800, 1600, 2400];
+
+/**
+ * Get variants for a photo (sizes, existence)
+ */
+async function handleGetVariants(
+  formData: FormData,
+  context: { cloudflare?: { env?: Record<string, unknown> } }
+) {
+  const photoPath = formData.get("photoPath") as string;
+  
+  if (!photoPath) {
+    return json({ success: false, error: "Photo path is required" }, { status: 400 });
+  }
+  
+  const storage = getStorage(context);
+  const filename = photoPath.split("/").pop()!;
+  const dir = photoPath.substring(0, photoPath.lastIndexOf("/"));
+  
+  // Get original file info
+  let originalSize: number | null = null;
+  try {
+    const originalData = await storage.get(photoPath);
+    if (originalData) {
+      originalSize = originalData.byteLength;
+    }
+  } catch {
+    // Ignore errors
+  }
+  
+  // Check each variant
+  interface VariantInfo {
+    width: number;
+    filename: string;
+    path: string;
+    exists: boolean;
+    size: number | null;
+    url: string;
+  }
+  
+  const variants: VariantInfo[] = [];
+  const dotIndex = filename.lastIndexOf(".");
+  const nameWithoutExt = dotIndex >= 0 ? filename.substring(0, dotIndex) : filename;
+  
+  for (const width of VARIANT_WIDTHS) {
+    const variantFilename = `${nameWithoutExt}_${width}w.webp`;
+    const variantPath = `${dir}/${variantFilename}`;
+    
+    let exists = false;
+    let size: number | null = null;
+    
+    try {
+      const variantData = await storage.get(variantPath);
+      if (variantData) {
+        exists = true;
+        size = variantData.byteLength;
+      }
+    } catch {
+      // Variant doesn't exist
+    }
+    
+    // Build URL with proper encoding
+    const encodedPath = variantPath.split('/').map(s => encodeURIComponent(s)).join('/');
+    
+    variants.push({
+      width,
+      filename: variantFilename,
+      path: variantPath,
+      exists,
+      size,
+      url: `/api/images/${encodedPath}`,
+    });
+  }
+  
+  return json({
+    success: true,
+    photoPath,
+    originalSize,
+    variants,
+  });
+}
+
+/**
+ * Delete all variants for a photo
+ */
+async function handleDeleteVariants(
+  formData: FormData,
+  context: { cloudflare?: { env?: Record<string, unknown> } }
+) {
+  const photoPath = formData.get("photoPath") as string;
+  
+  if (!photoPath) {
+    return json({ success: false, error: "Photo path is required" }, { status: 400 });
+  }
+  
+  const storage = getStorage(context);
+  const filename = photoPath.split("/").pop()!;
+  const dir = photoPath.substring(0, photoPath.lastIndexOf("/"));
+  
+  const variantFilenames = getAllVariantFilenames(filename);
+  let deletedCount = 0;
+  
+  for (const variantFilename of variantFilenames) {
+    const variantPath = `${dir}/${variantFilename}`;
+    try {
+      if (await storage.exists(variantPath)) {
+        await storage.delete(variantPath);
+        deletedCount++;
+      }
+    } catch {
+      // Ignore errors
+    }
+  }
+  
+  return json({
+    success: true,
+    message: `Deleted ${deletedCount} variants`,
+    deletedCount,
+  });
+}
+
+/**
+ * Regenerate all variants for a photo
+ */
+async function handleRegenerateVariants(
+  formData: FormData,
+  context: { cloudflare?: { env?: Record<string, unknown> } }
+) {
+  const photoPath = formData.get("photoPath") as string;
+  
+  if (!photoPath) {
+    return json({ success: false, error: "Photo path is required" }, { status: 400 });
+  }
+  
+  const storage = getStorage(context);
+  const filename = photoPath.split("/").pop()!;
+  const dir = photoPath.substring(0, photoPath.lastIndexOf("/"));
+  
+  // First, delete existing variants
+  const variantFilenames = getAllVariantFilenames(filename);
+  for (const variantFilename of variantFilenames) {
+    const variantPath = `${dir}/${variantFilename}`;
+    try {
+      if (await storage.exists(variantPath)) {
+        await storage.delete(variantPath);
+      }
+    } catch {
+      // Ignore errors
+    }
+  }
+  
+  // Load the original image
+  const imageData = await storage.get(photoPath);
+  if (!imageData) {
+    return json({ success: false, error: "Original image not found" }, { status: 404 });
+  }
+  
+  // Process the image
+  try {
+    const { processImageServer } = await import("~/lib/image-optimizer.server");
+    const result = await processImageServer(imageData, filename);
+    
+    // Save variants
+    interface GeneratedVariant {
+      width: number;
+      filename: string;
+      size: number;
+    }
+    const generatedVariants: GeneratedVariant[] = [];
+    
+    for (const variant of result.variants) {
+      const savePath = `${dir}/${variant.filename}`;
+      await storage.put(savePath, variant.data.buffer as ArrayBuffer, "image/webp");
+      generatedVariants.push({
+        width: variant.width,
+        filename: variant.filename,
+        size: variant.size,
+      });
+    }
+    
+    return json({
+      success: true,
+      message: `Generated ${generatedVariants.length} variants`,
+      originalSize: imageData.byteLength,
+      variants: generatedVariants,
+    });
+  } catch (err) {
+    console.error(`[RegenerateVariants] Failed for ${photoPath}:`, err);
+    return json({
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to generate variants",
+    }, { status: 500 });
   }
 }
 

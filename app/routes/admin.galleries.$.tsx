@@ -1277,7 +1277,118 @@ function PhotoEditModal({
   const [featured, setFeatured] = useState(photo.featured || false);
   const [date, setDate] = useState(photo.dateTaken ? new Date(photo.dateTaken).toISOString().split("T")[0] : "");
   
+  // Variant management state
+  interface VariantInfo {
+    width: number;
+    filename: string;
+    path: string;
+    exists: boolean;
+    size: number | null;
+    url: string;
+  }
+  const [variants, setVariants] = useState<VariantInfo[]>([]);
+  const [originalSize, setOriginalSize] = useState<number | null>(null);
+  const [variantsLoading, setVariantsLoading] = useState(true);
+  const [variantsOperationLoading, setVariantsOperationLoading] = useState(false);
+  const [previewVariant, setPreviewVariant] = useState<VariantInfo | null>(null);
+  
   const imageUrl = `/api/images/${encodeImagePath(photo.path)}`;
+  
+  // Fetch variants on mount
+  useEffect(() => {
+    async function fetchVariants() {
+      setVariantsLoading(true);
+      try {
+        const formData = new FormData();
+        formData.append("action", "get-variants");
+        formData.append("photoPath", photo.path);
+        
+        const response = await fetch("/api/admin/photos", {
+          method: "POST",
+          body: formData,
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          setVariants(data.variants || []);
+          setOriginalSize(data.originalSize);
+        }
+      } catch (err) {
+        console.error("Failed to fetch variants:", err);
+      } finally {
+        setVariantsLoading(false);
+      }
+    }
+    
+    fetchVariants();
+  }, [photo.path]);
+  
+  // Delete all variants
+  const handleDeleteVariants = async () => {
+    if (!confirm("Delete all optimized variants? You can regenerate them later.")) return;
+    
+    setVariantsOperationLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("action", "delete-variants");
+      formData.append("photoPath", photo.path);
+      
+      const response = await fetch("/api/admin/photos", {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        // Refresh variants list
+        setVariants(variants.map(v => ({ ...v, exists: false, size: null })));
+      }
+    } catch (err) {
+      console.error("Failed to delete variants:", err);
+    } finally {
+      setVariantsOperationLoading(false);
+    }
+  };
+  
+  // Regenerate variants
+  const handleRegenerateVariants = async () => {
+    setVariantsOperationLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("action", "regenerate-variants");
+      formData.append("photoPath", photo.path);
+      
+      const response = await fetch("/api/admin/photos", {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        // Refresh variants list
+        const newVariants = variants.map(v => {
+          const generated = data.variants?.find((gv: any) => gv.width === v.width);
+          if (generated) {
+            return { ...v, exists: true, size: generated.size };
+          }
+          return v;
+        });
+        setVariants(newVariants);
+      }
+    } catch (err) {
+      console.error("Failed to regenerate variants:", err);
+    } finally {
+      setVariantsOperationLoading(false);
+    }
+  };
+  
+  // Format bytes to human-readable
+  const formatBytes = (bytes: number | null) => {
+    if (bytes === null) return "—";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1290,6 +1401,10 @@ function PhotoEditModal({
       date: date || undefined,
     });
   };
+  
+  // Count existing variants
+  const existingVariantsCount = variants.filter(v => v.exists).length;
+  const totalVariantsCount = variants.length;
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1399,6 +1514,113 @@ function PhotoEditModal({
               </label>
             </div>
             
+            {/* Optimized Variants Section */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Optimized Variants
+                </h4>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleRegenerateVariants}
+                    disabled={variantsOperationLoading}
+                    className="px-2.5 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-50 transition-colors flex items-center gap-1"
+                  >
+                    {variantsOperationLoading ? <LoadingSpinner /> : <RefreshIcon />}
+                    Regenerate
+                  </button>
+                  {existingVariantsCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteVariants}
+                      disabled={variantsOperationLoading}
+                      className="px-2.5 py-1 text-xs font-medium bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-50 transition-colors flex items-center gap-1"
+                    >
+                      <TrashIcon />
+                      Delete All
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              {variantsLoading ? (
+                <div className="flex items-center justify-center py-4 text-gray-500 dark:text-gray-400">
+                  <LoadingSpinner />
+                  <span className="ml-2 text-sm">Loading variants...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Original file size */}
+                  <div className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                    Original: <span className="font-medium">{formatBytes(originalSize)}</span>
+                    {existingVariantsCount > 0 && (
+                      <span className="ml-2 text-green-600 dark:text-green-400">
+                        • {existingVariantsCount}/{totalVariantsCount} variants ready
+                      </span>
+                    )}
+                    {existingVariantsCount === 0 && (
+                      <span className="ml-2 text-amber-600 dark:text-amber-400">
+                        • No variants generated
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Variants grid */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {variants.map((variant) => (
+                      <div
+                        key={variant.width}
+                        className={`relative rounded-lg border overflow-hidden ${
+                          variant.exists 
+                            ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800" 
+                            : "border-dashed border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/50"
+                        }`}
+                      >
+                        {/* Thumbnail preview */}
+                        <div className="aspect-video bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                          {variant.exists ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewVariant(variant)}
+                              className="w-full h-full"
+                            >
+                              <img
+                                src={variant.url}
+                                alt={`${variant.width}w variant`}
+                                className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                              />
+                            </button>
+                          ) : (
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                              Not generated
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Info */}
+                        <div className="p-2 text-center">
+                          <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                            {variant.width}w
+                          </div>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                            {variant.exists ? formatBytes(variant.size) : "—"}
+                          </div>
+                        </div>
+                        
+                        {/* Status indicator */}
+                        <div className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${
+                          variant.exists 
+                            ? "bg-green-500" 
+                            : "bg-gray-400"
+                        }`} />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            
             {/* EXIF Info (read-only) */}
             {photo.exif && (
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -1455,7 +1677,51 @@ function PhotoEditModal({
             </button>
           </div>
         </form>
+        
+        {/* Variant Preview Modal */}
+        {previewVariant && (
+          <div 
+            className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4"
+            onClick={() => setPreviewVariant(null)}
+          >
+            <div className="relative max-w-4xl w-full max-h-[80vh]">
+              <img
+                src={previewVariant.url}
+                alt={`${previewVariant.width}w variant preview`}
+                className="w-full h-full object-contain"
+              />
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-lg text-sm">
+                {previewVariant.width}w • {formatBytes(previewVariant.size)} • WebP
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewVariant(null)}
+                className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+// Refresh Icon
+function RefreshIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+  );
+}
+
+// Trash Icon
+function TrashIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    </svg>
   );
 }
