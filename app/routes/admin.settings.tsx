@@ -1823,6 +1823,7 @@ function ImageOptimizationPanel() {
   
   // Chunked optimization to avoid Cloudflare timeout (~30s limit)
   // Processes 5 images per request, loops until done
+  // Also polls progress counter every 300ms for live UI updates
   const handleOptimizeAll = async (cleanup = false) => {
     setIsOptimizing(true);
     setOptimizeProgress(null);
@@ -1832,15 +1833,35 @@ function ImageOptimizationPanel() {
     let totalSkipped = 0;
     let totalFailed = 0;
     let totalVariantsCreated = 0;
-    let totalImages = 0;
     let hasMore = true;
+    let stopPolling = false;
     
     console.log(`[Optimize] Starting chunked optimization (cleanup=${cleanup})...`);
     
+    // Start polling for real-time progress updates (reads tiny counter file)
+    const pollProgress = async () => {
+      while (!stopPolling) {
+        try {
+          const res = await fetch("/api/admin/optimize", { credentials: "include" });
+          const data = await res.json();
+          setLiveStatus({
+            totalImages: data.totalImages || 0,
+            imagesWithVariants: data.imagesWithVariants || 0,
+            percentOptimized: data.percentOptimized || 0,
+          });
+        } catch {
+          // Ignore poll errors
+        }
+        // Wait 300ms before next poll
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    };
+    
+    // Start polling in background
+    pollProgress();
+    
     try {
       while (hasMore) {
-        console.log(`[Optimize] Processing batch at offset ${offset}...`);
-        
         const response = await fetch("/api/admin/optimize", {
           method: "POST",
           body: new URLSearchParams({ 
@@ -1879,24 +1900,9 @@ function ImageOptimizationPanel() {
         totalSkipped += result.batch.skipped;
         totalFailed += result.batch.failed;
         totalVariantsCreated += result.batch.variantsCreated;
-        totalImages = result.progress.totalImages;
-        
-        // Update UI with progress
-        setLiveStatus({
-          totalImages: result.progress.totalImages,
-          imagesWithVariants: result.progress.processedSoFar,
-          percentOptimized: result.progress.percentComplete,
-        });
-        
-        console.log(`[Optimize] Batch complete: ${result.progress.processedSoFar}/${result.progress.totalImages} (${result.progress.percentComplete}%)`);
         
         hasMore = result.hasMore;
         offset = result.nextOffset || 0;
-        
-        // Small delay between batches to be nice to the API
-        if (hasMore) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
       }
       
       // Set final progress
@@ -1909,12 +1915,13 @@ function ImageOptimizationPanel() {
       
       console.log(`[Optimize] ✅ Complete! Processed: ${totalProcessed}, Skipped: ${totalSkipped}, Failed: ${totalFailed}`);
       
-      // Refresh status from server
+      // Final status refresh
       fetcher.load("/api/admin/optimize");
       
     } catch (error) {
       console.error("[Optimize] Error:", error);
     } finally {
+      stopPolling = true;
       setIsOptimizing(false);
     }
   };

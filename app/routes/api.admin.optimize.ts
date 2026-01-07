@@ -35,115 +35,86 @@ function getVariantFilename(originalFilename: string, width: number): string {
   return `${nameWithoutExt}_${width}w.webp`;
 }
 
-// Progress file path in R2
-const PROGRESS_FILE = ".optimization-progress.json";
+// Simple progress counter file - just stores "current/total" for fast reads
+const PROGRESS_COUNTER_FILE = ".opt-progress.txt";
 
-// Progress data type
-interface OptimizationProgressData {
-  totalImages: number;
-  imagesWithVariants: number;
-  isRunning: boolean;
-  startedAt: number;
-}
-
-// Helper to read progress from R2
-async function getProgress(storage: ReturnType<typeof getStorage>): Promise<OptimizationProgressData | null> {
+// Read progress counter (fast - just a tiny text file)
+async function getProgressCounter(storage: ReturnType<typeof getStorage>): Promise<{ current: number; total: number } | null> {
   try {
-    const data = await storage.get(PROGRESS_FILE);
+    const data = await storage.get(PROGRESS_COUNTER_FILE);
     if (!data) return null;
     const text = new TextDecoder().decode(data);
-    return JSON.parse(text);
+    const [current, total] = text.split("/").map(Number);
+    return { current, total };
   } catch {
     return null;
   }
 }
 
-// Helper to save progress to R2
-async function saveProgress(storage: ReturnType<typeof getStorage>, progress: OptimizationProgressData): Promise<void> {
-  const data = JSON.stringify(progress);
-  await storage.put(PROGRESS_FILE, new TextEncoder().encode(data), "application/json");
+// Write progress counter (fast - just a tiny text file)
+async function setProgressCounter(storage: ReturnType<typeof getStorage>, current: number, total: number): Promise<void> {
+  await storage.put(PROGRESS_COUNTER_FILE, new TextEncoder().encode(`${current}/${total}`), "text/plain");
 }
 
-// Helper to clear progress
-async function clearProgress(storage: ReturnType<typeof getStorage>): Promise<void> {
+// Clear progress counter
+async function clearProgressCounter(storage: ReturnType<typeof getStorage>): Promise<void> {
   try {
-    await storage.delete(PROGRESS_FILE);
+    await storage.delete(PROGRESS_COUNTER_FILE);
   } catch {
-    // Ignore if doesn't exist
+    // Ignore
   }
 }
 
 /**
- * GET - Get optimization status (reads from R2 progress file for instant updates)
+ * GET - Get optimization status
+ * First checks for live progress counter (updated every image), then falls back to sampling
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
   checkAdminAuth(request, context.cloudflare?.env || {});
   
   const storage = getStorage(context);
   
-  // Check for active optimization progress (fast - single R2 read)
-  const progress = await getProgress(storage);
+  // Check for active optimization progress counter (super fast - tiny text file)
+  const counter = await getProgressCounter(storage);
   
-  if (progress && progress.isRunning) {
-    const { totalImages, imagesWithVariants } = progress;
-    const percentOptimized = totalImages > 0 
-      ? Math.round((imagesWithVariants / totalImages) * 100) 
+  if (counter) {
+    const { current, total } = counter;
+    const percentOptimized = total > 0 
+      ? Math.round((current / total) * 100) 
       : 0;
     
-    console.log(`[Optimize GET] ⚡ Fast: ${imagesWithVariants}/${totalImages}`);
+    console.log(`[Optimize GET] ⚡ Counter: ${current}/${total}`);
     
     return json({
-      totalImages,
-      imagesWithVariants,
-      imagesNeedingOptimization: totalImages - imagesWithVariants,
+      totalImages: total,
+      imagesWithVariants: current,
+      imagesNeedingOptimization: total - current,
       percentOptimized,
-      isRunning: true,
+      isRunning: current < total, // Running if not yet complete
     });
   }
   
-  // If we have recent completed progress, use it
-  if (progress && !progress.isRunning) {
-    const { totalImages, imagesWithVariants } = progress;
-    const percentOptimized = totalImages > 0 
-      ? Math.round((imagesWithVariants / totalImages) * 100) 
-      : 100;
-    
-    return json({
-      totalImages,
-      imagesWithVariants,
-      imagesNeedingOptimization: totalImages - imagesWithVariants,
-      percentOptimized,
-    });
-  }
+  console.log(`[Optimize GET] 🐢 No counter, sampling...`);
   
-  console.log(`[Optimize GET] 🐢 No progress file, scanning...`);
-  
-  // No progress file - do a quick count from content index
+  // No progress counter - do a quick count from content index
   const contentIndex = await getContentIndex(storage);
   
   let totalImages = 0;
-  for (const gallery of contentIndex.galleryData || []) {
-    for (const photo of gallery.photos || []) {
-      if (!isImageFile(photo.filename)) continue;
-      if (isVariantFile(photo.filename)) continue;
-      totalImages++;
-    }
-  }
-  
-  // Quick sample to estimate (check just 2 random images for speed)
   const allPhotos: { galleryPath: string; filename: string }[] = [];
+  
   for (const gallery of contentIndex.galleryData || []) {
     const galleryPath = gallery.path || `galleries/${gallery.slug}`;
     for (const photo of gallery.photos || []) {
       if (!isImageFile(photo.filename)) continue;
       if (isVariantFile(photo.filename)) continue;
+      totalImages++;
       allPhotos.push({ galleryPath, filename: photo.filename });
     }
   }
   
+  // Quick sample to estimate (check 3 random images)
   let optimizedCount = 0;
-  const sampleSize = Math.min(2, allPhotos.length);
-  // Check in parallel for speed
+  const sampleSize = Math.min(3, allPhotos.length);
   const checks = [];
   for (let i = 0; i < sampleSize; i++) {
     const idx = Math.floor(Math.random() * allPhotos.length);
@@ -246,11 +217,18 @@ async function handleOptimizeBatch(
   const totalImages = allImages.length;
   const batchImages = allImages.slice(offset, offset + limit);
   
+  // Initialize or update progress counter
+  // If this is the first batch (offset=0), start fresh
+  if (offset === 0) {
+    await setProgressCounter(storage, 0, totalImages);
+  }
+  
   let processed = 0;
   let skipped = 0;
   let failed = 0;
   let variantsCreated = 0;
   let variantsDeleted = 0;
+  let currentProgress = offset; // Track overall progress
   
   for (const { galleryPath, filename } of batchImages) {
     // If cleanup mode, delete old and current variants first
@@ -270,6 +248,9 @@ async function handleOptimizeBatch(
       try {
         if (await storage.exists(variantPath)) {
           skipped++;
+          currentProgress++;
+          // Update progress counter after each skip
+          await setProgressCounter(storage, currentProgress, totalImages);
           continue;
         }
       } catch { /* ignore */ }
@@ -281,6 +262,8 @@ async function handleOptimizeBatch(
       const imageData = await storage.get(photoPath);
       if (!imageData) {
         failed++;
+        currentProgress++;
+        await setProgressCounter(storage, currentProgress, totalImages);
         continue;
       }
       
@@ -294,10 +277,16 @@ async function handleOptimizeBatch(
       }
       
       processed++;
-      console.log(`[Batch] ✅ ${filename} (${result.variants.length} variants)`);
+      currentProgress++;
+      
+      // Update progress counter after each image
+      await setProgressCounter(storage, currentProgress, totalImages);
+      console.log(`[Batch] ✅ ${filename} - ${currentProgress}/${totalImages}`);
     } catch (err) {
       console.error(`[Batch] ❌ Failed ${photoPath}:`, err);
       failed++;
+      currentProgress++;
+      await setProgressCounter(storage, currentProgress, totalImages);
     }
   }
   
