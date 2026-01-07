@@ -135,6 +135,9 @@ export default function AdminGalleryDetail() {
   const photosFetcher = useFetcher();
   const reorderFetcher = useFetcher();
   
+  // Toast message state for auto-dismissing feedback
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  
   // Track ordered photos (for drag and drop)
   const [orderedPhotos, setOrderedPhotos] = useState(gallery.photos);
   
@@ -213,14 +216,38 @@ export default function AdminGalleryDetail() {
     }
   }, [galleryFetcher.data, galleryFetcher.formData, revalidator]);
   
-  // Handle successful photo operations - clear selection
+  // Handle successful photo operations - clear selection and show toast
   useEffect(() => {
     if (photosFetcher.data?.success) {
       setSelectedPhotos([]);
       setShowMovePhotosModal(false);
       setEditingPhoto(null);
+      if (photosFetcher.data.message) {
+        setToastMessage({ text: photosFetcher.data.message, type: "success" });
+      }
+    } else if (photosFetcher.data?.error) {
+      setToastMessage({ text: photosFetcher.data.error, type: "error" });
     }
   }, [photosFetcher.data]);
+  
+  // Handle reorder feedback - show toast
+  useEffect(() => {
+    if (reorderFetcher.data?.success && reorderFetcher.data.message) {
+      setToastMessage({ text: reorderFetcher.data.message, type: "success" });
+    } else if (reorderFetcher.data?.error) {
+      setToastMessage({ text: reorderFetcher.data.error, type: "error" });
+    }
+  }, [reorderFetcher.data]);
+  
+  // Auto-dismiss toast after 3 seconds
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   const togglePhoto = (photoId: string) => {
     setSelectedPhotos((prev) =>
@@ -672,25 +699,14 @@ export default function AdminGalleryDetail() {
               )}
             </div>
             
-            {/* Operation feedback */}
-            {photosFetcher.data && (
-              <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${
-                photosFetcher.data.success 
+            {/* Toast feedback - auto-dismisses after 3 seconds */}
+            {toastMessage && (
+              <div className={`mb-4 px-4 py-2 rounded-lg text-sm transition-opacity duration-300 ${
+                toastMessage.type === "success"
                   ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
                   : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
               }`}>
-                {photosFetcher.data.message || photosFetcher.data.error}
-              </div>
-            )}
-            
-            {/* Reorder feedback */}
-            {reorderFetcher.data && (
-              <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${
-                reorderFetcher.data.success 
-                  ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
-                  : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
-              }`}>
-                {reorderFetcher.data.message || reorderFetcher.data.error}
+                {toastMessage.text}
               </div>
             )}
 
