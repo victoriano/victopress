@@ -6,7 +6,7 @@
  */
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/cloudflare";
-import { useLoaderData, Form, Link, useFetcher, useNavigate } from "@remix-run/react";
+import { useLoaderData, Form, Link, useFetcher, useNavigate, useRevalidator } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
@@ -122,6 +122,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 export default function AdminGalleryDetail() {
   const { username, gallery, parentGallery, childGalleries, isVirtualParent, allGalleries } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const revalidator = useRevalidator();
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -204,6 +205,13 @@ export default function AdminGalleryDetail() {
       navigate("/admin/galleries");
     }
   }, [galleryFetcher.data, galleryFetcher.formData, navigate]);
+  
+  // Handle successful gallery update - revalidate to update the icon
+  useEffect(() => {
+    if (galleryFetcher.data?.success && galleryFetcher.formData?.get("action") === "update") {
+      revalidator.revalidate();
+    }
+  }, [galleryFetcher.data, galleryFetcher.formData, revalidator]);
   
   // Handle successful photo operations - clear selection
   useEffect(() => {
@@ -350,10 +358,10 @@ export default function AdminGalleryDetail() {
               <button
                 type="button"
                 onClick={() => setShowSettings(!showSettings)}
-                title={`${gallery.private ? "Private" : gallery.password ? "Protected" : "Public"} - Click to edit`}
+                title={`${gallery.isProtected ? "Private" : gallery.password ? "Protected" : "Public"} - Click to edit`}
                 className="mt-1 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                {gallery.private ? (
+                {gallery.isProtected ? (
                   <EyeOffIcon className="w-5 h-5 text-yellow-500" />
                 ) : gallery.password ? (
                   <LockIcon className="w-5 h-5 text-blue-500" />
@@ -1054,7 +1062,7 @@ function GallerySettingsPanel({
   const [title, setTitle] = useState(gallery.title);
   const [description, setDescription] = useState(gallery.description || "");
   const [order, setOrder] = useState(gallery.order?.toString() || "");
-  const [isPrivate, setIsPrivate] = useState(gallery.private || false);
+  const [isPrivate, setIsPrivate] = useState(gallery.isProtected || false);
   const [hasChanges, setHasChanges] = useState(false);
   
   // Track changes
@@ -1062,7 +1070,7 @@ function GallerySettingsPanel({
     const titleChanged = title !== gallery.title;
     const descChanged = description !== (gallery.description || "");
     const orderChanged = order !== (gallery.order?.toString() || "");
-    const privateChanged = isPrivate !== (gallery.private || false);
+    const privateChanged = isPrivate !== (gallery.isProtected || false);
     setHasChanges(titleChanged || descChanged || orderChanged || privateChanged);
   }, [title, description, order, isPrivate, gallery]);
   
@@ -1071,7 +1079,7 @@ function GallerySettingsPanel({
     if (title !== gallery.title) updates.title = title;
     if (description !== (gallery.description || "")) updates.description = description;
     if (order !== (gallery.order?.toString() || "")) updates.order = order;
-    if (isPrivate !== (gallery.private || false)) updates.private = isPrivate.toString();
+    if (isPrivate !== (gallery.isProtected || false)) updates.private = isPrivate.toString();
     onUpdate(updates);
   };
 
