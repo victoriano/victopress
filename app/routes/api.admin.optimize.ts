@@ -181,6 +181,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
   switch (actionType) {
     case "optimize-all":
       return handleOptimizeAll(context);
+    case "optimize-batch":
+      // Process a batch of images (for chunked processing to avoid timeouts)
+      return handleOptimizeBatch(formData, context);
+    case "cleanup-old-sizes":
+      // Just delete old sizes without re-optimizing
+      return handleCleanupOldSizes(context);
+    case "cleanup-and-optimize":
+      return handleCleanupAndOptimize(context);
     case "optimize-gallery":
       return handleOptimizeGallery(formData, context);
     case "optimize-image":
@@ -190,10 +198,227 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 }
 
-// Number of images to process in parallel
-// Keep low to avoid overwhelming R2 API and local wrangler dev
-// Each image generates 3 variants = 3 PUT calls + progress file updates
+// Number of images to process in parallel within a batch
 const PARALLEL_BATCH_SIZE = 3;
+
+// Max images per request (to avoid Cloudflare timeout ~30s)
+// With 3 variants per image, ~3s per image, this gives ~15s processing time
+const MAX_IMAGES_PER_REQUEST = 5;
+
+// Old variant sizes that are no longer used (to be cleaned up)
+const OLD_VARIANT_WIDTHS = [400, 1200];
+
+// Current variant sizes (must match image-optimizer.server.ts)
+const CURRENT_VARIANT_WIDTHS = [800, 1600, 2400];
+
+/**
+ * Process a batch of images (for chunked processing to avoid timeouts)
+ * The UI calls this repeatedly until all images are done.
+ * 
+ * @param offset - Start index in the list of images needing optimization
+ * @param limit - Max images to process (default: MAX_IMAGES_PER_REQUEST)
+ * @param cleanup - If true, delete old sizes first
+ */
+async function handleOptimizeBatch(
+  formData: FormData,
+  context: Parameters<typeof getStorage>[0]
+) {
+  const { processImageServer } = await import("~/lib/image-optimizer.server");
+  const storage = getStorage(context);
+  const contentIndex = await getContentIndex(storage);
+  
+  const offset = parseInt(formData.get("offset") as string || "0", 10);
+  const limit = parseInt(formData.get("limit") as string || String(MAX_IMAGES_PER_REQUEST), 10);
+  const cleanup = formData.get("cleanup") === "true";
+  
+  // Collect all images that need optimization
+  const allImages: { galleryPath: string; filename: string }[] = [];
+  
+  for (const gallery of contentIndex.galleryData || []) {
+    const galleryPath = gallery.path || `galleries/${gallery.slug}`;
+    for (const photo of gallery.photos || []) {
+      if (!isImageFile(photo.filename)) continue;
+      if (isVariantFile(photo.filename)) continue;
+      allImages.push({ galleryPath, filename: photo.filename });
+    }
+  }
+  
+  const totalImages = allImages.length;
+  const batchImages = allImages.slice(offset, offset + limit);
+  
+  let processed = 0;
+  let skipped = 0;
+  let failed = 0;
+  let variantsCreated = 0;
+  let variantsDeleted = 0;
+  
+  for (const { galleryPath, filename } of batchImages) {
+    // If cleanup mode, delete old and current variants first
+    if (cleanup) {
+      for (const width of [...OLD_VARIANT_WIDTHS, ...CURRENT_VARIANT_WIDTHS]) {
+        const variantPath = `${galleryPath}/${getVariantFilename(filename, width)}`;
+        try {
+          if (await storage.exists(variantPath)) {
+            await storage.delete(variantPath);
+            variantsDeleted++;
+          }
+        } catch { /* ignore */ }
+      }
+    } else {
+      // Skip if already optimized
+      const variantPath = `${galleryPath}/${getVariantFilename(filename, 800)}`;
+      try {
+        if (await storage.exists(variantPath)) {
+          skipped++;
+          continue;
+        }
+      } catch { /* ignore */ }
+    }
+    
+    // Process the image
+    const photoPath = `${galleryPath}/${filename}`;
+    try {
+      const imageData = await storage.get(photoPath);
+      if (!imageData) {
+        failed++;
+        continue;
+      }
+      
+      const result = await processImageServer(imageData, filename);
+      
+      // Save variants
+      for (const variant of result.variants) {
+        const savePath = `${galleryPath}/${variant.filename}`;
+        await storage.put(savePath, variant.data.buffer as ArrayBuffer, "image/webp");
+        variantsCreated++;
+      }
+      
+      processed++;
+      console.log(`[Batch] ✅ ${filename} (${result.variants.length} variants)`);
+    } catch (err) {
+      console.error(`[Batch] ❌ Failed ${photoPath}:`, err);
+      failed++;
+    }
+  }
+  
+  const nextOffset = offset + limit;
+  const hasMore = nextOffset < totalImages;
+  
+  return json({
+    success: true,
+    batch: {
+      offset,
+      limit,
+      processed,
+      skipped,
+      failed,
+      variantsCreated,
+      variantsDeleted,
+    },
+    progress: {
+      totalImages,
+      processedSoFar: Math.min(nextOffset, totalImages),
+      percentComplete: Math.round((Math.min(nextOffset, totalImages) / totalImages) * 100),
+    },
+    hasMore,
+    nextOffset: hasMore ? nextOffset : null,
+  });
+}
+
+/**
+ * Just delete old variant sizes (400w, 1200w) without regenerating
+ */
+async function handleCleanupOldSizes(
+  context: Parameters<typeof getStorage>[0]
+) {
+  const storage = getStorage(context);
+  const contentIndex = await getContentIndex(storage);
+  
+  let deletedCount = 0;
+  console.log(`[Cleanup] 🧹 Deleting old variants (${OLD_VARIANT_WIDTHS.join("w, ")}w)...`);
+  
+  for (const gallery of contentIndex.galleryData || []) {
+    const galleryPath = gallery.path || `galleries/${gallery.slug}`;
+    for (const photo of gallery.photos || []) {
+      if (!isImageFile(photo.filename)) continue;
+      if (isVariantFile(photo.filename)) continue;
+      
+      for (const width of OLD_VARIANT_WIDTHS) {
+        const oldVariantPath = `${galleryPath}/${getVariantFilename(photo.filename, width)}`;
+        try {
+          if (await storage.exists(oldVariantPath)) {
+            await storage.delete(oldVariantPath);
+            deletedCount++;
+            console.log(`[Cleanup] 🗑️ Deleted ${oldVariantPath}`);
+          }
+        } catch (err) {
+          console.error(`[Cleanup] ❌ Failed to delete ${oldVariantPath}:`, err);
+        }
+      }
+    }
+  }
+  
+  console.log(`[Cleanup] ✅ Deleted ${deletedCount} old variants`);
+  
+  return json({
+    success: true,
+    deletedCount,
+  });
+}
+
+/**
+ * Clean up old variant sizes and regenerate with new sizes
+ */
+async function handleCleanupAndOptimize(
+  context: Parameters<typeof getStorage>[0]
+) {
+  const storage = getStorage(context);
+  const contentIndex = await getContentIndex(storage);
+  
+  // First, delete all old variants
+  let deletedCount = 0;
+  console.log(`[Cleanup] 🧹 Deleting old variants (${OLD_VARIANT_WIDTHS.join("w, ")}w)...`);
+  
+  for (const gallery of contentIndex.galleryData || []) {
+    const galleryPath = gallery.path || `galleries/${gallery.slug}`;
+    for (const photo of gallery.photos || []) {
+      if (!isImageFile(photo.filename)) continue;
+      if (isVariantFile(photo.filename)) continue;
+      
+      // Delete old variants
+      for (const width of OLD_VARIANT_WIDTHS) {
+        const oldVariantPath = `${galleryPath}/${getVariantFilename(photo.filename, width)}`;
+        try {
+          if (await storage.exists(oldVariantPath)) {
+            await storage.delete(oldVariantPath);
+            deletedCount++;
+            console.log(`[Cleanup] 🗑️ Deleted ${oldVariantPath}`);
+          }
+        } catch (err) {
+          console.error(`[Cleanup] ❌ Failed to delete ${oldVariantPath}:`, err);
+        }
+      }
+      
+      // Also delete ALL existing variants so we regenerate fresh
+      for (const width of CURRENT_VARIANT_WIDTHS) {
+        const variantPath = `${galleryPath}/${getVariantFilename(photo.filename, width)}`;
+        try {
+          if (await storage.exists(variantPath)) {
+            await storage.delete(variantPath);
+            deletedCount++;
+          }
+        } catch {
+          // Ignore errors
+        }
+      }
+    }
+  }
+  
+  console.log(`[Cleanup] ✅ Deleted ${deletedCount} old variants`);
+  
+  // Now run the optimization
+  return handleOptimizeAll(context);
+}
 
 /**
  * Optimize all images in all galleries (parallelized)

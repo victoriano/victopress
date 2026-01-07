@@ -1821,86 +1821,100 @@ function ImageOptimizationPanel() {
     }
   }, [fetcher.data]);
   
-  const handleOptimizeAll = async () => {
-    // Initialize liveStatus from current fetcher data before starting
-    if (fetcher.data) {
-      setLiveStatus({
-        totalImages: fetcher.data.totalImages || 0,
-        imagesWithVariants: fetcher.data.imagesWithVariants || 0,
-        percentOptimized: fetcher.data.percentOptimized || 0,
-      });
-    }
-    
+  // Chunked optimization to avoid Cloudflare timeout (~30s limit)
+  // Processes 5 images per request, loops until done
+  const handleOptimizeAll = async (cleanup = false) => {
     setIsOptimizing(true);
     setOptimizeProgress(null);
     
-    // Immediately fetch current status
-    try {
-      const initialRes = await fetch("/api/admin/optimize", { credentials: "include" });
-      const initialData = await initialRes.json();
-      console.log("[Progress] Initial status:", initialData);
-      setLiveStatus({
-        totalImages: initialData.totalImages || 0,
-        imagesWithVariants: initialData.imagesWithVariants || 0,
-        percentOptimized: initialData.percentOptimized || 0,
-      });
-    } catch (e) {
-      console.error("[Progress] Initial fetch failed:", e);
-    }
+    let offset = 0;
+    let totalProcessed = 0;
+    let totalSkipped = 0;
+    let totalFailed = 0;
+    let totalVariantsCreated = 0;
+    let totalImages = 0;
+    let hasMore = true;
     
-    // Start polling for progress updates every 500ms for smooth UI updates
-    const pollInterval = setInterval(async () => {
-      try {
-        const res = await fetch("/api/admin/optimize", { credentials: "include" });
-        const data = await res.json();
-        setLiveStatus({
-          totalImages: data.totalImages || 0,
-          imagesWithVariants: data.imagesWithVariants || 0,
-          percentOptimized: data.percentOptimized || 0,
+    console.log(`[Optimize] Starting chunked optimization (cleanup=${cleanup})...`);
+    
+    try {
+      while (hasMore) {
+        console.log(`[Optimize] Processing batch at offset ${offset}...`);
+        
+        const response = await fetch("/api/admin/optimize", {
+          method: "POST",
+          body: new URLSearchParams({ 
+            action: "optimize-batch",
+            offset: String(offset),
+            limit: "5", // 5 images per request to stay under 30s timeout
+            cleanup: cleanup ? "true" : "false",
+          }),
+          credentials: "include",
         });
-      } catch (e) {
-        // Silently ignore poll errors
-      }
-    }, 500);
-    
-    try {
-      const response = await fetch("/api/admin/optimize", {
-        method: "POST",
-        body: new URLSearchParams({ action: "optimize-all" }),
-        credentials: "include",
-      });
-      
-      const result = await response.json() as {
-        success: boolean;
-        message: string;
-        stats?: {
-          processed: number;
-          skipped: number;
-          failed: number;
-          variantsCreated: number;
+        
+        if (!response.ok) {
+          console.error(`[Optimize] Batch failed with status ${response.status}`);
+          break;
+        }
+        
+        const result = await response.json() as {
+          success: boolean;
+          batch: {
+            processed: number;
+            skipped: number;
+            failed: number;
+            variantsCreated: number;
+          };
+          progress: {
+            totalImages: number;
+            processedSoFar: number;
+            percentComplete: number;
+          };
+          hasMore: boolean;
+          nextOffset: number | null;
         };
-      };
-      
-      if (result.stats) {
-        setOptimizeProgress(result.stats);
-      }
-      
-      // Final refresh - update liveStatus one more time
-      try {
-        const finalRes = await fetch("/api/admin/optimize", { credentials: "include" });
-        const finalData = await finalRes.json();
+        
+        // Accumulate stats
+        totalProcessed += result.batch.processed;
+        totalSkipped += result.batch.skipped;
+        totalFailed += result.batch.failed;
+        totalVariantsCreated += result.batch.variantsCreated;
+        totalImages = result.progress.totalImages;
+        
+        // Update UI with progress
         setLiveStatus({
-          totalImages: finalData.totalImages || 0,
-          imagesWithVariants: finalData.imagesWithVariants || 0,
-          percentOptimized: finalData.percentOptimized || 0,
+          totalImages: result.progress.totalImages,
+          imagesWithVariants: result.progress.processedSoFar,
+          percentOptimized: result.progress.percentComplete,
         });
-      } catch (e) {
-        console.error("Final refresh failed:", e);
+        
+        console.log(`[Optimize] Batch complete: ${result.progress.processedSoFar}/${result.progress.totalImages} (${result.progress.percentComplete}%)`);
+        
+        hasMore = result.hasMore;
+        offset = result.nextOffset || 0;
+        
+        // Small delay between batches to be nice to the API
+        if (hasMore) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
+      
+      // Set final progress
+      setOptimizeProgress({
+        processed: totalProcessed,
+        skipped: totalSkipped,
+        failed: totalFailed,
+        variantsCreated: totalVariantsCreated,
+      });
+      
+      console.log(`[Optimize] ✅ Complete! Processed: ${totalProcessed}, Skipped: ${totalSkipped}, Failed: ${totalFailed}`);
+      
+      // Refresh status from server
+      fetcher.load("/api/admin/optimize");
+      
     } catch (error) {
-      console.error("Optimization failed:", error);
+      console.error("[Optimize] Error:", error);
     } finally {
-      clearInterval(pollInterval);
       setIsOptimizing(false);
     }
   };
@@ -2006,6 +2020,63 @@ function ImageOptimizationPanel() {
             All images have WebP variants. New uploads are optimized automatically.
           </p>
         )}
+        
+        {/* Regenerate button - deletes old sizes and regenerates all */}
+        <button
+          type="button"
+          onClick={async () => {
+            if (!confirm("This will delete ALL existing variants (including old 400w, 1200w sizes) and regenerate them with new sizes (800w, 1600w, 2400w). Continue?")) {
+              return;
+            }
+            setIsOptimizing(true);
+            setOptimizeProgress(null);
+            
+            const pollInterval = setInterval(async () => {
+              try {
+                const res = await fetch("/api/admin/optimize", { credentials: "include" });
+                const data = await res.json();
+                setLiveStatus({
+                  totalImages: data.totalImages || 0,
+                  imagesWithVariants: data.imagesWithVariants || 0,
+                  percentOptimized: data.percentOptimized || 0,
+                });
+              } catch (e) {
+                console.error("Poll failed:", e);
+              }
+            }, 500);
+            
+            try {
+              const response = await fetch("/api/admin/optimize", {
+                method: "POST",
+                body: new URLSearchParams({ action: "cleanup-and-optimize" }),
+                credentials: "include",
+              });
+              const result = await response.json() as { stats?: { processed: number; skipped: number; failed: number; variantsCreated: number } };
+              if (result.stats) {
+                setOptimizeProgress(result.stats);
+              }
+              fetcher.load("/api/admin/optimize");
+            } catch (error) {
+              console.error("Regeneration failed:", error);
+            } finally {
+              clearInterval(pollInterval);
+              setIsOptimizing(false);
+            }
+          }}
+          disabled={isOptimizing}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 mt-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-all cursor-pointer disabled:cursor-not-allowed"
+        >
+          {isOptimizing ? (
+            <>
+              <LoadingSpinner />
+              Regenerating...
+            </>
+          ) : (
+            <>
+              🔄 Regenerate All (delete old sizes)
+            </>
+          )}
+        </button>
       </div>
       
       {/* Results */}
