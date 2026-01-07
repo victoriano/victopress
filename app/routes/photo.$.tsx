@@ -18,7 +18,7 @@ import {
 } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
 import { getOptimizedImageUrl, getOriginalImageUrl } from "~/utils/image-optimization";
 
@@ -155,52 +155,52 @@ export default function PhotoPage() {
   const [useOriginal, setUseOriginal] = useState(false);
   const currentPhotoUrl = useOriginal ? originalPhotoUrl : photoUrl;
   
-  // Reset fallback when photo changes
+  // Track the URL that's finished loading (to prevent flash when navigating)
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  
+  // Preload adjacent photos for instant navigation (no delay for faster nav)
+  usePhotoPreloading([prevPhotoUrl, nextPhotoUrl]);
+  
+  // Reset fallback state when photo changes
   useEffect(() => {
     setUseOriginal(false);
-    setIsImageLoaded(false);
   }, [photo.filename]);
   
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const previousPhotoUrl = useRef(currentPhotoUrl);
-
-  // Preload adjacent photos
-  usePhotoPreloading([prevPhotoUrl, nextPhotoUrl]);
-
-  // Handle image loading state - reset when current URL changes (including fallback)
+  // When current URL changes, preload it and only show when ready
   useEffect(() => {
-    if (currentPhotoUrl !== previousPhotoUrl.current) {
-      setIsImageLoaded(false);
-      previousPhotoUrl.current = currentPhotoUrl;
-    }
-  }, [currentPhotoUrl]);
+    if (currentPhotoUrl === loadedUrl) return;
+    
+    // Preload the new image before displaying
+    const img = new Image();
+    img.onload = () => {
+      setLoadedUrl(currentPhotoUrl);
+    };
+    img.onerror = () => {
+      // On error, try original or just show anyway
+      if (!useOriginal) {
+        setUseOriginal(true);
+      } else {
+        setLoadedUrl(currentPhotoUrl);
+      }
+    };
+    img.src = currentPhotoUrl;
+  }, [currentPhotoUrl, loadedUrl, useOriginal]);
+  
+  // Use the loaded URL, or fall back to current URL for initial render
+  const displayUrl = loadedUrl || currentPhotoUrl;
 
-  // Navigation with transition
-  const navigateWithTransition = useCallback(
-    (url: string) => {
-      setIsTransitioning(true);
-      // Small delay for fade-out animation
-      setTimeout(() => {
-        navigate(url);
-        setIsTransitioning(false);
-      }, 150);
-    },
-    [navigate]
-  );
-
-  // Keyboard navigation
+  // Keyboard navigation - navigate directly without transition delay
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft" && prevPhoto) {
-        navigateWithTransition(`/photo/${gallerySlug}/${prevPhoto.filename}`);
+        navigate(`/photo/${gallerySlug}/${prevPhoto.filename}`);
       } else if (e.key === "ArrowRight" && nextPhoto) {
-        navigateWithTransition(`/photo/${gallerySlug}/${nextPhoto.filename}`);
+        navigate(`/photo/${gallerySlug}/${nextPhoto.filename}`);
       } else if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Escape") {
         navigate(`/gallery/${gallerySlug}`);
       }
     },
-    [navigate, navigateWithTransition, gallerySlug, prevPhoto, nextPhoto]
+    [navigate, gallerySlug, prevPhoto, nextPhoto]
   );
 
   useEffect(() => {
@@ -236,27 +236,15 @@ export default function PhotoPage() {
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
         {/* Photo with invisible tap zones for navigation */}
-        <div className="relative bg-gray-100 dark:bg-gray-900 min-h-[40vh]">
-          {/* Loading spinner */}
-          {!isImageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center z-0">
-              <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
-            </div>
-          )}
+        <div className="relative bg-white dark:bg-black min-h-[40vh]">
+          {/* Current image - use key to force React to keep element identity */}
           <img
-            src={currentPhotoUrl}
+            key={displayUrl}
+            src={displayUrl}
             alt={photo.title || photo.filename}
-            className={`w-full object-contain select-none transition-opacity duration-300 ease-out ${
-              isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
-            }`}
-            onLoad={() => {
-              console.log(`[Photo] Mobile image loaded: ${currentPhotoUrl}`);
-              setIsImageLoaded(true);
-            }}
+            className="w-full object-contain select-none"
             onError={() => {
-              console.warn(`[Photo] Mobile image failed: ${currentPhotoUrl}`);
               if (!useOriginal) {
-                console.log(`[Photo] Falling back to original: ${originalPhotoUrl}`);
                 setUseOriginal(true);
               }
             }}
@@ -344,26 +332,14 @@ export default function PhotoPage() {
       {/* Desktop layout - centered with clickable zones */}
       <div className="hidden lg:flex lg:flex-col lg:h-screen">
         <div className="flex-1 flex items-center justify-center overflow-hidden pt-8 pb-8 px-8 relative bg-white dark:bg-black">
-          {/* Loading indicator */}
-          {!isImageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-10 h-10 border-2 border-gray-200 dark:border-gray-700 border-t-gray-500 dark:border-t-gray-400 rounded-full animate-spin" />
-            </div>
-          )}
+          {/* Current image - use key to force React to keep element identity */}
           <img
-            src={currentPhotoUrl}
+            key={displayUrl}
+            src={displayUrl}
             alt={photo.title || photo.filename}
-            className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-opacity duration-300 ease-out ${
-              isImageLoaded && !isTransitioning ? "opacity-100" : "opacity-0"
-            }`}
-            onLoad={() => {
-              console.log(`[Photo] Desktop image loaded: ${currentPhotoUrl}`);
-              setIsImageLoaded(true);
-            }}
+            className="max-h-full max-w-full object-contain pointer-events-none select-none"
             onError={() => {
-              console.warn(`[Photo] Desktop image failed: ${currentPhotoUrl}`);
               if (!useOriginal) {
-                console.log(`[Photo] Falling back to original: ${originalPhotoUrl}`);
                 setUseOriginal(true);
               }
             }}
@@ -373,10 +349,9 @@ export default function PhotoPage() {
           <div className="absolute inset-0 flex">
             {/* Left zone - Previous */}
             {prevPhoto ? (
-              <button
-                type="button"
-                onClick={() => navigateWithTransition(`/photo/${gallerySlug}/${prevPhoto.filename}`)}
-                className="w-1/3 h-full cursor-prev bg-transparent border-0 focus:outline-none"
+              <Link
+                to={`/photo/${gallerySlug}/${prevPhoto.filename}`}
+                className="w-1/3 h-full cursor-prev focus:outline-none"
                 aria-label="Previous photo"
               />
             ) : (
@@ -392,10 +367,9 @@ export default function PhotoPage() {
             
             {/* Right zone - Next */}
             {nextPhoto ? (
-              <button
-                type="button"
-                onClick={() => navigateWithTransition(`/photo/${gallerySlug}/${nextPhoto.filename}`)}
-                className="w-1/3 h-full cursor-next bg-transparent border-0 focus:outline-none"
+              <Link
+                to={`/photo/${gallerySlug}/${nextPhoto.filename}`}
+                className="w-1/3 h-full cursor-next focus:outline-none"
                 aria-label="Next photo"
               />
             ) : (
