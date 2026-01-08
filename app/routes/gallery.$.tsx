@@ -19,6 +19,7 @@ import {
 } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
 import { PasswordProtectedGallery } from "~/components/PasswordProtectedGallery";
+import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { isGalleryAuthenticated } from "~/utils/gallery-auth";
 
@@ -225,6 +226,9 @@ export default function GalleryPage() {
       siteName={siteName}
       socialLinks={socialLinks}
     >
+      {/* Mobile Breadcrumb Navigation */}
+      <GalleryBreadcrumb currentSlug={gallery.slug} navigation={navigation} />
+      
       <PhotoGrid>
         {gallery.photos.map((photo, index) => (
           <PhotoItem
