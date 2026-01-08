@@ -10,6 +10,7 @@ import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { getStorage, getContentIndex, getNavigationFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
+import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 
 export const meta: MetaFunction = () => {
   return [
@@ -98,6 +99,9 @@ export default function BlogIndex() {
       siteName={siteName}
       socialLinks={socialLinks}
     >
+      {/* Mobile Navigation */}
+      <GalleryBreadcrumb navigation={navigation} />
+      
       <div className="max-w-3xl px-8 py-12">
         {posts.length === 0 ? (
           <div className="text-center py-20">

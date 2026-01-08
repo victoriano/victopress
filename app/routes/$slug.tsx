@@ -10,6 +10,7 @@ import { useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { getPageBySlug, getStorage, getNavigationFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
+import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.page) {
@@ -61,6 +62,9 @@ export default function StaticPage() {
       siteName={siteName}
       socialLinks={socialLinks}
     >
+      {/* Mobile Navigation */}
+      <GalleryBreadcrumb navigation={navigation} />
+      
       {/* Custom CSS if provided */}
       {page.customCss && (
         <style dangerouslySetInnerHTML={{ __html: page.customCss }} />

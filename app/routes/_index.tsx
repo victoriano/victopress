@@ -11,6 +11,7 @@ import { useLoaderData } from "@remix-run/react";
 import { json, redirect } from "@remix-run/cloudflare";
 import { getStorage, needsSetup, getNavigationFromIndex, getHomePhotosFromIndex } from "~/lib/content-engine";
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
+import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import yaml from "js-yaml";
 
@@ -92,6 +93,9 @@ export default function Index() {
       siteName={siteName}
       socialLinks={socialLinks}
     >
+      {/* Mobile Navigation Breadcrumb */}
+      <GalleryBreadcrumb navigation={navigation} />
+      
       <PhotoGrid>
         {photos.map((photo, index) => (
           <PhotoItem

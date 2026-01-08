@@ -11,9 +11,16 @@ import { createPortal } from "react-dom";
 import type { NavItem } from "./Sidebar";
 
 interface GalleryBreadcrumbProps {
-  currentSlug: string;
+  currentSlug?: string;
   navigation: NavItem[];
 }
+
+// Static page links to show in the root dropdown
+const STATIC_PAGES: NavItem[] = [
+  { title: "Blog", slug: "blog", path: "/blog" },
+  { title: "About Me", slug: "about", path: "/about" },
+  { title: "Contact", slug: "contact", path: "/contact" },
+];
 
 interface BreadcrumbSegment {
   title: string;
@@ -23,13 +30,9 @@ interface BreadcrumbSegment {
 }
 
 export function GalleryBreadcrumb({ currentSlug, navigation }: GalleryBreadcrumbProps) {
-  const segments = buildBreadcrumb(currentSlug, navigation);
+  const segments = currentSlug ? buildBreadcrumb(currentSlug, navigation) : [];
   
-  if (segments.length === 0) {
-    return null;
-  }
-
-  // Create root segment with all root galleries as children
+  // Create root segment with galleries only
   const rootSegment: BreadcrumbSegment = {
     title: "PHOTOS",
     slug: "",
@@ -37,16 +40,19 @@ export function GalleryBreadcrumb({ currentSlug, navigation }: GalleryBreadcrumb
     children: navigation,
   };
 
+  const isRootPage = !currentSlug || segments.length === 0;
+
   return (
     <nav className="lg:hidden sticky top-16 z-40 bg-white/90 dark:bg-gray-950/90 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800">
-      <div className="flex items-center gap-1 px-4 py-3 overflow-x-auto scrollbar-hide">
+      <div className="flex items-center gap-2 px-4 py-3 overflow-x-auto scrollbar-hide">
         {/* Root "PHOTOS" with dropdown */}
         <BreadcrumbItem
           segment={rootSegment}
-          isLast={false}
+          isLast={isRootPage && segments.length === 0}
           isRoot={true}
         />
         
+        {/* Gallery path segments */}
         {segments.map((segment, index) => (
           <BreadcrumbItem
             key={segment.slug}
@@ -54,6 +60,21 @@ export function GalleryBreadcrumb({ currentSlug, navigation }: GalleryBreadcrumb
             isLast={index === segments.length - 1}
           />
         ))}
+
+        {/* Static page links - same level as PHOTOS */}
+        {isRootPage && (
+          <>
+            {STATIC_PAGES.map((page) => (
+              <Link
+                key={page.slug}
+                to={page.path}
+                className="shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors py-1 px-2"
+              >
+                {page.title}
+              </Link>
+            ))}
+          </>
+        )}
       </div>
     </nav>
   );
