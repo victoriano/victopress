@@ -239,6 +239,18 @@ export default function PhotoPage() {
 
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
+        {/* Gallery link - above the image */}
+        {gallery.title && (
+          <div className="bg-white dark:bg-gray-950 px-4 py-2 border-b border-gray-100 dark:border-gray-800">
+            <Link
+              to={`/gallery/${gallerySlug}`}
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"
+            >
+              Go to <span className="font-semibold">{gallery.title}</span> Gallery →
+            </Link>
+          </div>
+        )}
+
         {/* Photo with invisible tap zones for navigation */}
         <div className="relative bg-white dark:bg-black min-h-[40vh]">
           {/* Current image - use key to force React to keep element identity */}
@@ -317,20 +329,6 @@ export default function PhotoPage() {
           </div>
         </div>
 
-        {/* Thumbnails link */}
-        <div className="bg-white dark:bg-gray-950 px-4 pb-4">
-          <Link
-            to={`/gallery/${gallerySlug}`}
-            className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
-          >
-            SHOW THUMBNAILS
-            {gallery.title && (
-              <span className="block text-[11px] mt-0.5 normal-case">
-                from <span className="font-bold">{gallery.title}</span>
-              </span>
-            )}
-          </Link>
-        </div>
       </div>
 
       {/* Desktop layout - centered with clickable zones */}

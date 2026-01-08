@@ -205,6 +205,18 @@ export default function FeaturedPhotoPage() {
 
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
+        {/* Gallery link - above the image */}
+        {photo.galleryTitle && (
+          <div className="bg-white dark:bg-gray-950 px-4 py-2 border-b border-gray-100 dark:border-gray-800">
+            <Link
+              to={`/gallery/${photo.gallerySlug}`}
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"
+            >
+              Go to <span className="font-semibold">{photo.galleryTitle}</span> Gallery →
+            </Link>
+          </div>
+        )}
+
         {/* Photo with invisible tap zones for navigation */}
         <div className="relative bg-white dark:bg-black min-h-[40vh]">
           <img
@@ -282,20 +294,6 @@ export default function FeaturedPhotoPage() {
           </div>
         </div>
 
-        {/* Thumbnails link */}
-        <div className="bg-white dark:bg-gray-950 px-4 pb-4">
-          <Link
-            to="/"
-            className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors uppercase tracking-wide"
-          >
-            SHOW THUMBNAILS
-            {photo.galleryTitle && (
-              <span className="block text-[11px] mt-0.5 normal-case">
-                from <span className="font-bold">{photo.galleryTitle}</span>
-              </span>
-            )}
-          </Link>
-        </div>
       </div>
 
       {/* Desktop layout - centered with clickable zones */}
