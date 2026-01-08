@@ -11,6 +11,7 @@ import { useLoaderData, Link, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { getStorage, getNavigationFromIndex, getHomePhotosFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
+import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { useEffect, useCallback, useState } from "react";
 import yaml from "js-yaml";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
@@ -199,6 +200,9 @@ export default function FeaturedPhotoPage() {
       socialLinks={socialLinks}
       photoNav={photoNav}
     >
+      {/* Mobile Navigation - show path to photo's original gallery */}
+      <GalleryBreadcrumb currentSlug={photo.gallerySlug} navigation={navigation} />
+
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
         {/* Photo with invisible tap zones for navigation */}

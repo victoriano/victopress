@@ -17,6 +17,7 @@ import {
   type GalleryPhotoEntry,
 } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
+import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { useEffect, useCallback, useState } from "react";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
@@ -233,6 +234,9 @@ export default function PhotoPage() {
       socialLinks={socialLinks}
       photoNav={photoNav}
     >
+      {/* Mobile Navigation - show full gallery path */}
+      <GalleryBreadcrumb currentSlug={gallerySlug} navigation={navigation} />
+
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
         {/* Photo with invisible tap zones for navigation */}
