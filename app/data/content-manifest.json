@@ -1,29 +1,164 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-01-07T16:19:00.276Z",
+  "generatedAt": "2026-07-18T19:07:13.131Z",
   "repo": "victoriano/victopress",
   "branch": "main",
   "contentPath": "content",
   "files": [
     {
-      "path": "blog/getting-started/index.md",
-      "size": 1712,
+      "path": "blog/_migration-manifest.json",
+      "size": 19332,
       "type": "text"
     },
     {
-      "path": "blog/iphone-camera-test/cover.jpg",
-      "size": 104041,
-      "type": "binary"
-    },
-    {
-      "path": "blog/iphone-camera-test/index.md",
-      "size": 1919,
+      "path": "blog/_source.json",
+      "size": 119152,
       "type": "text"
     },
     {
-      "path": "blog/iphone-camera-test/sunset.jpg",
-      "size": 50996,
+      "path": "blog/2017/1/22/granada/image-asset-2.jpeg",
+      "size": 554990,
       "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-asset.jpeg",
+      "size": 999894,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/index.md",
+      "size": 3876,
+      "type": "text"
+    },
+    {
+      "path": "blog/2017/1/31/aos-de-crcel/image-asset-2.jpeg",
+      "size": 287702,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/31/aos-de-crcel/image-asset.jpeg",
+      "size": 584190,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/31/aos-de-crcel/index.md",
+      "size": 5472,
+      "type": "text"
+    },
+    {
+      "path": "blog/2017/1/31/la-nia-fotgrafa-de-sol/image-asset.jpeg",
+      "size": 623612,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/31/la-nia-fotgrafa-de-sol/index.md",
+      "size": 1203,
+      "type": "text"
+    },
+    {
+      "path": "blog/2017/1/31/tiendas-de-barrio/image-asset.jpeg",
+      "size": 961550,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/31/tiendas-de-barrio/index.md",
+      "size": 3148,
+      "type": "text"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/C95ADDA9-C7FE-456B-B1BF-3ED0BAD6EB9F.JPG",
+      "size": 539902,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/F7CEE415-3D28-4CC6-8953-B471C13D28C1.jpeg",
+      "size": 445188,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/FullSizeRender-2.jpg",
+      "size": 176562,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/FullSizeRender.jpg",
+      "size": 307670,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8511.jpg",
+      "size": 877014,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8528.jpg",
+      "size": 1135926,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8530.jpg",
+      "size": 320784,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8538.jpg",
+      "size": 984852,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8539.jpg",
+      "size": 573924,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8555.jpg",
+      "size": 675588,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8574.jpg",
+      "size": 260506,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8578.jpg",
+      "size": 463880,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8592.jpg",
+      "size": 1008826,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8602.jpg",
+      "size": 631666,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8611.jpg",
+      "size": 332602,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8698.jpg",
+      "size": 166452,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8795.jpeg",
+      "size": 273090,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8796.jpeg",
+      "size": 366184,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/index.md",
+      "size": 5440,
+      "type": "text"
     },
     {
       "path": "galleries/geographies/america/gallery.yaml",
@@ -1287,7 +1422,7 @@
     },
     {
       "path": "galleries/spaces/travelling/gallery.yaml",
-      "size": 77,
+      "size": 359,
       "type": "text"
     },
     {
@@ -1362,7 +1497,7 @@
     },
     {
       "path": "galleries/spaces/urban/gallery.yaml",
-      "size": 80,
+      "size": 342,
       "type": "text"
     },
     {
@@ -1422,7 +1557,7 @@
     },
     {
       "path": "pages/about/index.html",
-      "size": 2225,
+      "size": 2219,
       "type": "text"
     },
     {
@@ -1436,6 +1571,6 @@
       "type": "text"
     }
   ],
-  "totalSize": 228337426,
-  "totalFiles": 286
+  "totalSize": 241889473,
+  "totalFiles": 313
 }

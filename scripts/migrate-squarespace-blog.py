@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Download Victoriano's Squarespace blog into VictoPress content folders.
+"""Download Victoriano's Squarespace blog as Markdown content for VictoPress.
 
-The migration keeps the trusted Squarespace body HTML so captions, image
-grids, links, and widths are not flattened by a Markdown conversion. Every
-remote image is downloaded and every image reference is rewritten to the
-VictoPress image API. The generated manifest is also used by the exhaustive
-post-migration validator.
+Every remote image is downloaded, every reference is rewritten to the local
+image API, and the known Squarespace block subset is converted to portable
+Markdown while preserving captions and two/three-column image galleries.
 """
 
 from __future__ import annotations
@@ -24,6 +22,8 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlsplit
+
+from squarespace_html_to_markdown import squarespace_html_to_markdown
 
 
 DEFAULT_SOURCE = "https://victoriano.me/blog?format=json"
@@ -242,7 +242,7 @@ def build_frontmatter(
         f"description: {yaml_string(description)}",
         'author: "Victoriano Izquierdo"',
         "draft: false",
-        "format: html",
+        "format: markdown",
         "coverInBody: true",
         f"sourceUrl: {yaml_string(original_url)}",
     ]
@@ -372,8 +372,9 @@ def migrate(source_url: str, output_root: Path, workers: int) -> dict[str, Any]:
             post["description"],
             cover_key,
         )
+        markdown_body = squarespace_html_to_markdown(migrated_body)
         index_path = post["directory"] / "index.md"
-        index_path.write_text(f"{frontmatter}\n{migrated_body.strip()}\n", encoding="utf-8")
+        index_path.write_text(f"{frontmatter}\n{markdown_body}", encoding="utf-8")
 
         migrated_parser = BodyAuditParser()
         migrated_parser.feed(migrated_body)
@@ -401,7 +402,7 @@ def migrate(source_url: str, output_root: Path, workers: int) -> dict[str, Any]:
                 "slug": post["slug"],
                 "indexFile": str(index_path),
                 "sourceBodySha256": hashlib.sha256((item.get("body") or "").encode()).hexdigest(),
-                "migratedBodySha256": hashlib.sha256(migrated_body.encode()).hexdigest(),
+                "migratedBodySha256": hashlib.sha256(markdown_body.encode()).hexdigest(),
                 "sourceTextSha256": hashlib.sha256(post["sourceText"].encode()).hexdigest(),
                 "migratedTextSha256": hashlib.sha256(migrated_parser.plain_text.encode()).hexdigest(),
                 "links": migrated_parser.links,

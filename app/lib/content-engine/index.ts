@@ -76,6 +76,7 @@ export {
   updateGalleryMetadataInIndex,
   updateGalleryPhotosInIndex,
   addPhotosToGalleryIndex,
+  assignPhotosToGalleryInIndex,
 } from "./content-index";
 export type {
   ContentIndex as ContentIndexData,
@@ -87,7 +88,14 @@ export type {
   ParentMetadataEntry,
   PhotoIndexEntry,
   HomePhoto,
+  GalleryMembershipAssignmentResult,
 } from "./content-index";
+
+export {
+  readGalleryMemberships,
+  removeGalleryMembershipsForPhotos,
+  moveGalleryMemberships,
+} from "./gallery-memberships";
 
 // EXIF
 export { extractExif, formatExifForDisplay } from "./exif";

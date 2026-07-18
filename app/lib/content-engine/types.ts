@@ -93,6 +93,9 @@ export interface GalleryMetadata {
   
   /** Gallery description */
   description?: string;
+
+  /** Optional editorial guidance used only by AI gallery classification */
+  classificationHint?: string;
   
   /** Cover image filename (defaults to first image) */
   cover?: string;

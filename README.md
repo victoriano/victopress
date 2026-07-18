@@ -97,6 +97,11 @@ VictoPress uses browser-based image processing, so optimization works in any dev
 
 Put images in a folder under `content/galleries/`. That's it!
 
+For the editorial model behind the current `Humans`, `Spaces`, and
+`Geographies` hierarchy—including the **atoms → molecules → groups** social
+abstraction, proposed subtopics, geographic normalization, and guidance on
+folders versus tags—see [Gallery Taxonomy and Editorial Hierarchy](docs/gallery-taxonomy.md).
+
 ```yaml
 # content/galleries/tokyo-2024/gallery.yaml (optional)
 title: "Tokyo 2024"
@@ -299,7 +304,8 @@ This will bring in new features and bug fixes while preserving your customizatio
 
 ## 📖 Documentation
 
-See the [Project Home](https://www.notion.so/2dc358038bc5806e8d7bdd5649e4cef2) on Notion for full documentation.
+- [Gallery Taxonomy and Editorial Hierarchy](docs/gallery-taxonomy.md)
+- [Project Home](https://www.notion.so/2dc358038bc5806e8d7bdd5649e4cef2) on Notion
 
 ## License
 

@@ -1077,6 +1077,9 @@ function GallerySettingsPanel({
 }) {
   const [title, setTitle] = useState(gallery.title);
   const [description, setDescription] = useState(gallery.description || "");
+  const [classificationHint, setClassificationHint] = useState(
+    gallery.classificationHint || "",
+  );
   const [order, setOrder] = useState(gallery.order?.toString() || "");
   const [isPrivate, setIsPrivate] = useState(gallery.isProtected || false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -1085,15 +1088,26 @@ function GallerySettingsPanel({
   useEffect(() => {
     const titleChanged = title !== gallery.title;
     const descChanged = description !== (gallery.description || "");
+    const classificationHintChanged =
+      classificationHint !== (gallery.classificationHint || "");
     const orderChanged = order !== (gallery.order?.toString() || "");
     const privateChanged = isPrivate !== (gallery.isProtected || false);
-    setHasChanges(titleChanged || descChanged || orderChanged || privateChanged);
-  }, [title, description, order, isPrivate, gallery]);
+    setHasChanges(
+      titleChanged ||
+      descChanged ||
+      classificationHintChanged ||
+      orderChanged ||
+      privateChanged,
+    );
+  }, [title, description, classificationHint, order, isPrivate, gallery]);
   
   const handleSave = () => {
     const updates: Record<string, string> = {};
     if (title !== gallery.title) updates.title = title;
     if (description !== (gallery.description || "")) updates.description = description;
+    if (classificationHint !== (gallery.classificationHint || "")) {
+      updates.classificationHint = classificationHint;
+    }
     if (order !== (gallery.order?.toString() || "")) updates.order = order;
     if (isPrivate !== (gallery.isProtected || false)) updates.private = isPrivate.toString();
     onUpdate(updates);
@@ -1153,6 +1167,23 @@ function GallerySettingsPanel({
             className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             rows={2}
           />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-gray-500 dark:text-gray-400 mb-1">
+            AI classification hint <span className="font-normal">(optional)</span>
+          </label>
+          <textarea
+            value={classificationHint}
+            onChange={(event) => setClassificationHint(event.target.value)}
+            placeholder="Example: Suggest this gallery only when architecture is the main subject, not merely visible in the background."
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            rows={3}
+            maxLength={1500}
+          />
+          <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+            Sent to Gemini as a strict editorial rule. It is never shown publicly and is
+            only used when Photo AI is enabled with your own API key.
+          </p>
         </div>
         <div className="md:col-span-2 flex items-center gap-3">
           <label className="flex items-center gap-2 cursor-pointer">

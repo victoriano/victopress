@@ -2,6 +2,10 @@
 interface Env {
   // R2 Storage
   CONTENT_BUCKET: R2Bucket;
+
+  // Optional production vector index. Without it, Photo AI uses the
+  // rebuildable files-first index stored alongside the content.
+  PHOTO_VECTORS?: Vectorize;
   
   // Site Configuration
   SITE_NAME: string;
@@ -18,4 +22,11 @@ interface Env {
   // Image Optimization
   IMAGE_CDN_URL?: string;
   IMAGE_PROVIDER?: "cloudflare" | "sharp" | "none";
+
+  // Photo AI
+  PHOTO_AI_ENABLED?: string;
+  GEMINI_API_KEY?: string;
+  GEMINI_ANALYSIS_MODEL?: string;
+  GEMINI_EMBEDDING_MODEL?: string;
+  GEMINI_EMBEDDING_DIMENSIONS?: string;
 }

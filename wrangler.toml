@@ -9,6 +9,15 @@ pages_build_output_dir = "build/client"
 binding = "CONTENT_BUCKET"
 bucket_name = "victopress-content"
 
+# Optional production accelerator for Photo AI. Create the index first with
+# `wrangler vectorize create victopress-photos --dimensions=768 --metric=cosine`,
+# `wrangler vectorize create-metadata-index victopress-photos --propertyName=hidden --type=boolean`,
+# `wrangler vectorize create-metadata-index victopress-photos --propertyName=protected --type=boolean`,
+# then uncomment this binding. R2 remains the portable source of truth.
+# [[vectorize]]
+# binding = "PHOTO_VECTORS"
+# index_name = "victopress-photos"
+
 # Environment variables
 [vars]
 SITE_NAME = "VictoPress"
@@ -25,3 +34,10 @@ IMAGE_PROVIDER = "cloudflare"  # Options: cloudflare, sharp, none
 # Admin Authentication (set these as secrets in production!)
 # ADMIN_USERNAME = ""  # Use `wrangler secret put ADMIN_USERNAME`
 # ADMIN_PASSWORD = ""  # Use `wrangler secret put ADMIN_PASSWORD`
+
+# Photo AI (set GEMINI_API_KEY with `wrangler pages secret put GEMINI_API_KEY`)
+# The feature is disabled when no key is present. Set PHOTO_AI_ENABLED = "false"
+# to keep it disabled even when a key exists.
+GEMINI_ANALYSIS_MODEL = "gemini-3.1-flash-lite"
+GEMINI_EMBEDDING_MODEL = "gemini-embedding-2"
+GEMINI_EMBEDDING_DIMENSIONS = "768"

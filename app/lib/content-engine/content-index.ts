@@ -12,11 +12,13 @@ import type { StorageAdapter, Gallery, BlogPost, Page } from "./types";
 import { scanGalleries, scanParentMetadata, type PhotoCache, type CachedPhotoData } from "./gallery-scanner";
 import { scanBlog } from "./blog-scanner";
 import { scanPages } from "./page-scanner";
+import { addGalleryMemberships, readGalleryMemberships } from "./gallery-memberships";
+import { readGalleryOrders, sortPhotosByGalleryOrder } from "./gallery-orders";
 import { buildNavigation } from "../../utils/navigation";
 import type { NavItem } from "../../components/Sidebar";
 
 const INDEX_FILE = "_content-index.json";
-const INDEX_VERSION = 6; // Bumped to include EXIF cache and lastModified
+const INDEX_VERSION = 9; // Bumped to include deterministic cross-gallery photo ordering
 
 /** Number of photos to store per gallery for home page */
 const PHOTOS_PER_GALLERY = 6;
@@ -62,6 +64,8 @@ export interface GalleryDataEntry {
   slug: string;
   title: string;
   description?: string;
+  /** Editorial inclusion/exclusion criteria for optional AI classification */
+  classificationHint?: string;
   /** Cover image path (optional for parent galleries without photos) */
   cover?: string;
   path: string;
@@ -94,6 +98,10 @@ export interface GalleryPhotoEntry {
   order?: number;
   year?: number;
   tags?: string[];
+  /** True when this gallery membership points at a photo stored in another gallery. */
+  isReference?: boolean;
+  /** Physical gallery that owns the source file for a logical membership. */
+  sourceGallerySlug?: string;
   /** File modification time - used to invalidate EXIF cache */
   lastModified?: string;
   /** Cached EXIF data */
@@ -131,6 +139,55 @@ export interface ContentIndex {
     totalPosts: number;
     totalPages: number;
   };
+}
+
+function applyGalleryMembershipsToEntries(
+  galleries: GalleryDataEntry[],
+  memberships: Readonly<Record<string, readonly string[]>>,
+): void {
+  const physicalPhotos = new Map<
+    string,
+    { gallery: GalleryDataEntry; photo: GalleryPhotoEntry }
+  >();
+  for (const gallery of galleries) {
+    for (const photo of gallery.photos) {
+      if (!photo.isReference) physicalPhotos.set(photo.path, { gallery, photo });
+    }
+  }
+
+  const galleriesBySlug = new Map(galleries.map((gallery) => [gallery.slug, gallery]));
+  for (const [photoPath, targetSlugs] of Object.entries(memberships)) {
+    const source = physicalPhotos.get(photoPath);
+    if (!source) continue;
+    for (const targetSlug of targetSlugs) {
+      const target = galleriesBySlug.get(targetSlug);
+      if (
+        !target ||
+        (target.isParentGallery && target.hasChildren) ||
+        target.slug === source.gallery.slug
+      ) continue;
+      if (target.photos.some((photo) => photo.path === photoPath)) continue;
+      if (target.photos.some((photo) => photo.filename === source.photo.filename)) {
+        console.warn(
+          `[Gallery Memberships] Skipped ${photoPath} in ${targetSlug}: filename collision`,
+        );
+        continue;
+      }
+      target.photos.push({
+        ...source.photo,
+        isReference: true,
+        sourceGallerySlug: source.gallery.slug,
+      });
+      // An empty leaf gallery is a valid virtual gallery once it receives a
+      // logical membership. Keep true container galleries (those with child
+      // galleries) protected from direct photo assignment.
+      target.isParentGallery = false;
+    }
+  }
+
+  for (const gallery of galleries) {
+    gallery.photoCount = gallery.photos.filter((photo) => !photo.hidden).length;
+  }
 }
 
 /**
@@ -268,11 +325,13 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
   }
   
   // Scan all content in parallel (with EXIF cache for galleries)
-  const [galleries, posts, pages, parentMeta] = await Promise.all([
+  const [galleries, posts, pages, parentMeta, galleryMemberships, galleryOrders] = await Promise.all([
     scanGalleries(storage, photoCache),
     scanBlog(storage),
     scanPages(storage),
     scanParentMetadata(storage),
+    readGalleryMemberships(storage),
+    readGalleryOrders(storage),
   ]);
   
   // Convert to index entries (light version for navigation)
@@ -342,6 +401,7 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
       slug: g.slug,
       title: g.title,
       description: g.description,
+      classificationHint: g.classificationHint,
       cover: g.cover,
       path: g.path,
       photoCount: g.photoCount,
@@ -357,6 +417,21 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
       photos,
     };
   });
+
+  applyGalleryMembershipsToEntries(galleryDataEntries, galleryMemberships);
+  for (const gallery of galleryDataEntries) {
+    const orderedPaths = galleryOrders[gallery.slug];
+    if (orderedPaths?.length) {
+      gallery.photos = sortPhotosByGalleryOrder(gallery.photos, orderedPaths);
+    }
+  }
+  for (const entry of galleryEntries) {
+    const fullGallery = galleryDataEntries.find((gallery) => gallery.slug === entry.slug);
+    if (fullGallery) {
+      entry.photoCount = fullGallery.photoCount;
+      entry.isParentGallery = fullGallery.isParentGallery;
+    }
+  }
   
   const postEntries: PostIndexEntry[] = posts.map(p => ({
     slug: p.slug,
@@ -536,6 +611,7 @@ export async function updateGalleryMetadataInIndex(
   updates: {
     title?: string;
     description?: string;
+    classificationHint?: string;
     order?: number;
     private?: boolean;
     password?: string;
@@ -566,6 +642,9 @@ export async function updateGalleryMetadataInIndex(
     const gallery = index.galleryData[galleryIdx];
     if (updates.title !== undefined) gallery.title = updates.title;
     if (updates.description !== undefined) gallery.description = updates.description || undefined;
+    if (updates.classificationHint !== undefined) {
+      gallery.classificationHint = updates.classificationHint || undefined;
+    }
     if (updates.order !== undefined) gallery.order = updates.order;
     if (updates.private !== undefined) gallery.isProtected = updates.private;
     if (updates.password !== undefined) gallery.password = updates.password || undefined;
@@ -599,6 +678,103 @@ export async function updateGalleryMetadataInIndex(
     await rebuildContentIndex(storage);
     return { success: true, message: "Index rebuilt due to error" };
   }
+}
+
+export interface GalleryMembershipAssignmentResult {
+  success: boolean;
+  added: number;
+  skipped: number;
+  errors: Array<{ path: string; error: string }>;
+  message: string;
+}
+
+/**
+ * Adds existing source photos to another gallery without copying or moving the
+ * image file. The durable source of truth is gallery-memberships.yaml.
+ */
+export async function assignPhotosToGalleryInIndex(
+  storage: StorageAdapter,
+  photoPaths: readonly string[],
+  gallerySlug: string,
+): Promise<GalleryMembershipAssignmentResult> {
+  const targetSlug = gallerySlug.trim();
+  const requestedPaths = Array.from(new Set(photoPaths.map((path) => path.trim()).filter(Boolean)));
+  if (!targetSlug || requestedPaths.length === 0) {
+    return {
+      success: false,
+      added: 0,
+      skipped: requestedPaths.length,
+      errors: [],
+      message: "Choose at least one photo and a destination gallery.",
+    };
+  }
+
+  const index = await getContentIndex(storage);
+  const target = index.galleryData.find((gallery) => gallery.slug === targetSlug);
+  if (!target) throw new Error("Destination gallery was not found");
+  if (target.isParentGallery && target.hasChildren) {
+    throw new Error("Container galleries cannot receive photos directly");
+  }
+
+  const physicalPhotos = new Map<string, { gallery: GalleryDataEntry; photo: GalleryPhotoEntry }>();
+  for (const gallery of index.galleryData) {
+    for (const photo of gallery.photos) {
+      if (!photo.isReference) physicalPhotos.set(photo.path, { gallery, photo });
+    }
+  }
+
+  const additions: Array<{ path: string; source: GalleryDataEntry; photo: GalleryPhotoEntry }> = [];
+  const errors: Array<{ path: string; error: string }> = [];
+  let skipped = 0;
+  for (const path of requestedPaths) {
+    const source = physicalPhotos.get(path);
+    if (!source) {
+      errors.push({ path, error: "Photo was not found in the content index" });
+      continue;
+    }
+    if (source.gallery.slug === targetSlug || target.photos.some((photo) => photo.path === path)) {
+      skipped += 1;
+      continue;
+    }
+    if (target.photos.some((photo) => photo.filename === source.photo.filename)) {
+      errors.push({ path, error: "A different photo with the same filename already exists there" });
+      continue;
+    }
+    additions.push({ path, source: source.gallery, photo: source.photo });
+  }
+
+  if (additions.length > 0) {
+    await addGalleryMemberships(storage, additions.map((addition) => addition.path), targetSlug);
+    target.photos.push(
+      ...additions.map(({ source, photo }) => ({
+        ...photo,
+        isReference: true,
+        sourceGallerySlug: source.slug,
+      })),
+    );
+    target.isParentGallery = false;
+    target.photoCount = target.photos.filter((photo) => !photo.hidden).length;
+    const light = index.galleries.find((gallery) => gallery.slug === targetSlug);
+    if (light) {
+      light.photoCount = target.photoCount;
+      light.isParentGallery = false;
+    }
+    index.updatedAt = new Date().toISOString();
+    await writeContentIndex(storage, index);
+  }
+
+  const added = additions.length;
+  const failed = errors.length;
+  const fragments = [`Added ${added} photo${added === 1 ? "" : "s"} to ${target.title}.`];
+  if (skipped > 0) fragments.push(`${skipped} already belonged there.`);
+  if (failed > 0) fragments.push(`${failed} could not be added.`);
+  return {
+    success: added > 0 || (failed === 0 && skipped > 0),
+    added,
+    skipped,
+    errors,
+    message: fragments.join(" "),
+  };
 }
 
 /**
@@ -643,7 +819,7 @@ export async function updateGalleryPhotosInIndex(
     
     // Recalculate stats
     index.stats.totalPhotos = index.galleryData.reduce(
-      (sum, g) => sum + g.photos.length, 0
+      (sum, g) => sum + g.photos.filter((photo) => !photo.isReference).length, 0
     );
     
     // Update timestamp
@@ -758,7 +934,7 @@ export async function addPhotosToGalleryIndex(
     }
     
     index.stats.totalPhotos = index.galleryData.reduce(
-      (sum, g) => sum + g.photos.length, 0
+      (sum, g) => sum + g.photos.filter((photo) => !photo.isReference).length, 0
     );
     
     index.updatedAt = new Date().toISOString();
@@ -815,17 +991,22 @@ export async function getHomePhotosFromIndex(
     // Use handpicked photos from config
     const homePhotos: HomePhoto[] = [];
     homeConfig.photos.forEach((config, idx) => {
-      // Find the photo in featuredPhotos (it might not be there if not in top N)
-      const photo = index.featuredPhotos.find(
-        p => p.gallerySlug === config.gallery && p.filename === config.filename
-      );
-      
-      if (photo && !photo.hidden) {
-        homePhotos.push({ ...photo, homeIndex: idx });
-      } else {
-        // Photo not in featured list - we'd need to scan for it
-        // For now, we'll skip if not in the index
-        // TODO: Consider storing all configured home photos separately
+      const gallery = index.galleryData.find((entry) => entry.slug === config.gallery);
+      const photo = gallery?.photos.find((entry) => entry.filename === config.filename);
+
+      if (gallery && photo && !photo.hidden) {
+        homePhotos.push({
+          id: photo.id,
+          path: photo.path,
+          filename: photo.filename,
+          title: photo.title,
+          description: photo.description,
+          gallerySlug: gallery.slug,
+          galleryTitle: gallery.title,
+          hidden: photo.hidden,
+          year: photo.year,
+          homeIndex: idx,
+        });
       }
     });
     return homePhotos;

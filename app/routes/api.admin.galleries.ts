@@ -16,6 +16,7 @@ import * as yaml from "yaml";
 interface GalleryMetadata {
   title?: string;
   description?: string;
+  classificationHint?: string;
   cover?: string;
   date?: string;
   tags?: string[];
@@ -57,6 +58,7 @@ async function handleCreate(
   const slug = formData.get("slug") as string;
   const title = formData.get("title") as string;
   const description = formData.get("description") as string | null;
+  const classificationHint = formData.get("classificationHint") as string | null;
   const parentSlug = formData.get("parentSlug") as string | null;
   
   if (!slug || !title) {
@@ -94,6 +96,7 @@ async function handleCreate(
   const metadata: GalleryMetadata = {
     title,
     ...(description && { description }),
+    ...(classificationHint?.trim() && { classificationHint: classificationHint.trim() }),
   };
   
   const yamlContent = yaml.stringify(metadata);
@@ -159,6 +162,9 @@ async function handleUpdate(
       // Parse comma-separated tags
       const tags = (value as string).split(",").map(t => t.trim()).filter(Boolean);
       updateFields[key] = tags.length > 0 ? tags : undefined;
+    } else if (key === "classificationHint") {
+      const hint = (value as string).trim();
+      updateFields[key] = hint ? hint.slice(0, 1_500) : undefined;
     } else if (key === "private" || key === "includeNestedPhotos") {
       updateFields[key] = value === "true";
     } else if (value === "" || value === "null") {
@@ -188,6 +194,10 @@ async function handleUpdate(
   const indexResult = await updateGalleryMetadataInIndex(storage, galleryPath, {
     title: newMetadata.title as string | undefined,
     description: newMetadata.description as string | undefined,
+    classificationHint:
+      typeof newMetadata.classificationHint === "string"
+        ? newMetadata.classificationHint
+        : "",
     order: newMetadata.order as number | undefined,
     private: newMetadata.private as boolean | undefined,
     password: newMetadata.password as string | undefined,

@@ -90,6 +90,248 @@
   overflow-wrap: break-word;
 }
 
+/* Markdown posts and the admin preview share this exact editorial surface. */
+.markdown-blog-content {
+  margin: 15px 0;
+  color: #666;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  overflow-wrap: break-word;
+}
+
+.markdown-blog-content,
+.markdown-blog-content * {
+  box-sizing: border-box;
+}
+
+.markdown-blog-content > :first-child {
+  margin-top: 0;
+}
+
+.markdown-blog-content > :last-child {
+  margin-bottom: 0;
+}
+
+/* Recreate Squarespace's 17px block gutters without storing its wrapper HTML. */
+.markdown-blog-content > .blog-image-row {
+  margin: 0;
+  padding: 17px 0;
+}
+
+.markdown-blog-content > .blog-image-row:first-child {
+  padding-top: 0;
+}
+
+.markdown-blog-content > :not(.blog-image-row):first-child,
+.markdown-blog-content > .blog-image-row + :not(.blog-image-row) {
+  padding-top: 17px;
+}
+
+.markdown-blog-content > :not(.blog-image-row):has(+ .blog-image-row),
+.markdown-blog-content > :not(.blog-image-row):last-child {
+  margin-bottom: 0;
+  padding-bottom: 17px;
+}
+
+.markdown-blog-content > ul:not(.blog-image-row):has(+ .blog-image-row),
+.markdown-blog-content > ol:not(.blog-image-row):has(+ .blog-image-row) {
+  margin-bottom: 0;
+  padding-bottom: 32px;
+}
+
+.markdown-blog-content > :not(.blog-image-row):first-child {
+  padding-top: 0;
+}
+
+.markdown-blog-content p {
+  margin: 0 0 1em;
+}
+
+.markdown-blog-content a {
+  color: #000;
+  text-decoration: none;
+}
+
+.markdown-blog-content a:hover {
+  text-decoration: underline;
+}
+
+.markdown-blog-content h1,
+.markdown-blog-content h2,
+.markdown-blog-content h3,
+.markdown-blog-content h4 {
+  margin: 1.6em 0 0.6em;
+  color: #121212;
+  font-family: 'Proxima Nova Title', 'Proxima Nova', sans-serif;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.markdown-blog-content h1 {
+  font-size: 26px;
+}
+
+.markdown-blog-content h2 {
+  font-size: 22px;
+}
+
+.markdown-blog-content h3 {
+  font-size: 19px;
+}
+
+.markdown-blog-content h4 {
+  font-size: 16px;
+}
+
+.markdown-blog-content ul,
+.markdown-blog-content ol {
+  margin: 1em 0;
+  padding-left: 40px;
+}
+
+.markdown-blog-content ul {
+  list-style: disc;
+}
+
+.markdown-blog-content ol {
+  list-style: decimal;
+}
+
+.markdown-blog-content li > p {
+  margin: 0.5em 0;
+}
+
+.markdown-blog-content blockquote {
+  /* The source theme surrounded pull quotes with an empty text line. */
+  margin: 61px 0;
+  padding: 0;
+  border: 0;
+  font-family: Georgia, serif;
+  font-size: 22px;
+  font-style: italic;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+}
+
+.markdown-blog-content blockquote p {
+  margin: 0;
+}
+
+.markdown-blog-content em {
+  line-height: 25px;
+  letter-spacing: 0.115px;
+}
+
+.markdown-blog-content blockquote em {
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+
+.markdown-blog-content code {
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+  background: #f1f1f1;
+  color: #333;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  letter-spacing: 0;
+}
+
+.markdown-blog-content pre {
+  margin: 24px 0;
+  padding: 16px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: #f1f1f1;
+}
+
+.markdown-blog-content pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.markdown-blog-content hr {
+  margin: 32px 0;
+  border: 0;
+  border-top: 1px solid #ddd;
+}
+
+.markdown-blog-content table {
+  width: 100%;
+  margin: 24px 0;
+  border-collapse: collapse;
+}
+
+.markdown-blog-content th,
+.markdown-blog-content td {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.markdown-blog-content .blog-image-row {
+  width: 100%;
+}
+
+.markdown-blog-content .blog-image-frame,
+.markdown-blog-content .blog-image-link {
+  display: block;
+  min-width: 0;
+  width: 100%;
+}
+
+.markdown-blog-content .blog-image-link:hover {
+  text-decoration: none;
+}
+
+.markdown-blog-content .blog-image-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.markdown-blog-content .blog-image-caption {
+  display: block;
+  padding-top: 18px;
+  padding-bottom: 12px;
+  font-size: 12px;
+  line-height: 1.68;
+  letter-spacing: 0.02em;
+}
+
+.markdown-blog-content .blog-image-row[data-gallery-columns] {
+  display: grid;
+}
+
+.markdown-blog-content .blog-image-row[data-gallery-columns="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+  padding-bottom: 28px;
+}
+
+.markdown-blog-content .blog-image-row[data-gallery-columns="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding-bottom: 35px;
+}
+
+.markdown-blog-content [data-gallery-columns="2"] .blog-image-link {
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+}
+
+.markdown-blog-content [data-gallery-columns="3"] .blog-image-link {
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+
+.markdown-blog-content [data-gallery-columns] img {
+  height: 100%;
+  object-fit: cover;
+}
+
 /* Trusted HTML snapshots imported from the owner's Squarespace blog. */
 .legacy-squarespace-content {
   margin: 15px 0;

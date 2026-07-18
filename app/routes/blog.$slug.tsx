@@ -150,7 +150,7 @@ export default function BlogPostPage() {
         <BlogPostContent post={post} />
 
         {/* Footer */}
-        {post.format !== "html" && <footer className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800">
+        {!post.sourceUrl && <footer className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between">
             {/* Tags */}
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">

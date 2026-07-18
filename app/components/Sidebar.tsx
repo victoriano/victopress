@@ -39,9 +39,10 @@ interface SidebarProps {
     facebook?: string;
   };
   photoNav?: PhotoNavigation;
+  photoAiEnabled?: boolean;
 }
 
-export function Sidebar({ siteName, navigation, socialLinks, photoNav }: SidebarProps) {
+export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEnabled = false }: SidebarProps) {
   const location = useLocation();
   
   // Find all slugs in the active path that should be expanded
@@ -159,6 +160,11 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav }: Sidebar
 
           {/* Static Links */}
           <div className="space-y-2 pt-6 mt-2">
+            {photoAiEnabled && (
+              <StaticNavLink href="/search" currentPath={location.pathname}>
+                Search
+              </StaticNavLink>
+            )}
             <StaticNavLink href="/blog" currentPath={location.pathname}>
               Blog
             </StaticNavLink>
@@ -457,4 +463,3 @@ function LinkedInIcon() {
     </svg>
   );
 }
-

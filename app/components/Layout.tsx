@@ -4,7 +4,7 @@
  * Portfolio layout with fixed sidebar (desktop) and hamburger menu (mobile)
  */
 
-import { Link } from "@remix-run/react";
+import { Link, useRouteLoaderData } from "@remix-run/react";
 import { Sidebar, type NavItem, type PhotoNavigation } from "./Sidebar";
 import { MobileMenu } from "./MobileMenu";
 import { OptimizedImage } from "./OptimizedImage";
@@ -29,6 +29,9 @@ export function Layout({
   socialLinks,
   photoNav,
 }: LayoutProps) {
+  const rootData = useRouteLoaderData<{ photoAiEnabled?: boolean }>("root");
+  const photoAiEnabled = rootData?.photoAiEnabled === true;
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
       {/* Desktop Sidebar - hidden on mobile */}
@@ -38,6 +41,7 @@ export function Layout({
           navigation={navigation}
           socialLinks={socialLinks}
           photoNav={photoNav}
+          photoAiEnabled={photoAiEnabled}
         />
       </div>
 
@@ -47,6 +51,7 @@ export function Layout({
           siteName={siteName}
           navigation={navigation}
           socialLinks={socialLinks}
+          photoAiEnabled={photoAiEnabled}
         />
       </div>
       

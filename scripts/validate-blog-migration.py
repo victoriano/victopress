@@ -6,8 +6,8 @@ Run with:
 
 The validator checks the canonical migration manifest, all 24 image bytes,
 the public index, every individual post on both sites, link rewrites, layout
-geometry, browser errors, screenshots, and read-only access to every migrated
-post in the VictoPress admin editor.
+geometry, browser errors, screenshots, and the Markdown editor/save path for
+every migrated post in VictoPress.
 """
 
 from __future__ import annotations
@@ -206,7 +206,7 @@ async def _inspect_articles(page: Page) -> dict[str, Any]:
           documentTitle: document.title,
           scrollHeight: document.documentElement.scrollHeight,
           articles: [...document.querySelectorAll('article')].map(article => {
-            const content = article.querySelector('.legacy-squarespace-content, .entry-content');
+            const content = article.querySelector('.legacy-squarespace-content, .markdown-blog-content, .entry-content');
             const rect = article.getBoundingClientRect();
             const contentRect = content.getBoundingClientRect();
             const packRect = element => {
@@ -228,7 +228,17 @@ async def _inspect_articles(page: Page) -> dict[str, Any]:
             };
             const title = article.querySelector('h1, h2');
             const date = article.querySelector('time');
+            const visibleImages = [...content.querySelectorAll('img')].filter(image => {
+              const imageRect = image.getBoundingClientRect();
+              return imageRect.width > 1 && imageRect.height > 1;
+            });
+            const textElements = [
+              ...content.querySelectorAll(
+                'p:not(.blog-image-row), a:not(.blog-image-link):not(.image-slide-anchor), li, blockquote, .blog-image-caption'
+              ),
+            ].filter(element => !element.closest('.slide-meta, .v6-visually-hidden'));
             return {
+              serialization: content.classList.contains('markdown-blog-content') ? 'markdown' : 'html',
               title: title?.textContent?.trim() || '',
               date: date?.textContent?.trim() || '',
               text: content.innerText,
@@ -238,9 +248,10 @@ async def _inspect_articles(page: Page) -> dict[str, Any]:
                 title: packStyle(title),
                 date: packStyle(date),
                 content: packStyle(content),
-                elements: [...content.querySelectorAll('p, a, li, blockquote')].map(element => ({
-                  tag: element.tagName,
-                  className: element.className,
+                elements: textElements.map(element => ({
+                  kind: element.matches('.blog-image-caption, .image-caption-wrapper p')
+                    ? 'caption'
+                    : element.tagName.toLowerCase(),
                   style: packStyle(element),
                 })),
               },
@@ -248,11 +259,10 @@ async def _inspect_articles(page: Page) -> dict[str, Any]:
                 kind: block.classList.contains('html-block') ? 'html' : block.classList.contains('gallery-block') ? 'gallery' : 'image',
                 rect: packRect(block),
               })),
-              mediaBoxes: [
-                ...content.querySelectorAll('.image-block .sqs-image-shape-container-element'),
-                ...content.querySelectorAll('.gallery-block .margin-wrapper'),
-              ].map(packRect),
-              images: [...content.querySelectorAll('img')].map(image => ({
+              mediaBoxes: [...content.querySelectorAll(
+                '.image-block .sqs-image-shape-container-element, .gallery-block .margin-wrapper, .blog-image-link'
+              )].map(packRect),
+              images: visibleImages.map(image => ({
                 ref: image.getAttribute('data-image') || image.getAttribute('data-src') || image.getAttribute('src') || '',
                 src: image.currentSrc || image.src,
                 alt: image.alt,
@@ -260,7 +270,9 @@ async def _inspect_articles(page: Page) -> dict[str, Any]:
                 naturalHeight: image.naturalHeight,
                 rect: packRect(image),
               })),
-              links: [...content.querySelectorAll('a')].map(link => link.getAttribute('href') || ''),
+              links: [...content.querySelectorAll('a')]
+                .filter(link => !link.matches('.blog-image-link, .image-slide-anchor, .sqs-block-image-button'))
+                .map(link => link.getAttribute('href') || ''),
             };
           }),
         })"""
@@ -276,6 +288,19 @@ def compare_number(
 ) -> None:
     if abs(source - target) > tolerance:
         failures.append(f"{label}: source={source:.3f}, target={target:.3f}")
+
+
+def typography_signature(value: dict[str, Any]) -> dict[str, Any]:
+    """Compare rendered style families without depending on wrapper tag counts."""
+    return {
+        "title": value["title"],
+        "date": value["date"],
+        "content": value["content"],
+        "elementStyles": sorted({
+            json.dumps(element["style"], sort_keys=True)
+            for element in value["elements"]
+        }),
+    }
 
 
 def compare_article(
@@ -301,7 +326,7 @@ def compare_article(
             f"{prefix}: visible text mismatch {sha256_text(source_text)} != {sha256_text(target_text)}"
         )
 
-    if source_article["typography"] != target_article["typography"]:
+    if typography_signature(source_article["typography"]) != typography_signature(target_article["typography"]):
         failures.append(f"{prefix}: typography/style mismatch")
 
     if len(source_article["images"]) != len(target_article["images"]):
@@ -320,26 +345,30 @@ def compare_article(
     if source_links != target_article["links"]:
         failures.append(f"{prefix}: link order/reference mismatch")
 
-    if len(source_article["blocks"]) != len(target_article["blocks"]):
-        failures.append(f"{prefix}: content block count mismatch")
-    else:
-        for index, (source_block, target_block) in enumerate(
-            zip(source_article["blocks"], target_article["blocks"])
-        ):
-            if source_block["kind"] != target_block["kind"]:
-                failures.append(f"{prefix}: block {index} type mismatch")
-            compare_number(
-                failures,
-                f"{prefix}: block {index} width",
-                source_block["rect"]["width"],
-                target_block["rect"]["width"],
-            )
-            compare_number(
-                failures,
-                f"{prefix}: block {index} height",
-                source_block["rect"]["height"],
-                target_block["rect"]["height"],
-            )
+    # Markdown intentionally removes Squarespace's wrapper divs. Keep strict
+    # wrapper geometry for the HTML fallback only; visible media and overall
+    # content geometry remain strict below for Markdown posts.
+    if target_article["serialization"] != "markdown":
+        if len(source_article["blocks"]) != len(target_article["blocks"]):
+            failures.append(f"{prefix}: content block count mismatch")
+        else:
+            for index, (source_block, target_block) in enumerate(
+                zip(source_article["blocks"], target_article["blocks"])
+            ):
+                if source_block["kind"] != target_block["kind"]:
+                    failures.append(f"{prefix}: block {index} type mismatch")
+                compare_number(
+                    failures,
+                    f"{prefix}: block {index} width",
+                    source_block["rect"]["width"],
+                    target_block["rect"]["width"],
+                )
+                compare_number(
+                    failures,
+                    f"{prefix}: block {index} height",
+                    source_block["rect"]["height"],
+                    target_block["rect"]["height"],
+                )
 
     if len(source_article["mediaBoxes"]) != len(target_article["mediaBoxes"]):
         failures.append(f"{prefix}: media container count mismatch")
@@ -491,11 +520,16 @@ async def validate_admin(
         last_error: PlaywrightError | None = None
         for attempt in range(3):
             try:
-                return await page.goto(
+                response = await page.goto(
                     url,
                     wait_until="domcontentloaded",
                     timeout=120_000,
                 )
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=15_000)
+                except PlaywrightError:
+                    pass
+                return response
             except PlaywrightError as error:
                 last_error = error
                 if attempt < 2:
@@ -540,7 +574,7 @@ async def validate_admin(
     await page.screenshot(path=str(output_root / "target-admin-blog.png"), full_page=True)
 
     editors: list[dict[str, Any]] = []
-    for post in posts:
+    for post_index, post in enumerate(posts):
         url = f"{target}/admin/blog/{post['slug']}"
         print(f"[admin] {post['title']}")
         editor_response = await stable_goto(url)
@@ -558,6 +592,41 @@ async def validate_admin(
             item_failures.append("slug field mismatch")
         if editor_body.strip() != expected_body:
             item_failures.append("editor body mismatch")
+        if re.search(r"<(?:div|figure|img|p|span|a)\b", editor_body, flags=re.IGNORECASE):
+            item_failures.append("editor still contains HTML")
+        if await page.get_by_text("Stored as Markdown", exact=True).count() != 1:
+            item_failures.append("Markdown storage indicator missing")
+        if await page.get_by_role("button", name="Preview", exact=True).count() != 1:
+            item_failures.append("Preview mode missing")
+        if await page.locator(".markdown-blog-content").count() != 1:
+            item_failures.append("Live Markdown preview missing")
+
+        save_checked = False
+        if post_index == 0 and not item_failures:
+            save_result = await page.evaluate(
+                """async ({slug, content}) => {
+                  const body = new FormData();
+                  body.append('action', 'update');
+                  body.append('slug', slug);
+                  body.append('content', content);
+                  const response = await fetch('/api/admin/blog', {
+                    method: 'POST',
+                    body,
+                    credentials: 'include',
+                  });
+                  let payload;
+                  try { payload = await response.json(); }
+                  catch { payload = {success: false, body: await response.text()}; }
+                  return {status: response.status, payload};
+                }""",
+                {"slug": post["slug"], "content": editor_body},
+            )
+            save_payload = save_result["payload"]
+            save_checked = save_result["status"] == 200 and save_payload.get("success") is True
+            if not save_checked:
+                item_failures.append(
+                    f"save failed with HTTP {save_result['status']}: {save_payload}"
+                )
         failures.extend(f"Admin {post['title']}: {value}" for value in item_failures)
         editors.append(
             {
@@ -565,6 +634,7 @@ async def validate_admin(
                 "url": url,
                 "status": editor_response.status if editor_response else None,
                 "contentLength": len(editor_body),
+                "saveChecked": save_checked,
                 "failures": item_failures,
             }
         )

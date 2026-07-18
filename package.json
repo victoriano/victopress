@@ -21,6 +21,7 @@
     "sync-to-r2": "bun run scripts/sync-local-to-r2.ts",
     "sync-blog-to-r2": "bun run scripts/sync-blog-to-r2.ts",
     "sync-from-r2": "bun run scripts/sync-r2-to-local.ts",
+    "import:squarespace-galleries": "bun run scripts/import-squarespace-galleries.ts",
     "optimize-images": "bun run scripts/optimize-images.ts"
   },
   "dependencies": {
@@ -34,6 +35,7 @@
     "exifr": "^7.1.3",
     "gray-matter": "^4.0.3",
     "isbot": "^5.1.17",
+    "marked": "^18.0.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "sharp": "^0.34.5",

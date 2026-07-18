@@ -30,6 +30,15 @@ interface PhotoWithGallery extends GalleryPhotoEntry {
   gallerySlug: string;
 }
 
+function dedupePhotosByPath(photos: PhotoWithGallery[]): PhotoWithGallery[] {
+  const seen = new Set<string>();
+  return photos.filter((photo) => {
+    if (seen.has(photo.path)) return false;
+    seen.add(photo.path);
+    return true;
+  });
+}
+
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.gallery) {
     return [{ title: "Gallery Not Found - VictoPress" }];
@@ -115,7 +124,10 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       const nestedPhotos: PhotoWithGallery[] = childGalleries.flatMap((g) =>
         g.photos.filter((p) => !p.hidden).map((p) => ({ ...p, gallerySlug: g.slug }))
       );
-      allPhotos = [...directPhotos, ...nestedPhotos];
+      // Logical memberships let a child gallery reuse a photo physically
+      // stored in its parent (London currently does this with United Kingdom).
+      // Parent aggregation must not render that same source path twice.
+      allPhotos = dedupePhotosByPath([...directPhotos, ...nestedPhotos]);
     } else {
       allPhotos = directPhotos;
     }
@@ -131,9 +143,9 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     };
   } else if (childGalleries.length > 0) {
     // No exact match but has children - create virtual gallery
-    allPhotos = childGalleries.flatMap((g) =>
+    allPhotos = dedupePhotosByPath(childGalleries.flatMap((g) =>
       g.photos.filter((p) => !p.hidden).map((p) => ({ ...p, gallerySlug: g.slug }))
-    );
+    ));
     
     // Get title from the category name
     const categoryName = slug.split("/").pop() || slug;

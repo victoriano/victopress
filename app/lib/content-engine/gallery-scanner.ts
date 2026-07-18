@@ -173,6 +173,7 @@ async function scanGalleryFolder(
     slug: yamlMetadata?.slug || fullSlug,
     title: yamlMetadata?.title || autoTitle,
     description: yamlMetadata?.description,
+    classificationHint: yamlMetadata?.classificationHint,
     path: folderPath,
     cover: coverPath,
     photos: sortedPhotos,

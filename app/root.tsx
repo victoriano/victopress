@@ -5,9 +5,16 @@ import {
   Scripts,
   ScrollRestoration,
 } from "@remix-run/react";
-import type { LinksFunction } from "@remix-run/cloudflare";
+import { json } from "@remix-run/cloudflare";
+import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { isPhotoAiEnabled } from "~/lib/ai/photo-ai-service.server";
 
 import "./tailwind.css";
+
+export function loader({ context }: LoaderFunctionArgs) {
+  // Only expose the capability bit. The user's Gemini key never reaches the browser.
+  return json({ photoAiEnabled: isPhotoAiEnabled(context) });
+}
 
 export const links: LinksFunction = () => [
   { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },

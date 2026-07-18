@@ -16,6 +16,7 @@ import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getContentIndex, addPhotosToGalleryIndex } from "~/lib/content-engine";
+import { enqueueUploadedPhotosForAi } from "~/lib/ai/photo-ai-service.server";
 import { useState, useCallback, useRef, useEffect } from "react";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
@@ -137,6 +138,15 @@ export async function action({ request, context }: ActionFunctionArgs) {
       console.log(`[Upload] Updated index with ${successfulPaths.length} new photos`);
     } catch (error) {
       console.error("[Upload] Failed to update index:", error);
+    }
+
+    // Queue derived AI metadata without delaying the upload with model calls.
+    // The admin can process/review it later from Photo AI.
+    try {
+      await enqueueUploadedPhotosForAi(context, successfulPaths);
+      console.log(`[Upload] Queued ${successfulPaths.length} photos for AI analysis`);
+    } catch (error) {
+      console.error("[Upload] Failed to queue Photo AI analysis:", error);
     }
   }
   

@@ -18,9 +18,10 @@ interface MobileMenuProps {
     linkedin?: string;
     facebook?: string;
   };
+  photoAiEnabled?: boolean;
 }
 
-export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProps) {
+export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled = false }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
@@ -164,6 +165,11 @@ export function MobileMenu({ siteName, navigation, socialLinks }: MobileMenuProp
 
             {/* Static Links */}
             <div className="space-y-2 pt-6 mt-2">
+              {photoAiEnabled && (
+                <MobileNavLink href="/search" currentPath={location.pathname} onClick={() => setIsOpen(false)}>
+                  Search
+                </MobileNavLink>
+              )}
               <MobileNavLink href="/blog" currentPath={location.pathname} onClick={() => setIsOpen(false)}>
                 Blog
               </MobileNavLink>
@@ -446,4 +452,3 @@ function LinkedInIcon() {
     </svg>
   );
 }
-

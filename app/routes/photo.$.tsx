@@ -18,6 +18,7 @@ import {
 } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
+import { SimilarPhotos } from "~/components/SimilarPhotos";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { useEffect, useCallback, useState } from "react";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
@@ -380,6 +381,8 @@ export default function PhotoPage() {
           </div>
         </div>
       </div>
+
+      <SimilarPhotos key={photo.path} photoPath={photo.path} />
     </Layout>
   );
 }
@@ -406,4 +409,3 @@ function getPhotoYear(photo: {
   }
   return undefined;
 }
-

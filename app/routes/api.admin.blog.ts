@@ -9,7 +9,13 @@
 import type { ActionFunctionArgs } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { checkAdminAuth } from "~/utils/admin-auth";
-import { getStorage, invalidateContentIndex } from "~/lib/content-engine";
+import {
+  getStorage,
+  removePostFromIndex,
+  updatePostInIndex,
+  type BlogPost,
+} from "~/lib/content-engine";
+import { calculateReadingTime, generateExcerpt } from "~/lib/content-engine/utils";
 import * as yaml from "yaml";
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -28,6 +34,44 @@ export async function action({ request, context }: ActionFunctionArgs) {
     default:
       return json({ success: false, error: "Unknown action" }, { status: 400 });
   }
+}
+
+function postForIndex(
+  slug: string,
+  indexPath: string,
+  frontmatter: Record<string, any>,
+  content: string,
+): BlogPost {
+  const rawDate = frontmatter.date;
+  const parsedDate = rawDate instanceof Date
+    ? rawDate
+    : rawDate
+      ? new Date(String(rawDate))
+      : undefined;
+  const date = parsedDate && !Number.isNaN(parsedDate.getTime())
+    ? parsedDate
+    : undefined;
+
+  return {
+    id: slug,
+    slug,
+    title: String(frontmatter.title || "Untitled"),
+    path: indexPath.replace(/\/index\.md$/i, ""),
+    content,
+    excerpt: frontmatter.description || generateExcerpt(content),
+    readingTime: calculateReadingTime(content),
+    images: [],
+    hasFrontmatter: true,
+    date,
+    description: frontmatter.description,
+    tags: Array.isArray(frontmatter.tags) ? frontmatter.tags.map(String) : undefined,
+    draft: frontmatter.draft === true,
+    cover: frontmatter.cover,
+    coverInBody: frontmatter.coverInBody,
+    format: "markdown",
+    sourceUrl: frontmatter.sourceUrl,
+    author: frontmatter.author,
+  };
 }
 
 /**
@@ -74,6 +118,7 @@ async function handleCreate(
     title,
     date: new Date().toISOString().split("T")[0],
     draft: true,
+    format: "markdown",
   };
   
   const description = formData.get("description") as string | null;
@@ -93,8 +138,10 @@ async function handleCreate(
   await storage.createDir(postPath);
   await storage.put(indexPath, fileContent);
   
-  // Invalidate content index
-  await invalidateContentIndex(storage);
+  await updatePostInIndex(
+    storage,
+    postForIndex(slug, indexPath, frontmatter, content),
+  );
   
   return json({
     success: true,
@@ -170,6 +217,9 @@ async function handleUpdate(
   if (newContent !== null) {
     content = newContent;
   }
+
+  // The editor and public renderer now share Markdown as the canonical source.
+  frontmatter.format = "markdown";
   
   // Clean up undefined values
   Object.keys(frontmatter).forEach(key => {
@@ -184,8 +234,10 @@ async function handleUpdate(
   // Save file
   await storage.put(indexPath, fileContent);
   
-  // Invalidate content index
-  await invalidateContentIndex(storage);
+  await updatePostInIndex(
+    storage,
+    postForIndex(slug, indexPath, frontmatter, content),
+  );
   
   return json({
     success: true,
@@ -225,8 +277,7 @@ async function handleDelete(
   // Delete the entire post directory
   await storage.deleteDir(postPath);
   
-  // Invalidate content index
-  await invalidateContentIndex(storage);
+  await removePostFromIndex(storage, slug);
   
   return json({
     success: true,

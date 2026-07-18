@@ -9,6 +9,7 @@ import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link, useFetcher, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
+import { MarkdownEditor } from "~/components/MarkdownEditor";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { scanBlog, getStorage } from "~/lib/content-engine";
 import { useState, useEffect, useCallback } from "react";
@@ -142,7 +143,7 @@ export default function AdminBlogEditor() {
   
   return (
     <AdminLayout username={username || undefined}>
-      <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+      <div className="p-6 lg:p-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -338,27 +339,11 @@ export default function AdminBlogEditor() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Content (Markdown)
             </label>
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-              <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Supports Markdown formatting
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {content.length} characters
-                </span>
-              </div>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="# Your Post Title
-
-Start writing your post content here...
-
-You can use **bold**, *italic*, and other Markdown formatting."
-                rows={20}
-                className="w-full px-4 py-3 font-mono text-sm bg-transparent focus:outline-none resize-y text-gray-900 dark:text-white"
-              />
-            </div>
+            <MarkdownEditor
+              value={content}
+              onChange={setContent}
+              imagePathHint={slug ? `blog/${slug}` : undefined}
+            />
           </div>
           
           {/* Post Info (for existing posts) */}

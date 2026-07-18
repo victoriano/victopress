@@ -13,6 +13,7 @@ import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, isDemoMode, getStorageMode, isDevelopment, getAdapterPreference, getContentIndex, rebuildContentIndex } from "~/lib/content-engine";
 import type { StorageAdapterPreference, ContentIndex } from "~/lib/content-engine";
+import { getPhotoAiConfiguration } from "~/lib/ai/photo-ai-service.server";
 
 type StorageAdapterType = "local" | "r2" | "unconfigured";
 
@@ -96,6 +97,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const demoMode = isDemoMode(context);
   const storageMode = getStorageMode(context);
   const isDevMode = isDevelopment();
+  const photoAiConfig = getPhotoAiConfiguration(context);
   
   // Use pre-calculated content index for fast loading
   const contentIndex = await getContentIndex(storage);
@@ -130,12 +132,18 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       hasAdminCredentials: !!env?.ADMIN_USERNAME,
       hasR2Bucket: !!env?.CONTENT_BUCKET,
     },
+    photoAi: {
+      enabled: photoAiConfig.enabled,
+      configured: photoAiConfig.enabled && Boolean(photoAiConfig.apiKey),
+      analysisModel: photoAiConfig.analysisModel,
+      embeddingModel: photoAiConfig.embeddingModel,
+    },
     storageConfig,
   });
 }
 
 export default function AdminSettings() {
-  const { username, isDemoMode: demoMode, stats, indexInfo, env, storageConfig } = useLoaderData<typeof loader>();
+  const { username, isDemoMode: demoMode, stats, indexInfo, env, photoAi, storageConfig } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<{ testResult: StorageTestResult }>();
   const isTestingStorage = fetcher.state !== "idle";
   const testResult = fetcher.data?.testResult;
@@ -674,6 +682,38 @@ export default function AdminSettings() {
               <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">ADMIN_PASSWORD</code> as secrets for production.
             </div>
           )}
+        </Section>
+
+        {/* Optional BYOK Photo AI */}
+        <Section title="Photo AI (optional)">
+          <InfoRow
+            label="Status"
+            value={photoAi.configured ? "Enabled with your Gemini key" : "Disabled"}
+            status={photoAi.configured ? "success" : "warning"}
+          />
+          <div className="mt-4 space-y-3 text-xs leading-5 text-gray-500 dark:text-gray-400">
+            <p>
+              VictoPress does not include or proxy an AI subscription. To opt in, provide your own
+              Google Gemini API key as the server-side secret <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">GEMINI_API_KEY</code>.
+              The key is never returned to the browser.
+            </p>
+            <pre className="overflow-x-auto rounded-lg bg-gray-100 p-3 text-xs dark:bg-gray-800">
+{`# Local development (.dev.vars)
+GEMINI_API_KEY="your-key"
+
+# Cloudflare Pages
+wrangler pages secret put GEMINI_API_KEY`}
+            </pre>
+            <p>
+              Without that secret, no photos are queued, no model requests are made, and all Photo AI navigation stays hidden.
+              Set <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">PHOTO_AI_ENABLED=false</code> to force it off even when a key exists.
+            </p>
+            {photoAi.configured && (
+              <a href="/admin/ai" className="inline-flex font-medium text-violet-700 hover:underline dark:text-violet-300">
+                Open Photo AI ({photoAi.analysisModel} + {photoAi.embeddingModel})
+              </a>
+            )}
+          </div>
         </Section>
 
         {/* R2 Setup Guide */}

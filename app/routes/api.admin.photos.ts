@@ -16,8 +16,15 @@ import {
   invalidateContentIndex,
   updateGalleryPhotosInIndex,
   addPhotosToGalleryIndex,
+  moveGalleryMemberships,
+  removeGalleryMembershipsForPhotos,
   type GalleryPhotoEntry,
 } from "~/lib/content-engine";
+import {
+  enqueueUploadedPhotosForAi,
+  removePhotoAiProjectionsByPaths,
+  setPhotoAiVisibilityByPaths,
+} from "~/lib/ai/photo-ai-service.server";
 // Helper functions that don't need Jimp
 function isVariantFile(filename: string): boolean {
   return /_\d+w\.webp$/.test(filename);
@@ -81,7 +88,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
  */
 async function handleDelete(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const galleryPath = formData.get("galleryPath") as string;
   const photoPaths = formData.getAll("photoPaths") as string[];
@@ -151,6 +158,17 @@ async function handleDelete(
   await updateGalleryPhotosInIndex(storage, galleryPath, (photos) => {
     return photos.filter(p => !deletedFilenames.has(p.filename));
   });
+
+  const successfullyDeleted = results.filter((result) => result.success).map((result) => result.path);
+  if (successfullyDeleted.length > 0) {
+    await removeGalleryMembershipsForPhotos(storage, successfullyDeleted);
+    await invalidateContentIndex(storage);
+  }
+  try {
+    await removePhotoAiProjectionsByPaths(context, successfullyDeleted);
+  } catch (error) {
+    console.error("[Photo AI] Failed to clean deleted photo projections", error);
+  }
   
   const successCount = results.filter(r => r.success).length;
   const totalVariantsDeleted = results.reduce((sum, r) => sum + (r.variantsDeleted || 0), 0);
@@ -167,7 +185,7 @@ async function handleDelete(
  */
 async function handleUpdate(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const galleryPath = formData.get("galleryPath") as string;
   const photoPath = formData.get("photoPath") as string;
@@ -237,7 +255,7 @@ async function handleUpdate(
  */
 async function handleMove(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const fromPath = formData.get("fromGalleryPath") as string;
   const toPath = formData.get("toGalleryPath") as string;
@@ -297,6 +315,27 @@ async function handleMove(
   
   // Invalidate content index
   await invalidateContentIndex(storage);
+
+  const successfulMoves = results.filter(
+    (result): result is { path: string; success: true; newPath: string } =>
+      result.success && typeof result.newPath === "string",
+  );
+  await moveGalleryMemberships(
+    storage,
+    successfulMoves.map((result) => ({ from: result.path, to: result.newPath })),
+  );
+  try {
+    await removePhotoAiProjectionsByPaths(
+      context,
+      successfulMoves.map((result) => result.path),
+    );
+    await enqueueUploadedPhotosForAi(
+      context,
+      successfulMoves.map((result) => result.newPath),
+    );
+  } catch (error) {
+    console.error("[Photo AI] Failed to requeue moved photo projections", error);
+  }
   
   const successCount = results.filter(r => r.success).length;
   
@@ -313,7 +352,7 @@ async function handleMove(
  */
 async function handleReorder(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const galleryPath = formData.get("galleryPath") as string;
   const orderJson = formData.get("order") as string;
@@ -390,7 +429,7 @@ async function handleReorder(
       };
     }).sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   });
-  
+
   return json({
     success: true,
     message: `Reordered ${order.length} photos`,
@@ -403,7 +442,7 @@ async function handleReorder(
  */
 async function handleToggleVisibility(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const galleryPath = formData.get("galleryPath") as string;
   const photoPaths = formData.getAll("photoPaths") as string[];
@@ -433,6 +472,12 @@ async function handleToggleVisibility(
       hidden: filenameSet.has(p.filename) ? hidden : p.hidden,
     }));
   });
+
+  try {
+    await setPhotoAiVisibilityByPaths(context, photoPaths, hidden);
+  } catch (error) {
+    console.error("[Photo AI] Failed to update photo visibility projection", error);
+  }
   
   return json({
     success: true,
@@ -447,7 +492,7 @@ async function handleToggleVisibility(
  */
 async function handleBulkUpdate(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const galleryPath = formData.get("galleryPath") as string;
   const photoPaths = formData.getAll("photoPaths") as string[];
@@ -654,7 +699,7 @@ const VARIANT_WIDTHS = [800, 1600, 2400];
  */
 async function handleGetVariants(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const photoPath = formData.get("photoPath") as string;
   
@@ -734,7 +779,7 @@ async function handleGetVariants(
  */
 async function handleDeleteVariants(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const photoPath = formData.get("photoPath") as string;
   
@@ -773,7 +818,7 @@ async function handleDeleteVariants(
  */
 async function handleRegenerateVariants(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const photoPath = formData.get("photoPath") as string;
   
