@@ -19,9 +19,9 @@ import { getStorage, getContentIndex, addPhotosToGalleryIndex } from "~/lib/cont
 import { useState, useCallback, useRef, useEffect } from "react";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
-  const username = getAdminUser(request);
+  const username = await getAdminUser(request, context);
   const storage = getStorage(context);
   
   // Use pre-calculated content index for fast loading
@@ -34,7 +34,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
   const formData = await request.formData();
   const files = formData.getAll("files") as File[];

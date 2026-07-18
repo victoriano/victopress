@@ -164,7 +164,7 @@ async function clearProgressCounter(storage: ReturnType<typeof getStorage>): Pro
  * 3. Fallback to 0% if no data
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
   const storage = getStorage(context);
   
@@ -236,7 +236,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
  * POST - Run optimization
  */
 export async function action({ request, context }: ActionFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
   const formData = await request.formData();
   const actionType = formData.get("action") as string;

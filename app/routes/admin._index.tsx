@@ -13,9 +13,9 @@ import { getStorage, isDemoMode, getContentIndex } from "~/lib/content-engine";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   // Check authentication
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
-  const username = getAdminUser(request);
+  const username = await getAdminUser(request, context);
   const storage = getStorage(context);
   const demoMode = isDemoMode(context);
   

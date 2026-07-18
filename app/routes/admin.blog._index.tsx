@@ -12,9 +12,9 @@ import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getContentIndex } from "~/lib/content-engine";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
-  const username = getAdminUser(request);
+  const username = await getAdminUser(request, context);
   const storage = getStorage(context);
   
   // Use pre-calculated content index for fast loading

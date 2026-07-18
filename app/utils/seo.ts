@@ -148,7 +148,16 @@ export function generateMetaTags(config: SeoConfig): Array<
  */
 export function getBaseUrl(request: Request): string {
   const url = new URL(request.url);
-  return `${url.protocol}//${url.host}`;
+  const forwardedProtocol = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    .trim();
+  const forwardedHost = request.headers
+    .get("x-forwarded-host")
+    ?.split(",")[0]
+    .trim();
+
+  return `${forwardedProtocol || url.protocol.replace(":", "")}://${forwardedHost || url.host}`;
 }
 
 /**

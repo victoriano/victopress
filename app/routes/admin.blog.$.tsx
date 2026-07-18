@@ -14,10 +14,10 @@ import { scanBlog, getStorage } from "~/lib/content-engine";
 import { useState, useEffect, useCallback } from "react";
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
   const slug = params["*"];
-  const username = getAdminUser(request);
+  const username = await getAdminUser(request, context);
   const storage = getStorage(context);
   
   // Handle "new" post creation

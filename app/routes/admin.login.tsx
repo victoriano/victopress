@@ -9,11 +9,16 @@ import { useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { json, redirect } from "@remix-run/cloudflare";
 import { Form, useActionData, useNavigation } from "@remix-run/react";
-import { getAdminCredentials } from "~/utils/admin-auth";
+import {
+  adminSessionCookie,
+  createAdminSessionToken,
+  getEffectiveAdminCredentials,
+  hasValidAdminSession,
+  verifyAdminPassword,
+} from "~/utils/admin-auth";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const env = context.cloudflare?.env;
-  const credentials = getAdminCredentials(env);
+  const credentials = await getEffectiveAdminCredentials(context, request);
   
   // If no credentials configured, redirect to setup
   if (!credentials) {
@@ -21,28 +26,13 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   }
   
   // Check if already authenticated via cookie
-  const cookieHeader = request.headers.get("Cookie");
-  if (cookieHeader) {
-    const match = cookieHeader.match(/admin_auth=([^;]+)/);
-    if (match) {
-      const token = match[1];
-      try {
-        const expectedToken = btoa(`${credentials.username}:${credentials.password}`);
-        if (token === expectedToken) {
-          return redirect("/admin");
-        }
-      } catch {
-        // Invalid token format
-      }
-    }
-  }
+  if (await hasValidAdminSession(request, credentials)) return redirect("/admin");
   
   return json({});
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  const env = context.cloudflare?.env;
-  const credentials = getAdminCredentials(env);
+  const credentials = await getEffectiveAdminCredentials(context, request);
   
   if (!credentials) {
     return redirect("/setup");
@@ -51,16 +41,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const username = formData.get("username") as string;
   const password = formData.get("password") as string;
-  const redirectTo = formData.get("redirectTo") as string || "/admin";
+  const requestedRedirect = String(formData.get("redirectTo") || "/admin");
+  const redirectTo = requestedRedirect.startsWith("/") && !requestedRedirect.startsWith("//")
+    ? requestedRedirect
+    : "/admin";
   
-  if (username === credentials.username && password === credentials.password) {
-    // Create a simple auth token (in production, use proper session management)
-    const token = btoa(`${username}:${password}`);
+  if (username === credentials.username && await verifyAdminPassword(password, credentials)) {
+    const token = await createAdminSessionToken(credentials);
     
     // Use Path=/ so cookie works for all admin routes
     return redirect(redirectTo, {
       headers: {
-        "Set-Cookie": `admin_auth=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+        "Set-Cookie": adminSessionCookie(token),
       },
     });
   }
@@ -132,6 +124,7 @@ export default function AdminLogin() {
                 {isSubmitting ? "Signing in..." : "Sign In"}
               </button>
             </Form>
+
           </div>
           
           <p className="mt-6 text-center text-gray-500 text-sm">

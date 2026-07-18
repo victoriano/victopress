@@ -63,6 +63,20 @@ bun run build
 bun run deploy
 ```
 
+### Reset the admin password
+
+VictoPress keeps account recovery local and does not require an email
+provider. From the project directory, run:
+
+```bash
+bun run admin:reset
+```
+
+The command uses `.dev.vars` to connect to the configured storage, replaces
+the admin password with a new cryptographically random password, and prints it
+once so it can be saved in a password manager. Running it again immediately
+invalidates the previous password and existing admin sessions.
+
 ### Development Modes
 
 VictoPress uses browser-based image processing, so optimization works in any development mode:

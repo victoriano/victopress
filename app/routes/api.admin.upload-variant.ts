@@ -70,7 +70,7 @@ async function markImageOptimized(
 
 export async function action({ request, context }: ActionFunctionArgs) {
   // Check admin auth
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
 
   const storage = getStorage(context);
   const formData = await request.formData();

@@ -33,14 +33,14 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
   const slug = params["*"];
   if (!slug) {
     throw new Response("Not Found", { status: 404 });
   }
   
-  const username = getAdminUser(request);
+  const username = await getAdminUser(request, context);
   const storage = getStorage(context);
   
   // Get content index for lookups

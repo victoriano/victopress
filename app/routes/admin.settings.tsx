@@ -42,7 +42,7 @@ interface StorageTestResult {
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
   const storage = getStorage(context, request);
   const env = context.cloudflare?.env as Env | undefined;
@@ -88,9 +88,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 }
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
-  const username = getAdminUser(request);
+  const username = await getAdminUser(request, context);
   const storage = getStorage(context, request);
   const env = context.cloudflare?.env as Env | undefined;
   const demoMode = isDemoMode(context);

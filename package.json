@@ -11,6 +11,7 @@
     "dev": "remix vite:dev",
     "dev:workers": "bun run build && bunx wrangler pages dev ./build/client",
     "start": "wrangler pages dev ./build/client",
+    "admin:reset": "bun --env-file=.dev.vars run scripts/reset-admin-password.ts",
     "typecheck": "tsc",
     "preview": "wrangler pages dev ./build/client",
     "deploy": "wrangler pages deploy ./build/client",

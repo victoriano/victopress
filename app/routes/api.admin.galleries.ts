@@ -26,7 +26,7 @@ interface GalleryMetadata {
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
   const formData = await request.formData();
   const actionType = formData.get("action") as string;

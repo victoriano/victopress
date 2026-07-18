@@ -51,9 +51,9 @@ interface GalleryItem {
 }
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
-  const username = getAdminUser(request);
+  const username = await getAdminUser(request, context);
   const storage = getStorage(context);
   const url = new URL(request.url);
   const currentPath = url.searchParams.get("path") || "";

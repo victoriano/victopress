@@ -14,7 +14,7 @@ import { getStorage, rebuildContentIndex, invalidateContentIndex } from "~/lib/c
 
 export async function action({ request, context }: ActionFunctionArgs) {
   // Require admin authentication
-  checkAdminAuth(request, context.cloudflare?.env || {});
+  await checkAdminAuth(request, context);
   
   const formData = await request.formData();
   const action = formData.get("action") as string;
