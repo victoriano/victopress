@@ -12,6 +12,14 @@
 }
 
 @font-face {
+  font-family: 'Proxima Nova Title';
+  src: url('./assets/fonts/ProximaNova-Semibold.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'Proxima Nova';
   src: url('./assets/fonts/ProximaNova-Semibold.otf') format('opentype');
   font-weight: 600;
@@ -38,6 +46,285 @@
 @layer base {
   html {
     @apply antialiased;
+  }
+}
+
+/* Blog layout mirrors the dimensions and typography of the source site. */
+.blog-page-shell {
+  width: 100%;
+  max-width: 1038px;
+  padding: 50px 44px 152px;
+}
+
+.blog-entry + .blog-entry {
+  margin-top: 101px;
+}
+
+.blog-entry::after {
+  display: block;
+  height: 27px;
+  content: "";
+}
+
+.blog-entry-title {
+  margin: 0 0 10px;
+  color: #121212;
+  font-family: 'Proxima Nova Title', 'Proxima Nova', sans-serif;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+.blog-entry-title:hover {
+  text-decoration: none;
+}
+
+.blog-entry-date {
+  display: block;
+  color: #919191;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  overflow-wrap: break-word;
+}
+
+/* Trusted HTML snapshots imported from the owner's Squarespace blog. */
+.legacy-squarespace-content {
+  margin: 15px 0;
+  color: #666;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  overflow-wrap: break-word;
+}
+
+.legacy-squarespace-content,
+.legacy-squarespace-content * {
+  box-sizing: content-box;
+}
+
+.legacy-squarespace-content .sqs-layout,
+.legacy-squarespace-content .sqs-row,
+.legacy-squarespace-content .sqs-col-12,
+.legacy-squarespace-content .sqs-block-content {
+  width: 100%;
+}
+
+.legacy-squarespace-content .sqs-row::after,
+.legacy-squarespace-content .sqs-gallery::after {
+  display: table;
+  clear: both;
+  content: "";
+}
+
+.legacy-squarespace-content .sqs-block {
+  position: relative;
+  width: 100%;
+  margin: 0 -17px;
+  padding: 17px;
+}
+
+.legacy-squarespace-content .sqs-block:first-child {
+  padding-top: 0;
+}
+
+.legacy-squarespace-content p {
+  margin: 0 0 1em;
+}
+
+.legacy-squarespace-content .sqs-html-content > :last-child {
+  margin-bottom: 0;
+}
+
+.legacy-squarespace-content a {
+  color: #000;
+  text-decoration: none;
+}
+
+.legacy-squarespace-content ul,
+.legacy-squarespace-content ol {
+  margin: 1em 0;
+  padding-left: 40px;
+}
+
+.legacy-squarespace-content ul {
+  list-style: disc;
+}
+
+.legacy-squarespace-content ol {
+  list-style: decimal;
+}
+
+.legacy-squarespace-content li p {
+  margin: 0.5em 0;
+}
+
+.legacy-squarespace-content blockquote {
+  margin: 22px 0;
+  font-family: Georgia, serif;
+  font-size: 22px;
+  font-style: italic;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+}
+
+/* Compensate for the locally hosted regular face not including an italic cut. */
+.legacy-squarespace-content em {
+  line-height: 25px;
+  letter-spacing: 0.115px;
+}
+
+.legacy-squarespace-content blockquote em {
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+
+.legacy-squarespace-content figure {
+  width: 100%;
+  max-width: 100% !important;
+  margin: 0 auto;
+}
+
+.legacy-squarespace-content img {
+  display: block;
+  max-width: 100%;
+}
+
+.legacy-squarespace-content .sqs-block-image-button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.legacy-squarespace-content .image-block-wrapper,
+.legacy-squarespace-content .sqs-image-shape-container-element {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.legacy-squarespace-content .sqs-image-shape-container-element > img {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
+.legacy-squarespace-content .image-caption-wrapper {
+  padding-top: 18px;
+}
+
+.legacy-squarespace-content .image-caption-wrapper p {
+  margin: 0 0 1em;
+  font-size: 12px;
+  line-height: 1.68;
+  letter-spacing: 0.02em;
+}
+
+.legacy-squarespace-content .sqs-gallery {
+  width: auto;
+  margin-right: -11px;
+}
+
+.legacy-squarespace-content .slide {
+  float: left;
+}
+
+.legacy-squarespace-content .sqs-gallery-thumbnails-per-row-2 .slide {
+  width: 50%;
+}
+
+.legacy-squarespace-content .sqs-gallery-thumbnails-per-row-3 .slide {
+  width: 33.333333%;
+}
+
+.legacy-squarespace-content .slide .margin-wrapper {
+  position: relative;
+  margin-right: 11px;
+  margin-bottom: 11px;
+  overflow: hidden;
+}
+
+.legacy-squarespace-content .sqs-gallery-aspect-ratio-standard-vertical .margin-wrapper {
+  aspect-ratio: 2 / 3;
+}
+
+.legacy-squarespace-content .sqs-gallery-aspect-ratio-square .margin-wrapper {
+  aspect-ratio: 1;
+}
+
+.legacy-squarespace-content .sqs-gallery-thumbnails-per-row-3 .sqs-gallery {
+  margin-right: -18px;
+}
+
+.legacy-squarespace-content .sqs-gallery-thumbnails-per-row-3 .margin-wrapper {
+  margin-right: 18px;
+  margin-bottom: 18px;
+}
+
+.legacy-squarespace-content .image-slide-anchor {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.legacy-squarespace-content .image-slide-anchor img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.legacy-squarespace-content .slide-meta,
+.legacy-squarespace-content .v6-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (max-width: 1023px) {
+  .blog-page-shell {
+    max-width: none;
+    padding: 40px 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .blog-page-shell {
+    padding: 32px 20px;
+  }
+
+  .blog-entry-title {
+    font-size: 24px;
+  }
+
+  .legacy-squarespace-content .sqs-block {
+    width: 100%;
+    margin: 0 -10px;
+    padding: 10px;
+  }
+
+  .legacy-squarespace-content .sqs-gallery {
+    margin-right: -6px;
+  }
+
+  .legacy-squarespace-content .slide .margin-wrapper {
+    margin-right: 6px;
+    margin-bottom: 6px;
   }
 }
 

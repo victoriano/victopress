@@ -8,28 +8,30 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { getStorage, getContentIndex, getNavigationFromIndex } from "~/lib/content-engine";
+import { getStorage, getNavigationFromIndex, scanBlog } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
+import { BlogPostContent } from "~/components/BlogPostContent";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Blog - VictoPress" },
-    { name: "description", content: "Read the latest posts" },
+    { title: "Blog — Victoriano Izquierdo" },
+    { name: "description", content: "Blog by Victoriano Izquierdo" },
   ];
 };
 
 export async function loader({ context }: LoaderFunctionArgs) {
   const storage = getStorage(context);
 
-  // Use content index for fast loading
-  const [contentIndex, navigation] = await Promise.all([
-    getContentIndex(storage),
+  // Posts are scanned directly because the public index renders the complete
+  // article body, matching the original Squarespace blog.
+  const [allPosts, navigation] = await Promise.all([
+    scanBlog(storage),
     getNavigationFromIndex(storage),
   ]);
 
   // Filter published posts and sort by date
-  const posts = contentIndex.posts
+  const posts = allPosts
     .filter(p => !p.draft)
     .sort((a, b) => {
       const dateA = a.date ? new Date(a.date).getTime() : 0;
@@ -50,48 +52,8 @@ export async function loader({ context }: LoaderFunctionArgs) {
   });
 }
 
-function ShareIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-      <polyline points="16 6 12 2 8 6" />
-      <line x1="12" y1="2" x2="12" y2="15" />
-    </svg>
-  );
-}
-
 export default function BlogIndex() {
   const { posts, navigation, siteName, socialLinks } = useLoaderData<typeof loader>();
-
-  const handleShare = async (post: typeof posts[0]) => {
-    const url = `${window.location.origin}/blog/${post.slug}`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: post.title,
-          text: post.excerpt || post.description,
-          url,
-        });
-      } catch {
-        // User cancelled or share failed
-      }
-    } else {
-      // Fallback: copy to clipboard
-      await navigator.clipboard.writeText(url);
-      alert("Link copied to clipboard!");
-    }
-  };
 
   return (
     <Layout
@@ -102,7 +64,7 @@ export default function BlogIndex() {
       {/* Mobile Navigation */}
       <GalleryBreadcrumb navigation={navigation} />
       
-      <div className="max-w-3xl px-8 py-12">
+      <div className="blog-page-shell">
         {posts.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">
@@ -113,57 +75,26 @@ export default function BlogIndex() {
             </p>
           </div>
         ) : (
-          <div className="space-y-16">
+          <div>
             {posts.map((post) => (
-              <article key={post.id}>
+              <article key={post.id} className="blog-entry">
+                <header>
                 <Link to={`/blog/${post.slug}`}>
-                  <h2 className="text-2xl font-bold tracking-tight hover:underline">
+                  <h2 className="blog-entry-title">
                     {post.title}
                   </h2>
                 </Link>
 
-                <p className="text-gray-500 dark:text-gray-400 mt-2">
+                <time className="blog-entry-date" dateTime={post.date ? new Date(post.date).toISOString() : undefined}>
                   {post.date && new Date(post.date).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "long",
                     day: "2-digit",
                   })}
-                </p>
+                </time>
+                </header>
 
-                {post.cover && (
-                  <Link to={`/blog/${post.slug}`} className="block mt-6">
-                    <img
-                      src={`/api/images/${post.cover}`}
-                      alt={post.title}
-                      className="w-full rounded-sm"
-                      loading="lazy"
-                    />
-                  </Link>
-                )}
-
-                {post.excerpt && (
-                  <p className="mt-6 text-gray-700 dark:text-gray-300 leading-relaxed">
-                    {post.excerpt}
-                  </p>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-6 mt-6">
-                  <Link
-                    to={`/blog/${post.slug}`}
-                    className="text-sm font-medium text-gray-900 dark:text-white hover:underline"
-                  >
-                    Read more →
-                  </Link>
-                  
-                  <button
-                    onClick={() => handleShare(post)}
-                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                  >
-                    <ShareIcon className="w-4 h-4" />
-                    <span>Share</span>
-                  </button>
-                </div>
+                <BlogPostContent post={post} />
               </article>
             ))}
           </div>

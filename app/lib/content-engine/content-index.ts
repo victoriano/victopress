@@ -364,7 +364,7 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
     excerpt: p.excerpt,
     date: p.date,
     draft: p.draft,
-    coverImage: p.coverImage,
+    coverImage: p.cover,
     tags: p.tags,
     readingTime: p.readingTime,
   }));
@@ -986,7 +986,7 @@ export async function updatePostInIndex(
     excerpt: post.excerpt,
     date: post.date,
     draft: post.draft,
-    coverImage: post.coverImage,
+    coverImage: post.cover,
     tags: post.tags,
     readingTime: post.readingTime,
   };

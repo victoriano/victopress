@@ -1,0 +1,339 @@
+{
+  "version": 1,
+  "source": "https://victoriano.me/blog?format=json",
+  "sourceSnapshot": "content/blog/_source.json",
+  "generatedAt": "2026-07-18T16:24:30.238573+00:00",
+  "postCount": 5,
+  "imageCount": 24,
+  "posts": [
+    {
+      "title": "Testing the camera of the new iPhone 13 Pro",
+      "date": "2021-10-03",
+      "sourceUrl": "https://victoriano.me/blog/2021/10/3/testing-iphone-13-pro-in-granada",
+      "targetPath": "/blog/2021/10/3/testing-iphone-13-pro-in-granada",
+      "slug": "2021/10/3/testing-iphone-13-pro-in-granada",
+      "indexFile": "content/blog/2021/10/3/testing-iphone-13-pro-in-granada/index.md",
+      "sourceBodySha256": "0fa535a2ea4710f7f7f7b9ef497443fe0e97ab675a885627822338b1d2406e18",
+      "migratedBodySha256": "d5c3d7aeeb87ccb6763d0f6f8b495d1caefa123a3a1a42b722a08dd95c20c877",
+      "sourceTextSha256": "4df7441b60e1154ca3033e98147116bb60d14bfa91fcccd5a47af33a44d535fa",
+      "migratedTextSha256": "4df7441b60e1154ca3033e98147116bb60d14bfa91fcccd5a47af33a44d535fa",
+      "links": [
+        "/granada",
+        "https://support.apple.com/en-us/HT211965",
+        "https://vsco.co",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/C95ADDA9-C7FE-456B-B1BF-3ED0BAD6EB9F.JPG",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8592.jpg",
+        "https://www.tomsguide.com/news/iphone-13-pro-macro-camera-is-so-good-that-a-doctors-using-it-for-this",
+        "https://austinmann.com/trek/iphone-13-pro-camera-review-tanzania",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/FullSizeRender-2.jpg",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8611.jpg",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8539.jpg",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8530.jpg",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8602.jpg",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8574.jpg",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/FullSizeRender.jpg",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8528.jpg",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8796.jpeg",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/F7CEE415-3D28-4CC6-8953-B471C13D28C1.jpeg",
+        "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8795.jpeg"
+      ],
+      "images": [
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633260784314-WJ4N7LKYZ2MDQ1N48M0X/IMG_8578.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8578.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8578.jpg",
+          "filename": "IMG_8578.jpg",
+          "bytes": 463880,
+          "sha256": "bed8f83d6f8de6d816d4f6250f719ccec8e84701e274b99987c3f9665d2b678a",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633260693498-U55FVC4IT4SGVT8FULA2/IMG_8538.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8538.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8538.jpg",
+          "filename": "IMG_8538.jpg",
+          "bytes": 984852,
+          "sha256": "569a4c02fb8fef8e9309588c798d046cbb8a9a5f917d301a126972841c0665c5",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633277053397-AXN7PVXH8R1BMNA762XB/C95ADDA9-C7FE-456B-B1BF-3ED0BAD6EB9F.JPG",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/C95ADDA9-C7FE-456B-B1BF-3ED0BAD6EB9F.JPG",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/C95ADDA9-C7FE-456B-B1BF-3ED0BAD6EB9F.JPG",
+          "filename": "C95ADDA9-C7FE-456B-B1BF-3ED0BAD6EB9F.JPG",
+          "bytes": 539902,
+          "sha256": "eb42906152c2946cffe8d60740679aa7690323e664de7b4ef81c43cef4184ffb",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633277055638-5AB6RN3YMY4OOODGAWKE/IMG_8592.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8592.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8592.jpg",
+          "filename": "IMG_8592.jpg",
+          "bytes": 1008826,
+          "sha256": "2ea1d84049a541eeddbe384d6ec47efa49b004b3243cd0ae2a260658bbeed3d2",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633276723482-XVCWWLIF3ZIHQZMDZVFY/FullSizeRender+2.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/FullSizeRender-2.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/FullSizeRender-2.jpg",
+          "filename": "FullSizeRender-2.jpg",
+          "bytes": 176562,
+          "sha256": "c93e2c52b27d29dbc8651a99cfc975151acbee0973392268b5dfdbefbbb367d1",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633276724230-2ERWD8NMTWJD0GMN7R55/IMG_8611.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8611.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8611.jpg",
+          "filename": "IMG_8611.jpg",
+          "bytes": 332602,
+          "sha256": "0ec962d31afce375391eb20010c3a639233217c0ffbf10f3a05977037d090d6e",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633262061867-PG99VPVW5TXP0FM3OJ2A/IMG_8539.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8539.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8539.jpg",
+          "filename": "IMG_8539.jpg",
+          "bytes": 573924,
+          "sha256": "c4d3a0b88021b8b73d01840ae00d92a73651fdaf77a253fe4a982c301a06e59e",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633261732331-G9GS3XUET4XBI9O8U60S/IMG_8530.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8530.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8530.jpg",
+          "filename": "IMG_8530.jpg",
+          "bytes": 320784,
+          "sha256": "1666bab3f65eb91e3d4fed88787823003a9b3f241ba009c9b8e576e8b62bade8",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633276503000-HVQJWB1IE4D08EYLT4WH/IMG_8602.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8602.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8602.jpg",
+          "filename": "IMG_8602.jpg",
+          "bytes": 631666,
+          "sha256": "2b551bbb0c05f7acb6c1de271b6dd18e136612bbd6842c53afe7cedb95cd569f",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633276500326-XQIAOJ7GZUTU9XP039EH/IMG_8574.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8574.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8574.jpg",
+          "filename": "IMG_8574.jpg",
+          "bytes": 260506,
+          "sha256": "1ef00c8cd0d8fe08195dd5dbbc46b7f6e5918c0a65f46217028e7d4228626d55",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633261598781-VA7T377EA6JK7LTHLM3J/IMG_8511.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8511.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8511.jpg",
+          "filename": "IMG_8511.jpg",
+          "bytes": 877014,
+          "sha256": "5cb4aa56edb9c0e164f529233ee44375ebb922bb1f286769d3e19d8d8f6fdd9b",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633276626743-0A5PZHTVZUENHZ2SS1OB/FullSizeRender.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/FullSizeRender.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/FullSizeRender.jpg",
+          "filename": "FullSizeRender.jpg",
+          "bytes": 307670,
+          "sha256": "3e948a97c4c4f84e110d1e736158affb6a361b8087300778359c1ceb39c060d4",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633276630311-P79KBF17DLF053EXJDJ7/IMG_8528.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8528.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8528.jpg",
+          "filename": "IMG_8528.jpg",
+          "bytes": 1135926,
+          "sha256": "8b3e92ea674ab96e2b4e54122905aaa489f554a32ea93b76a43b313ffc31b21e",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633283853710-8P73CZGYRZ4FAFTLYEOG/IMG_8698.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8698.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8698.jpg",
+          "filename": "IMG_8698.jpg",
+          "bytes": 166452,
+          "sha256": "9711c94beff40a4ce058631124255a3f8a4ad3a4cced953fb23dd1a2e532856f",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633277624631-JFN5U5GI8X9M7AYAICE7/IMG_8555.jpg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8555.jpg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8555.jpg",
+          "filename": "IMG_8555.jpg",
+          "bytes": 675588,
+          "sha256": "69171c55feac1f9bb87a892e15f9e40606aee5e9bd3327768f71a55f1afdf5a4",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633329501414-8853GRLXD67V9BDRSVS6/IMG_8796.jpeg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8796.jpeg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8796.jpeg",
+          "filename": "IMG_8796.jpeg",
+          "bytes": 366184,
+          "sha256": "da33e49443143a636e32118ef83645da7439776a10baf4c56f35abc9e504d0ea",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633329330784-SZ3EFAOSAZWCCY6C22I5/F7CEE415-3D28-4CC6-8953-B471C13D28C1.jpeg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/F7CEE415-3D28-4CC6-8953-B471C13D28C1.jpeg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/F7CEE415-3D28-4CC6-8953-B471C13D28C1.jpeg",
+          "filename": "F7CEE415-3D28-4CC6-8953-B471C13D28C1.jpeg",
+          "bytes": 445188,
+          "sha256": "b4d9e80709378a4277fedcf3587730aed9900fd0292f633d688cf4a3ad4e6ee9",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1633329336792-TP8EDH92HU7JIVJPAGL2/IMG_8795.jpeg",
+          "localUrl": "/api/images/blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8795.jpeg",
+          "key": "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8795.jpeg",
+          "filename": "IMG_8795.jpeg",
+          "bytes": 273090,
+          "sha256": "cb333a13a7a75000e34a13c80756b6ab9cb18bbb092f074f09537458ef58d6f7",
+          "contentType": "image/webp"
+        }
+      ]
+    },
+    {
+      "title": "Granada y la Malafollá",
+      "date": "2013-09-27",
+      "sourceUrl": "https://victoriano.me/blog/2017/1/22/granada",
+      "targetPath": "/blog/2017/1/22/granada",
+      "slug": "2017/1/22/granada",
+      "indexFile": "content/blog/2017/1/22/granada/index.md",
+      "sourceBodySha256": "33d7ae679823c0f675e266d8fb30b9886f4b96f67b031cb1d701db5b3eb414f4",
+      "migratedBodySha256": "f503d1bb311bb42a100435c0c18d9faa5d100d4631569a28aa2004ba6fe2b7ba",
+      "sourceTextSha256": "86d6bfdb0b3e1c0142ebeb91e1ace40d51de734feb4cb58785c6dee4118b0a9d",
+      "migratedTextSha256": "86d6bfdb0b3e1c0142ebeb91e1ace40d51de734feb4cb58785c6dee4118b0a9d",
+      "links": [
+        "http://bit.ly/16wjt20",
+        "http://bit.ly/16wjz9S",
+        "http://bit.ly/19FBxmG",
+        "http://blogs.elpais.com/pixel-fugaz/2013/09/mfgranaina",
+        "https://www.facebook.com/mfgranaina",
+        "http://bit.ly/178rGab",
+        "https://twitter.com/jecabrero",
+        "http://bit.ly/19FOXip",
+        "https://youtu.be/A5X0DBWJOR8"
+      ],
+      "images": [
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1485893676578-FW0IBMUPZV1UOHE6M46H/image-asset.jpeg",
+          "localUrl": "/api/images/blog/2017/1/22/granada/image-asset.jpeg",
+          "key": "blog/2017/1/22/granada/image-asset.jpeg",
+          "filename": "image-asset.jpeg",
+          "bytes": 999894,
+          "sha256": "36fe49c4ce1d2024d3fb0acd4fda771a2c2d6edba0513b7029aecafa20c8eae7",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1485893849468-LMR2XSH62RJ5ER7WAG1I/image-asset.jpeg",
+          "localUrl": "/api/images/blog/2017/1/22/granada/image-asset-2.jpeg",
+          "key": "blog/2017/1/22/granada/image-asset-2.jpeg",
+          "filename": "image-asset-2.jpeg",
+          "bytes": 554990,
+          "sha256": "ccb3f57a1dd49af256d137d0db7990586126aefc8928b4db4bbcc2659005c907",
+          "contentType": "image/webp"
+        }
+      ]
+    },
+    {
+      "title": "Años de Cárcel",
+      "date": "2013-09-25",
+      "sourceUrl": "https://victoriano.me/blog/2017/1/31/aos-de-crcel",
+      "targetPath": "/blog/2017/1/31/aos-de-crcel",
+      "slug": "2017/1/31/aos-de-crcel",
+      "indexFile": "content/blog/2017/1/31/aos-de-crcel/index.md",
+      "sourceBodySha256": "72a3846bc3a5de8fa3967fe4bd6184c02260b8f71eb44ed00bd7dd0ff7c18dd8",
+      "migratedBodySha256": "74c65fca919559bb50c27cb4b09eb3eb2fb6a263cb6dd33fc87f45d6b394a9fb",
+      "sourceTextSha256": "69485fc1de6703af6f6fc12144fc03c00572369ae187a968a92a6e4f9ca02d82",
+      "migratedTextSha256": "69485fc1de6703af6f6fc12144fc03c00572369ae187a968a92a6e4f9ca02d82",
+      "links": [
+        "https://chicass10.blogspot.com/",
+        "http://www.heroesocial.es/2012/04/ya-puedes-descargar-el-libro-heroes-sociales-2-0/",
+        "http://www.rtve.es/alacarta/audios/siluetas/siluetas-220112/1300818/",
+        "http://www.heroesocial.es/2011/12/pilar-mingote-como-ensenar-a-saltar-muros-sin-moverse-de-la-celda/"
+      ],
+      "images": [
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1485900425004-DSXHFI58Y3RN6E2A15I0/image-asset.jpeg",
+          "localUrl": "/api/images/blog/2017/1/31/aos-de-crcel/image-asset.jpeg",
+          "key": "blog/2017/1/31/aos-de-crcel/image-asset.jpeg",
+          "filename": "image-asset.jpeg",
+          "bytes": 584190,
+          "sha256": "477c5e6c7ba148b0e1d94d37a813987ce793facdec20f039bfc439e933aa75f5",
+          "contentType": "image/webp"
+        },
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1485900694306-UOURI24KGFA1DV8V9PEG/image-asset.jpeg",
+          "localUrl": "/api/images/blog/2017/1/31/aos-de-crcel/image-asset-2.jpeg",
+          "key": "blog/2017/1/31/aos-de-crcel/image-asset-2.jpeg",
+          "filename": "image-asset-2.jpeg",
+          "bytes": 287702,
+          "sha256": "533d84c1f3101dbafd219080f905b912a07cb9ca0a91168da2fc2f1bab4d5abd",
+          "contentType": "image/webp"
+        }
+      ]
+    },
+    {
+      "title": "La niña fotógrafa de Sol",
+      "date": "2013-08-05",
+      "sourceUrl": "https://victoriano.me/blog/2017/1/31/la-nia-fotgrafa-de-sol",
+      "targetPath": "/blog/2017/1/31/la-nia-fotgrafa-de-sol",
+      "slug": "2017/1/31/la-nia-fotgrafa-de-sol",
+      "indexFile": "content/blog/2017/1/31/la-nia-fotgrafa-de-sol/index.md",
+      "sourceBodySha256": "8050a507b17ebb070bec65c174e6b19515883522a811a98a8b8fa97d1b51df2e",
+      "migratedBodySha256": "df9f77798e672b062939b18b903d7b1877d39ab7e845f8f791aa18e49925e843",
+      "sourceTextSha256": "9edb95d60408c4d3dd328e9219394af8f042df658ff79c9e43aabf6f38d4881a",
+      "migratedTextSha256": "9edb95d60408c4d3dd328e9219394af8f042df658ff79c9e43aabf6f38d4881a",
+      "links": [
+        "/s/nina"
+      ],
+      "images": [
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1485894475243-N04X8FACRB0JUPCGTMGA/image-asset.jpeg",
+          "localUrl": "/api/images/blog/2017/1/31/la-nia-fotgrafa-de-sol/image-asset.jpeg",
+          "key": "blog/2017/1/31/la-nia-fotgrafa-de-sol/image-asset.jpeg",
+          "filename": "image-asset.jpeg",
+          "bytes": 623612,
+          "sha256": "bc71db6c9d94710506e8ab63003411263c2bc2de587dde3f8de9f536c51b3117",
+          "contentType": "image/webp"
+        }
+      ]
+    },
+    {
+      "title": "Tiendas de Barrio",
+      "date": "2013-06-23",
+      "sourceUrl": "https://victoriano.me/blog/2017/1/31/tiendas-de-barrio",
+      "targetPath": "/blog/2017/1/31/tiendas-de-barrio",
+      "slug": "2017/1/31/tiendas-de-barrio",
+      "indexFile": "content/blog/2017/1/31/tiendas-de-barrio/index.md",
+      "sourceBodySha256": "6e612e989f6b78793a5511767a4fe46f63f16faaede9b03b0d30ea139e93331b",
+      "migratedBodySha256": "3fa65259f1edf731e4aef014f00b77a8af677b92c38dc8dc9db6845575573b0c",
+      "sourceTextSha256": "012f305cd65ddf1a1d4b604d554afe6f557f4d8e62823031c80612533b4c05df",
+      "migratedTextSha256": "012f305cd65ddf1a1d4b604d554afe6f557f4d8e62823031c80612533b4c05df",
+      "links": [
+        "https://www.youtube.com/watch?v=IDk08oJwnNk"
+      ],
+      "images": [
+        {
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/58839d4e725e25a578bdb173/1485895427175-4XO28NYRU9NW1FBVI1FE/image-asset.jpeg",
+          "localUrl": "/api/images/blog/2017/1/31/tiendas-de-barrio/image-asset.jpeg",
+          "key": "blog/2017/1/31/tiendas-de-barrio/image-asset.jpeg",
+          "filename": "image-asset.jpeg",
+          "bytes": 961550,
+          "sha256": "2d07820d5857aa7a7060789ec30c7b7872e2f29fe66d5431f6c90f773a5e7f64",
+          "contentType": "image/webp"
+        }
+      ]
+    }
+  ]
+}

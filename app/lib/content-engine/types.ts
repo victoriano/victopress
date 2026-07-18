@@ -157,11 +157,19 @@ export interface Gallery extends GalleryMetadata {
 
 export interface PostFrontmatter {
   title?: string;
+  /** Optional canonical slug. May contain path segments for migrated posts. */
+  slug?: string;
   date?: Date;
   description?: string;
   tags?: string[];
   draft?: boolean;
   cover?: string;
+  /** The cover already appears in the post body and should not be repeated. */
+  coverInBody?: boolean;
+  /** Content serialization used by the public renderer. */
+  format?: "markdown" | "html";
+  /** Original URL retained for migration audits and redirects. */
+  sourceUrl?: string;
   author?: string;
 }
 
