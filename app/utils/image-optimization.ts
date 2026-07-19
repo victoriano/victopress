@@ -30,7 +30,7 @@ export const VARIANT_WIDTHS = [800, 1600, 2400] as const;
  * legacy assets, regenerate every variant, then bump this value so browsers
  * and Cloudflare cannot reuse a lower-quality response under the same path.
  */
-export const IMAGE_VARIANT_CACHE_REVISION = "legacy-v1";
+export const IMAGE_VARIANT_CACHE_REVISION = "webp-q86-v2";
 
 export interface ResponsiveImageOptions {
   /** Width of the source image. Used to avoid requesting variants that cannot exist. */
