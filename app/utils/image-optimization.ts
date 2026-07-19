@@ -21,7 +21,23 @@ export interface ImageOptimizationOptions {
 }
 
 // Available variant widths (must match browser-image-optimizer.ts)
-const VARIANT_WIDTHS = [800, 1600, 2400] as const;
+export const VARIANT_WIDTHS = [800, 1600, 2400] as const;
+
+/**
+ * Cache revision for generated variants.
+ *
+ * Rollouts intentionally use two revisions: deploy the responsive UI with the
+ * legacy assets, regenerate every variant, then bump this value so browsers
+ * and Cloudflare cannot reuse a lower-quality response under the same path.
+ */
+export const IMAGE_VARIANT_CACHE_REVISION = "legacy-v1";
+
+export interface ResponsiveImageOptions {
+  /** Width of the source image. Used to avoid requesting variants that cannot exist. */
+  originalWidth?: number;
+  /** Add the original file as the largest srcset candidate. */
+  includeOriginal?: boolean;
+}
 
 /**
  * Encode a path for use in URLs (handles spaces and special chars)
@@ -43,6 +59,32 @@ function findBestVariantWidth(requestedWidth: number): number {
   }
   // If requested is larger than all variants, return the largest
   return VARIANT_WIDTHS[VARIANT_WIDTHS.length - 1];
+}
+
+function addVariantCacheRevision(url: string): string {
+  return `${url}?v=${encodeURIComponent(IMAGE_VARIANT_CACHE_REVISION)}`;
+}
+
+/**
+ * Return only variants that can be generated without enlarging the source.
+ *
+ * Browser-based optimization deliberately skips a target that is the same
+ * width as the source, so use a strict comparison here. The original file is
+ * added separately to responsive srcsets when its width is known.
+ */
+export function getResponsiveVariantWidths(
+  originalWidth?: number,
+  widths: readonly number[] = VARIANT_WIDTHS,
+): number[] {
+  const supportedWidths = widths
+    .filter((width) => VARIANT_WIDTHS.includes(width as (typeof VARIANT_WIDTHS)[number]))
+    .sort((left, right) => left - right);
+
+  if (!originalWidth || !Number.isFinite(originalWidth) || originalWidth <= 0) {
+    return supportedWidths;
+  }
+
+  return supportedWidths.filter((width) => width < originalWidth);
 }
 
 /**
@@ -81,7 +123,7 @@ export function getOptimizedImageUrl(
   // Encode the path (handles spaces in folder names like "new york")
   const encodedPath = encodeImagePath(variantPath);
   
-  return `/api/images/${encodedPath}`;
+  return addVariantCacheRevision(`/api/images/${encodedPath}`);
 }
 
 /**
@@ -104,8 +146,8 @@ export function getOriginalImageUrl(src: string): string {
  */
 export function generateSrcSet(
   src: string,
-  widths: number[] = VARIANT_WIDTHS as unknown as number[],
-  _options: Omit<ImageOptimizationOptions, "width"> = {}
+  widths: readonly number[] = VARIANT_WIDTHS,
+  options: ResponsiveImageOptions = {},
 ): string {
   // Normalize the source path
   let basePath = src;
@@ -122,14 +164,25 @@ export function generateSrcSet(
   const dotIndex = filename.lastIndexOf(".");
   const nameWithoutExt = dotIndex >= 0 ? filename.substring(0, dotIndex) : filename;
   
-  return widths
-    .filter(w => VARIANT_WIDTHS.includes(w as typeof VARIANT_WIDTHS[number]))
+  const candidates = getResponsiveVariantWidths(options.originalWidth, widths)
     .map((width) => {
       const variantPath = `${dir}${nameWithoutExt}_${width}w.webp`;
       const encodedPath = encodeImagePath(variantPath);
-      return `/api/images/${encodedPath} ${width}w`;
-    })
-    .join(", ");
+      return `${addVariantCacheRevision(`/api/images/${encodedPath}`)} ${width}w`;
+    });
+
+  if (
+    options.includeOriginal &&
+    options.originalWidth &&
+    Number.isFinite(options.originalWidth) &&
+    options.originalWidth > 0
+  ) {
+    candidates.push(
+      `${getOriginalImageUrl(src)} ${Math.round(options.originalWidth)}w`,
+    );
+  }
+
+  return candidates.join(", ");
 }
 
 /**
@@ -143,7 +196,13 @@ export function preloadImage(
     const img = new Image();
     img.onload = () => resolve();
     img.onerror = () => reject(new Error(`Failed to preload: ${src}`));
-    img.src = getOptimizedImageUrl(src, options);
+    img.fetchPriority = "low";
+
+    // Some callers already pass a generated variant. Transforming that URL a
+    // second time produces names such as photo_1600w_1600w.webp and silently
+    // defeats adjacent-photo preloading.
+    const isVariantUrl = /(?:^|\/)api\/images\/.*_\d+w\.webp(?:\?.*)?$/i.test(src);
+    img.src = isVariantUrl ? src : getOptimizedImageUrl(src, options);
   });
 }
 

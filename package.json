@@ -22,7 +22,8 @@
     "sync-blog-to-r2": "bun run scripts/sync-blog-to-r2.ts",
     "sync-from-r2": "bun run scripts/sync-r2-to-local.ts",
     "import:squarespace-galleries": "bun run scripts/import-squarespace-galleries.ts",
-    "optimize-images": "bun run scripts/optimize-images.ts"
+    "optimize-images": "bun run scripts/optimize-images.ts",
+    "optimize-images:r2": "bun --env-file=.dev.vars run scripts/optimize-r2-images.ts"
   },
   "dependencies": {
     "@cf-wasm/photon": "^0.3.4",

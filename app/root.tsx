@@ -18,18 +18,6 @@ export function loader({ context }: LoaderFunctionArgs) {
 
 export const links: LinksFunction = () => [
   { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
-  },
-  {
-    rel: "stylesheet",
-    // Fallback fonts from Google Fonts (Proxima Nova is loaded locally via CSS)
-    // TODO: Make font configurable via CMS settings
-    href: "https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap",
-  },
 ];
 
 // Script to detect and apply dark mode preference before hydration (prevents flash)

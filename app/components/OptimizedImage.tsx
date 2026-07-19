@@ -7,13 +7,19 @@
  * - Automatic srcset using pre-generated WebP variants (800w, 1600w, 2400w)
  * - Optimized for 5K displays and Retina MacBooks
  * - Native lazy loading
- * - Loading placeholder with smooth fade-in
+ * - Intrinsic layout reservation with immediate SSR paint
  * - Fallback to original image if variants don't exist
  * 
  * Pre-requisite: Run `bun run optimize-images` to generate WebP variants
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  generateSrcSet,
+  getOptimizedImageUrl,
+  getOriginalImageUrl,
+  getResponsiveVariantWidths,
+} from "~/utils/image-optimization";
 
 interface OptimizedImageProps {
   /** Image source path (relative to content folder) */
@@ -38,66 +44,8 @@ interface OptimizedImageProps {
   onClick?: () => void;
 }
 
-// Standard breakpoint widths for srcset
-// - 800w: mobile, thumbnails, small screens
-// - 1600w: desktop HD, tablets
-// - 2400w: Retina displays, 4K/5K monitors
-const SRCSET_WIDTHS = [800, 1600, 2400];
-
 // Default sizes attribute (can be overridden)
 const DEFAULT_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
-
-/**
- * Encode a path for use in URLs (handles spaces and special chars)
- */
-function encodeImagePath(path: string): string {
-  return path
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-}
-
-/**
- * Generate URL for a pre-generated WebP variant
- * Example: photo.jpg → photo_800w.webp
- */
-function getVariantUrl(imagePath: string, width: number): string {
-  // Remove /api/images/ prefix if present
-  let basePath = imagePath;
-  if (basePath.startsWith("/api/images/")) {
-    basePath = basePath.substring("/api/images/".length);
-  } else if (basePath.startsWith("/")) {
-    basePath = basePath.substring(1);
-  }
-  
-  // Get path parts
-  const lastSlash = basePath.lastIndexOf("/");
-  const dir = lastSlash >= 0 ? basePath.substring(0, lastSlash + 1) : "";
-  const filename = lastSlash >= 0 ? basePath.substring(lastSlash + 1) : basePath;
-  
-  // Remove extension and add variant suffix
-  const dotIndex = filename.lastIndexOf(".");
-  const nameWithoutExt = dotIndex >= 0 ? filename.substring(0, dotIndex) : filename;
-  
-  // Construct variant path: photo.jpg → photo_800w.webp
-  const variantPath = `${dir}${nameWithoutExt}_${width}w.webp`;
-  
-  // Encode and return full URL
-  return `/api/images/${encodeImagePath(variantPath)}`;
-}
-
-/**
- * Get the original image URL (encoded)
- */
-function getOriginalUrl(imagePath: string): string {
-  let basePath = imagePath;
-  if (basePath.startsWith("/api/images/")) {
-    basePath = basePath.substring("/api/images/".length);
-  } else if (basePath.startsWith("/")) {
-    basePath = basePath.substring(1);
-  }
-  return `/api/images/${encodeImagePath(basePath)}`;
-}
 
 export function OptimizedImage({
   src,
@@ -115,72 +63,46 @@ export function OptimizedImage({
   const [hasError, setHasError] = useState(false);
   const [useOriginal, setUseOriginal] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
-  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Reset state when src changes
   useEffect(() => {
     setIsLoaded(false);
     setHasError(false);
     setUseOriginal(false);
-    
-    // Clear any existing interval
-    if (checkIntervalRef.current) {
-      clearInterval(checkIntervalRef.current);
+
+    // The resource can finish between SSR and hydration. A single check is
+    // enough; polling every 50ms created one timer per gallery image.
+    if (imgRef.current?.complete && imgRef.current.naturalHeight > 0) {
+      setIsLoaded(true);
     }
-    
-    // Check if image is already loaded (cached)
-    // Use interval to handle race conditions where image loads before onLoad is attached
-    const checkLoaded = () => {
-      if (imgRef.current?.complete && imgRef.current?.naturalHeight > 0) {
-        setIsLoaded(true);
-        if (checkIntervalRef.current) {
-          clearInterval(checkIntervalRef.current);
-          checkIntervalRef.current = null;
-        }
-      }
-    };
-    
-    // Check immediately
-    checkLoaded();
-    
-    // Keep checking for a short period (handles race conditions)
-    checkIntervalRef.current = setInterval(checkLoaded, 50);
-    
-    // Stop checking after 2 seconds (image should be loaded or errored by then)
-    const stopTimeout = setTimeout(() => {
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-        checkIntervalRef.current = null;
-      }
-    }, 2000);
-    
-    return () => {
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-      }
-      clearTimeout(stopTimeout);
-    };
   }, [src]);
 
-  // Normalize src path
-  const normalizedSrc = src.startsWith("/") ? src : `/${src}`;
-  const imagePath = normalizedSrc.startsWith("/api/images/")
-    ? normalizedSrc
-    : `/api/images/${normalizedSrc.replace(/^\//, "")}`;
+  const availableVariantWidths = useMemo(
+    () => getResponsiveVariantWidths(width),
+    [width],
+  );
+  const srcSet = useOriginal
+    ? undefined
+    : generateSrcSet(src, availableVariantWidths, {
+        originalWidth: width,
+        includeOriginal: width !== undefined,
+      });
 
-  // Generate srcset with WebP variants
-  const srcSet = !useOriginal
-    ? SRCSET_WIDTHS.map((w) => `${getVariantUrl(imagePath, w)} ${w}w`).join(", ")
-    : undefined;
-
-  // Default src - use 1600w variant (middle size) or original
-  const defaultSrc = useOriginal 
-    ? getOriginalUrl(imagePath)
-    : getVariantUrl(imagePath, 1600);
+  // Prefer 1600w as the broadly useful fallback, but never point src at a
+  // variant that cannot exist for a smaller source image.
+  const defaultVariantWidth =
+    availableVariantWidths.find((candidate) => candidate >= 1600) ??
+    availableVariantWidths.at(-1);
+  const defaultSrc =
+    useOriginal || defaultVariantWidth === undefined
+      ? getOriginalImageUrl(src)
+      : getOptimizedImageUrl(src, { width: defaultVariantWidth });
 
   // Placeholder styles
-  const placeholderStyles = aspectRatio
-    ? { aspectRatio, backgroundColor: "#f3f4f6" }
+  const resolvedAspectRatio =
+    aspectRatio ?? (width && height ? `${width} / ${height}` : undefined);
+  const placeholderStyles = resolvedAspectRatio
+    ? { aspectRatio: resolvedAspectRatio, backgroundColor: "#f3f4f6" }
     : undefined;
 
   const handleError = () => {
@@ -207,9 +129,9 @@ export function OptimizedImage({
 
   return (
     <div className={`relative overflow-hidden ${className}`} style={placeholderStyles}>
-      {/* Loading placeholder */}
+      {/* Keep the placeholder behind the image so SSR can paint progressively. */}
       {!isLoaded && (
-        <div className="absolute inset-0 bg-gray-100 dark:bg-gray-900 animate-pulse" />
+        <div className="absolute inset-0 bg-gray-100 dark:bg-gray-900" aria-hidden="true" />
       )}
 
       <img
@@ -221,12 +143,10 @@ export function OptimizedImage({
         width={width}
         height={height}
         loading={priority ? "eager" : loading}
-        decoding={priority ? "sync" : "async"}
+        decoding="async"
         // @ts-expect-error - React types use fetchPriority but DOM expects lowercase
         fetchpriority={priority ? "high" : undefined}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${
-          isLoaded ? "opacity-100" : "opacity-0"
-        }`}
+        className="relative block w-full h-full object-cover"
         onLoad={() => setIsLoaded(true)}
         onError={handleError}
         onClick={onClick}
@@ -235,52 +155,6 @@ export function OptimizedImage({
   );
 }
 
-/**
- * Generate URL for a pre-generated WebP variant
- * For use outside the component (e.g., meta tags, preloading)
- */
-export function getOptimizedImageUrl(
-  src: string,
-  options: {
-    width?: number;
-  } = {}
-): string {
-  const width = options.width || 1600; // Default to middle variant
-  
-  // Normalize the path
-  let basePath = src;
-  if (basePath.startsWith("/api/images/")) {
-    basePath = basePath.substring("/api/images/".length);
-  } else if (basePath.startsWith("/")) {
-    basePath = basePath.substring(1);
-  }
-  
-  // Get path parts
-  const lastSlash = basePath.lastIndexOf("/");
-  const dir = lastSlash >= 0 ? basePath.substring(0, lastSlash + 1) : "";
-  const filename = lastSlash >= 0 ? basePath.substring(lastSlash + 1) : basePath;
-  
-  // Remove extension and add variant suffix
-  const dotIndex = filename.lastIndexOf(".");
-  const nameWithoutExt = dotIndex >= 0 ? filename.substring(0, dotIndex) : filename;
-  
-  // Construct variant path
-  const variantPath = `${dir}${nameWithoutExt}_${width}w.webp`;
-  
-  return `/api/images/${encodeImagePath(variantPath)}`;
-}
-
-/**
- * Get the original (non-optimized) image URL
- */
-export function getOriginalImageUrl(src: string): string {
-  let basePath = src;
-  if (basePath.startsWith("/api/images/")) {
-    basePath = basePath.substring("/api/images/".length);
-  } else if (basePath.startsWith("/")) {
-    basePath = basePath.substring(1);
-  }
-  return `/api/images/${encodeImagePath(basePath)}`;
-}
+export { getOptimizedImageUrl, getOriginalImageUrl } from "~/utils/image-optimization";
 
 export default OptimizedImage;

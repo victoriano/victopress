@@ -6,9 +6,15 @@
  */
 
 export const VARIANT_WIDTHS = [800, 1600, 2400] as const;
-// Lower quality for better compression - Canvas API needs lower values
-// 0.70-0.75 produces good quality while keeping files small
-export const WEBP_QUALITY = 0.72;
+// Thumbnails remain compact while the two display variants preserve fine
+// texture. On the reference Japan photo, the 2400w sharp output at 0.86 has
+// higher PSNR than Squarespace's 2500w JPEG while remaining smaller.
+export const WEBP_QUALITY = 0.86;
+export const WEBP_QUALITY_BY_WIDTH: Record<(typeof VARIANT_WIDTHS)[number], number> = {
+  800: 0.85,
+  1600: 0.86,
+  2400: 0.86,
+};
 
 export interface ImageVariant {
   width: number;
@@ -137,7 +143,7 @@ export async function optimizeImageInBrowser(
     const canvas = resizeImage(img, targetWidth);
     
     // Convert to WebP
-    const blob = await canvasToWebP(canvas, WEBP_QUALITY);
+    const blob = await canvasToWebP(canvas, WEBP_QUALITY_BY_WIDTH[targetWidth]);
     
     // Skip if WebP is larger than original (shouldn't happen but Canvas API can be inefficient)
     if (source instanceof File && blob.size > source.size) {

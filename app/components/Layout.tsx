@@ -80,6 +80,8 @@ export function PhotoGrid({ children }: { children: React.ReactNode }) {
 export function PhotoItem({
   src,
   alt,
+  width,
+  height,
   aspectRatio = "auto",
   href,
   onClick,
@@ -87,6 +89,9 @@ export function PhotoItem({
 }: {
   src: string;
   alt: string;
+  /** Intrinsic dimensions from EXIF, used to reserve space before download. */
+  width?: number;
+  height?: number;
   aspectRatio?: "auto" | "square" | "portrait" | "landscape";
   href?: string;
   onClick?: () => void;
@@ -107,12 +112,16 @@ export function PhotoItem({
   `;
 
   // Responsive sizes for grid layout
-  const sizes = "(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw";
+  const sizes =
+    "(min-width: 1024px) calc((100vw - 17rem) / 4), " +
+    "(min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw";
 
   const image = (
     <OptimizedImage
       src={src}
       alt={alt}
+      width={width}
+      height={height}
       className="w-full h-full transition-transform duration-500 group-hover:scale-105"
       sizes={sizes}
       loading={priority ? "eager" : "lazy"}

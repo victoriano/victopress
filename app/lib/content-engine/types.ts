@@ -32,6 +32,10 @@ export interface ExifData {
   aperture?: number;
   iso?: number;
   shutterSpeed?: string;
+
+  // Pixel dimensions (EXIF when present, JPEG SOF fallback otherwise)
+  imageWidth?: number;
+  imageHeight?: number;
   
   // GPS
   latitude?: number;

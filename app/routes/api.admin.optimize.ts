@@ -42,10 +42,13 @@ function getVariantFilename(originalFilename: string, width: number): string {
 
 const OPTIMIZATION_INDEX_FILE = ".optimization-index.json";
 const PROGRESS_COUNTER_FILE = ".opt-progress.txt";
+const CURRENT_OPTIMIZATION_INDEX_VERSION = 2;
+const CURRENT_OPTIMIZATION_PROFILE = "webp-800q85-1600q86-2400q86";
 
 interface OptimizationIndex {
   version: number;
   variantWidths: number[]; // [800, 1600, 2400] - to detect if widths changed
+  profile?: string;
   optimizedImages: string[]; // List of optimized image paths
   lastUpdated: string;
 }
@@ -65,20 +68,32 @@ async function getOptimizationIndex(storage: ReturnType<typeof getStorage>): Pro
 // Save optimization index
 async function saveOptimizationIndex(storage: ReturnType<typeof getStorage>, index: OptimizationIndex): Promise<void> {
   const json = JSON.stringify(index);
-  await storage.put(OPTIMIZATION_INDEX_FILE, new TextEncoder().encode(json), "application/json");
+  await storage.put(OPTIMIZATION_INDEX_FILE, json, "application/json");
+}
+
+function matchesCurrentOptimizationProfile(index: OptimizationIndex | null): boolean {
+  return !!index &&
+    index.version === CURRENT_OPTIMIZATION_INDEX_VERSION &&
+    index.profile === CURRENT_OPTIMIZATION_PROFILE &&
+    JSON.stringify(index.variantWidths) === JSON.stringify([...CURRENT_VARIANT_WIDTHS]);
+}
+
+function createCurrentOptimizationIndex(): OptimizationIndex {
+  return {
+    version: CURRENT_OPTIMIZATION_INDEX_VERSION,
+    variantWidths: [...CURRENT_VARIANT_WIDTHS],
+    profile: CURRENT_OPTIMIZATION_PROFILE,
+    optimizedImages: [],
+    lastUpdated: new Date().toISOString(),
+  };
 }
 
 // Add image to optimization index
 async function markImageOptimized(storage: ReturnType<typeof getStorage>, imagePath: string): Promise<void> {
-  let index = await getOptimizationIndex(storage);
-  if (!index) {
-    index = {
-      version: 1,
-      variantWidths: [...CURRENT_VARIANT_WIDTHS],
-      optimizedImages: [],
-      lastUpdated: new Date().toISOString(),
-    };
-  }
+  const storedIndex = await getOptimizationIndex(storage);
+  const index = matchesCurrentOptimizationProfile(storedIndex)
+    ? storedIndex!
+    : createCurrentOptimizationIndex();
   if (!index.optimizedImages.includes(imagePath)) {
     index.optimizedImages.push(imagePath);
     index.lastUpdated = new Date().toISOString();
@@ -88,15 +103,10 @@ async function markImageOptimized(storage: ReturnType<typeof getStorage>, imageP
 
 // Batch update optimization index (more efficient for bulk operations)
 async function markImagesOptimized(storage: ReturnType<typeof getStorage>, imagePaths: string[]): Promise<void> {
-  let index = await getOptimizationIndex(storage);
-  if (!index) {
-    index = {
-      version: 1,
-      variantWidths: [...CURRENT_VARIANT_WIDTHS],
-      optimizedImages: [],
-      lastUpdated: new Date().toISOString(),
-    };
-  }
+  const storedIndex = await getOptimizationIndex(storage);
+  const index = matchesCurrentOptimizationProfile(storedIndex)
+    ? storedIndex!
+    : createCurrentOptimizationIndex();
   const existingSet = new Set(index.optimizedImages);
   for (const path of imagePaths) {
     existingSet.add(path);
@@ -117,11 +127,8 @@ async function clearOptimizationIndex(storage: ReturnType<typeof getStorage>): P
 
 // Check if image is optimized (uses in-memory Set for fast lookups)
 function isImageOptimized(index: OptimizationIndex | null, imagePath: string): boolean {
-  if (!index) return false;
-  // Check if variant widths match current config
-  const widthsMatch = JSON.stringify(index.variantWidths) === JSON.stringify([...CURRENT_VARIANT_WIDTHS]);
-  if (!widthsMatch) return false; // Needs re-optimization with new widths
-  return index.optimizedImages.includes(imagePath);
+  if (!matchesCurrentOptimizationProfile(index)) return false;
+  return index!.optimizedImages.includes(imagePath);
 }
 
 // ============================================================================
@@ -143,7 +150,7 @@ async function getProgressCounter(storage: ReturnType<typeof getStorage>): Promi
 
 // Write progress counter (fast - just a tiny text file)
 async function setProgressCounter(storage: ReturnType<typeof getStorage>, current: number, total: number): Promise<void> {
-  await storage.put(PROGRESS_COUNTER_FILE, new TextEncoder().encode(`${current}/${total}`), "text/plain");
+  await storage.put(PROGRESS_COUNTER_FILE, `${current}/${total}`, "text/plain");
 }
 
 // Clear progress counter
@@ -209,8 +216,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   let imagesWithVariants = 0;
   if (optIndex) {
     // Check if variant widths match current config
-    const widthsMatch = JSON.stringify(optIndex.variantWidths) === JSON.stringify([...CURRENT_VARIANT_WIDTHS]);
-    if (widthsMatch) {
+    if (matchesCurrentOptimizationProfile(optIndex)) {
       // Count how many of our images are in the optimized set
       const optimizedSet = new Set(optIndex.optimizedImages);
       imagesWithVariants = allImagePaths.filter(p => optimizedSet.has(p)).length;
@@ -313,9 +319,7 @@ async function handleOptimizeBatch(
   
   // Build set of already-optimized images for fast lookup
   const optimizedSet = new Set(optIndex?.optimizedImages || []);
-  const widthsMatch = optIndex 
-    ? JSON.stringify(optIndex.variantWidths) === JSON.stringify([...CURRENT_VARIANT_WIDTHS])
-    : false;
+  const widthsMatch = matchesCurrentOptimizationProfile(optIndex);
   
   // Collect all images
   const allImages: { galleryPath: string; filename: string; imagePath: string }[] = [];
@@ -590,32 +594,12 @@ async function handleOptimizeAll(
   
   // Initialize progress in R2
   let currentProgress = 0;
-  await saveProgress(storage, {
-    totalImages,
-    imagesWithVariants: 0,
-    isRunning: true,
-    startedAt: Date.now(),
-  });
+  await setProgressCounter(storage, 0, totalImages);
   
   let processed = 0;
   let skipped = 0;
   let failed = 0;
   let variantsCreated = 0;
-  let lastProgressSave = Date.now();
-  
-  // Save progress to R2 (rate limited to every 500ms)
-  async function updateProgressFile() {
-    const now = Date.now();
-    if (now - lastProgressSave > 500) {
-      lastProgressSave = now;
-      await saveProgress(storage, {
-        totalImages,
-        imagesWithVariants: currentProgress,
-        isRunning: true,
-        startedAt: 0,
-      });
-    }
-  }
   
   // Process a single image
   async function processImage(item: { galleryPath: string; photo: { filename: string } }) {
@@ -671,12 +655,7 @@ async function handleOptimizeAll(
     await Promise.all(batch.map(processImage));
     
     // Save progress to R2 after each batch
-    await saveProgress(storage, {
-      totalImages,
-      imagesWithVariants: currentProgress,
-      isRunning: true,
-      startedAt: 0,
-    });
+    await setProgressCounter(storage, currentProgress, totalImages);
     
     // Log batch progress
     const batchNum = Math.floor(i / PARALLEL_BATCH_SIZE) + 1;
@@ -685,12 +664,7 @@ async function handleOptimizeAll(
   }
   
   // Mark optimization as complete - save final state
-  await saveProgress(storage, {
-    totalImages,
-    imagesWithVariants: currentProgress,
-    isRunning: false,
-    startedAt: 0,
-  });
+  await setProgressCounter(storage, currentProgress, totalImages);
   
   console.log(`[Optimize] 🎉 Complete! Processed: ${processed}, Skipped: ${skipped}, Failed: ${failed}`);
   
@@ -872,7 +846,7 @@ async function getJob(storage: ReturnType<typeof getStorage>): Promise<Optimizat
 
 async function saveJob(storage: ReturnType<typeof getStorage>, job: OptimizationJob): Promise<void> {
   const jsonStr = JSON.stringify(job);
-  await storage.put(JOB_FILE, new TextEncoder().encode(jsonStr), "application/json");
+  await storage.put(JOB_FILE, jsonStr, "application/json");
 }
 
 async function clearJob(storage: ReturnType<typeof getStorage>): Promise<void> {
@@ -901,9 +875,7 @@ async function handleGetUnoptimized(
   
   // Build optimized set for fast lookup
   const optimizedSet = new Set(optIndex?.optimizedImages || []);
-  const widthsMatch = optIndex 
-    ? JSON.stringify(optIndex.variantWidths) === JSON.stringify([...CURRENT_VARIANT_WIDTHS])
-    : false;
+  const widthsMatch = matchesCurrentOptimizationProfile(optIndex);
   
   // Collect images needing optimization
   interface ImageInfo {

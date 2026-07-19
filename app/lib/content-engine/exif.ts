@@ -27,11 +27,18 @@ async function getExifrParse() {
  * Extract EXIF data from an image buffer
  */
 export async function extractExif(buffer: ArrayBuffer): Promise<ExifData | null> {
+  const rasterDimensions = readJpegDimensions(buffer);
+
   try {
     const parse = await getExifrParse();
     if (!parse) {
       console.warn("EXIF parser not available");
-      return null;
+      return rasterDimensions
+        ? {
+            imageWidth: rasterDimensions.width,
+            imageHeight: rasterDimensions.height,
+          }
+        : null;
     }
     
     const data = await parse(buffer, {
@@ -90,15 +97,70 @@ export async function extractExif(buffer: ArrayBuffer): Promise<ExifData | null>
       icc: false,
     });
 
-    if (!data) {
-      return null;
+    const exif = data ? parseExifData(data) : {};
+    if (!exif.imageWidth && rasterDimensions) {
+      exif.imageWidth = rasterDimensions.width;
+    }
+    if (!exif.imageHeight && rasterDimensions) {
+      exif.imageHeight = rasterDimensions.height;
     }
 
-    return parseExifData(data);
+    return Object.keys(exif).length > 0 ? exif : null;
   } catch (error) {
     console.warn("Failed to extract EXIF:", error);
+    return rasterDimensions
+      ? {
+          imageWidth: rasterDimensions.width,
+          imageHeight: rasterDimensions.height,
+        }
+      : null;
+  }
+}
+
+/** Read JPEG dimensions from a SOF marker when exports omit EXIF dimensions. */
+function readJpegDimensions(
+  buffer: ArrayBuffer,
+): { width: number; height: number } | null {
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length < 10 || bytes[0] !== 0xff || bytes[1] !== 0xd8) {
     return null;
   }
+
+  const startOfFrameMarkers = new Set([
+    0xc0, 0xc1, 0xc2, 0xc3,
+    0xc5, 0xc6, 0xc7,
+    0xc9, 0xca, 0xcb,
+    0xcd, 0xce, 0xcf,
+  ]);
+  let offset = 2;
+
+  while (offset + 8 < bytes.length) {
+    while (offset < bytes.length && bytes[offset] !== 0xff) offset += 1;
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    if (offset >= bytes.length) break;
+
+    const marker = bytes[offset];
+    offset += 1;
+
+    // Markers without a length field.
+    if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) {
+      continue;
+    }
+
+    if (offset + 1 >= bytes.length) break;
+    const segmentLength = (bytes[offset] << 8) | bytes[offset + 1];
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) break;
+
+    if (startOfFrameMarkers.has(marker) && segmentLength >= 7) {
+      const height = (bytes[offset + 3] << 8) | bytes[offset + 4];
+      const width = (bytes[offset + 5] << 8) | bytes[offset + 6];
+      return width > 0 && height > 0 ? { width, height } : null;
+    }
+
+    offset += segmentLength;
+  }
+
+  return null;
 }
 
 /**
@@ -184,6 +246,18 @@ function parseExifData(raw: Record<string, unknown>): ExifData {
   if (typeof lat === "number" && typeof lng === "number") {
     exif.latitude = lat;
     exif.longitude = lng;
+  }
+
+  // Pixel dimensions are required by responsive gallery markup. Reserving the
+  // intrinsic ratio before download prevents every lazy image from initially
+  // appearing inside the viewport and being fetched at once.
+  const width = raw.ExifImageWidth || raw.ImageWidth;
+  const height = raw.ExifImageHeight || raw.ImageHeight;
+  if (typeof width === "number" && width > 0) {
+    exif.imageWidth = width;
+  }
+  if (typeof height === "number" && height > 0) {
+    exif.imageHeight = height;
   }
 
   return exif;

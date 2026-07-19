@@ -7,7 +7,11 @@
  * Uses pre-calculated content index for fast loading.
  */
 
-import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type {
+  HeadersFunction,
+  LoaderFunctionArgs,
+  MetaFunction,
+} from "@remix-run/cloudflare";
 import { useLoaderData, Link, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { 
@@ -20,9 +24,19 @@ import { Layout } from "~/components/Layout";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { SimilarPhotos } from "~/components/SimilarPhotos";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
-import { getOptimizedImageUrl, getOriginalImageUrl } from "~/utils/image-optimization";
+import {
+  generateSrcSet,
+  getOptimizedImageUrl,
+  getOriginalImageUrl,
+} from "~/utils/image-optimization";
+
+// The desktop photo area is the viewport minus the 16rem sidebar and 4rem padding.
+// Giving the browser the real slot size lets Retina displays select the 2400w variant.
+const PHOTO_SIZES = "(min-width: 1024px) calc(100vw - 20rem), 100vw";
+
+export const headers: HeadersFunction = ({ loaderHeaders }) => loaderHeaders;
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.photo) {
@@ -93,44 +107,47 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const photoUrl = getOptimizedImageUrl(photo.path, { width: 1600 });
   const originalPhotoUrl = getOriginalImageUrl(photo.path); // Fallback
   
-  // Preload URLs for adjacent photos (same 1600w variant)
-  const prevPhotoUrl = prevPhoto 
-    ? getOptimizedImageUrl(prevPhoto.path, { width: 1600 })
-    : null;
-  const nextPhotoUrl = nextPhoto
-    ? getOptimizedImageUrl(nextPhoto.path, { width: 1600 })
-    : null;
-
   const siteName = "Victoriano Izquierdo";
   const canonicalUrl = `${baseUrl}/photo/${gallerySlug}/${photoFilename}`;
   const ogImage = buildImageUrl(baseUrl, photo.path);
 
-  return json({
-    photo,
-    photoUrl,
-    originalPhotoUrl,
-    prevPhotoUrl,
-    nextPhotoUrl,
-    gallery: {
-      slug: gallery.slug,
-      title: gallery.title,
+  return json(
+    {
+      photo,
+      photoUrl,
+      originalPhotoUrl,
+      gallery: {
+        slug: gallery.slug,
+        title: gallery.title,
+      },
+      gallerySlug,
+      prevPhoto,
+      nextPhoto,
+      currentIndex: photoIndex,
+      totalPhotos: photos.length,
+      navigation,
+      siteName,
+      canonicalUrl,
+      ogImage,
+      socialLinks: {
+        instagram: "https://instagram.com/victoriano",
+        twitter: "https://twitter.com/victoriano",
+        linkedin: "https://linkedin.com/in/victoriano",
+        facebook: "https://facebook.com/victoriano",
+      },
     },
-    gallerySlug,
-    prevPhoto,
-    nextPhoto,
-    currentIndex: photoIndex,
-    totalPhotos: photos.length,
-    navigation,
-    siteName,
-    canonicalUrl,
-    ogImage,
-    socialLinks: {
-      instagram: "https://instagram.com/victoriano",
-      twitter: "https://twitter.com/victoriano",
-      linkedin: "https://linkedin.com/in/victoriano",
-      facebook: "https://facebook.com/victoriano",
-    },
-  });
+    {
+      // The dev site serves live Vite modules. Caching its HTML can mix an old
+      // server render with new client code and leave React in a broken state.
+      headers:
+        new URL(baseUrl).hostname === "victopress-dev.nominao.com"
+          ? {
+              "Cache-Control": "no-store, max-age=0",
+              "Cloudflare-CDN-Cache-Control": "no-store",
+            }
+          : undefined,
+    }
+  );
 }
 
 export default function PhotoPage() {
@@ -138,8 +155,6 @@ export default function PhotoPage() {
     photo,
     photoUrl,
     originalPhotoUrl,
-    prevPhotoUrl,
-    nextPhotoUrl,
     gallery,
     gallerySlug,
     prevPhoto,
@@ -152,44 +167,52 @@ export default function PhotoPage() {
   } = useLoaderData<typeof loader>();
 
   const navigate = useNavigate();
-  
-  // Fallback to original if WebP variant doesn't exist
-  const [useOriginal, setUseOriginal] = useState(false);
-  const currentPhotoUrl = useOriginal ? originalPhotoUrl : photoUrl;
-  
-  // Track the URL that's finished loading (to prevent flash when navigating)
-  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
-  
+
+  // If a responsive candidate fails, retry the stable 1600w source before
+  // falling back to the original. This avoids leaving Safari on a broken
+  // srcset candidate after a transient CDN or variant error.
+  const [photoSourceMode, setPhotoSourceMode] = useState<
+    "responsive" | "optimized" | "original"
+  >("responsive");
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const currentPhotoUrl =
+    photoSourceMode === "original" ? originalPhotoUrl : photoUrl;
+  const currentPhotoSrcSet =
+    hasHydrated && photoSourceMode === "responsive"
+      ? generateSrcSet(photo.path, undefined, {
+          originalWidth: photo.exif?.width,
+          includeOriginal: photo.exif?.width !== undefined,
+        })
+      : undefined;
+
   // Preload adjacent photos for instant navigation (no delay for faster nav)
-  usePhotoPreloading([prevPhotoUrl, nextPhotoUrl]);
+  const adjacentPhotoPaths = useMemo(
+    () => [prevPhoto?.path, nextPhoto?.path],
+    [prevPhoto?.path, nextPhoto?.path]
+  );
+  usePhotoPreloading(adjacentPhotoPaths);
   
   // Reset fallback state when photo changes
   useEffect(() => {
-    setUseOriginal(false);
+    setPhotoSourceMode("responsive");
   }, [photo.filename]);
-  
-  // When current URL changes, preload it and only show when ready
+
+  // Start SSR with the reliable 1600w source, then enable responsive Retina
+  // candidates once React has attached the error recovery handler.
   useEffect(() => {
-    if (currentPhotoUrl === loadedUrl) return;
-    
-    // Preload the new image before displaying
-    const img = new Image();
-    img.onload = () => {
-      setLoadedUrl(currentPhotoUrl);
-    };
-    img.onerror = () => {
-      // On error, try original or just show anyway
-      if (!useOriginal) {
-        setUseOriginal(true);
-      } else {
-        setLoadedUrl(currentPhotoUrl);
-      }
-    };
-    img.src = currentPhotoUrl;
-  }, [currentPhotoUrl, loadedUrl, useOriginal]);
-  
-  // Use the loaded URL, or fall back to current URL for initial render
-  const displayUrl = loadedUrl || currentPhotoUrl;
+    setHasHydrated(true);
+  }, []);
+
+  const handlePhotoError = useCallback(() => {
+    setPhotoSourceMode((currentMode) => {
+      // Both the mobile and desktop images exist in the DOM. Only advance once
+      // if they report the same failed source at nearly the same time.
+      if (currentMode !== photoSourceMode) return currentMode;
+      if (currentMode === "responsive") return "optimized";
+      if (currentMode === "optimized") return "original";
+      return currentMode;
+    });
+  }, [photoSourceMode]);
 
   // Keyboard navigation - navigate directly without transition delay
   const handleKeyDown = useCallback(
@@ -211,9 +234,9 @@ export default function PhotoPage() {
   }, [handleKeyDown]);
 
   // Extract photo metadata
-  const photoTitle = photo.title || photo.exif?.title || undefined;
-  const photoDescription = photo.description || photo.exif?.imageDescription || undefined;
-  const photoYear = getPhotoYear(photo);
+  const photoTitle = photo.title || undefined;
+  const photoDescription = photo.description || undefined;
+  const photoYear = photo.year;
 
   // Photo navigation for sidebar
   const photoNav = {
@@ -254,17 +277,21 @@ export default function PhotoPage() {
 
         {/* Photo with invisible tap zones for navigation */}
         <div className="relative bg-white dark:bg-black min-h-[40vh]">
-          {/* Current image - use key to force React to keep element identity */}
+          {/* Remount when the source mode changes so a failed request retries cleanly. */}
           <img
-            key={displayUrl}
-            src={displayUrl}
+            key={`${photo.path}:${photoSourceMode}`}
+            src={currentPhotoUrl}
+            srcSet={currentPhotoSrcSet}
+            sizes={currentPhotoSrcSet ? PHOTO_SIZES : undefined}
             alt={photo.title || photo.filename}
+            width={photo.exif?.width}
+            height={photo.exif?.height}
+            loading="eager"
+            decoding="async"
+            // @ts-expect-error React 18's DOM types use a different casing.
+            fetchpriority="high"
             className="w-full object-contain select-none"
-            onError={() => {
-              if (!useOriginal) {
-                setUseOriginal(true);
-              }
-            }}
+            onError={handlePhotoError}
           />
           {/* Invisible tap zones - left half = prev, right half = next */}
           <div className="absolute inset-0 flex z-10">
@@ -335,17 +362,21 @@ export default function PhotoPage() {
       {/* Desktop layout - centered with clickable zones */}
       <div className="hidden lg:flex lg:flex-col lg:h-screen">
         <div className="flex-1 flex items-center justify-center overflow-hidden pt-8 pb-8 px-8 relative bg-white dark:bg-black">
-          {/* Current image - use key to force React to keep element identity */}
+          {/* Remount when the source mode changes so a failed request retries cleanly. */}
           <img
-            key={displayUrl}
-            src={displayUrl}
+            key={`${photo.path}:${photoSourceMode}`}
+            src={currentPhotoUrl}
+            srcSet={currentPhotoSrcSet}
+            sizes={currentPhotoSrcSet ? PHOTO_SIZES : undefined}
             alt={photo.title || photo.filename}
+            width={photo.exif?.width}
+            height={photo.exif?.height}
+            loading="eager"
+            decoding="async"
+            // @ts-expect-error React 18's DOM types use a different casing.
+            fetchpriority="high"
             className="max-h-full max-w-full object-contain pointer-events-none select-none"
-            onError={() => {
-              if (!useOriginal) {
-                setUseOriginal(true);
-              }
-            }}
+            onError={handlePhotoError}
           />
           
           {/* Clickable overlay zones */}
@@ -385,27 +416,4 @@ export default function PhotoPage() {
       <SimilarPhotos key={photo.path} photoPath={photo.path} />
     </Layout>
   );
-}
-
-/**
- * Extract year from photo metadata
- */
-function getPhotoYear(photo: {
-  dateTaken?: string | Date;
-  exif?: {
-    dateTimeOriginal?: string | Date;
-  };
-}): number | undefined {
-  if (photo.dateTaken) {
-    const year = new Date(photo.dateTaken).getFullYear();
-    if (!isNaN(year)) {
-      return year;
-    }
-  } else if (photo.exif?.dateTimeOriginal) {
-    const year = new Date(photo.exif.dateTimeOriginal).getFullYear();
-    if (!isNaN(year)) {
-      return year;
-    }
-  }
-  return undefined;
 }

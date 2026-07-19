@@ -31,7 +31,11 @@ const CONTENT_PATH = path.resolve("content");
 // - 1600w: desktop HD, tablets
 // - 2400w: Retina displays, 4K/5K monitors
 const WIDTHS = [800, 1600, 2400];
-const QUALITY = 80; // WebP quality (0-100)
+const QUALITY_BY_WIDTH: Record<number, number> = {
+  800: 85,
+  1600: 86,
+  2400: 86,
+};
 const SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 
 interface ProcessResult {
@@ -131,7 +135,7 @@ async function processImage(imagePath: string): Promise<ProcessResult> {
           fit: "inside",
           withoutEnlargement: true,
         })
-        .webp({ quality: QUALITY })
+        .webp({ quality: QUALITY_BY_WIDTH[width], smartSubsample: true, effort: 6 })
         .toFile(variantPath);
       
       variants.push(variantPath);
@@ -161,7 +165,9 @@ async function main() {
   
   console.log(`📁 Scanning: ${CONTENT_PATH}`);
   console.log(`📐 Sizes: ${WIDTHS.join(", ")}px`);
-  console.log(`🎨 Quality: ${QUALITY}%\n`);
+  console.log(
+    `🎨 Quality: ${WIDTHS.map((width) => `${width}w=${QUALITY_BY_WIDTH[width]}%`).join(", ")}\n`,
+  );
   
   // Find all images
   const images = await getAllImages(CONTENT_PATH);

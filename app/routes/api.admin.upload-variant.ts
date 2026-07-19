@@ -15,10 +15,13 @@ import { getStorage } from "~/lib/content-engine";
 // Optimization index file path (same as in api.admin.optimize.ts)
 const OPTIMIZATION_INDEX_FILE = ".optimization-index.json";
 const CURRENT_VARIANT_WIDTHS = [800, 1600, 2400];
+const CURRENT_OPTIMIZATION_INDEX_VERSION = 2;
+const CURRENT_OPTIMIZATION_PROFILE = "webp-800q85-1600q86-2400q86";
 
 interface OptimizationIndex {
   version: number;
   variantWidths: number[];
+  profile?: string;
   optimizedImages: string[];
   lastUpdated: string;
 }
@@ -43,7 +46,7 @@ async function saveOptimizationIndex(
   const jsonStr = JSON.stringify(index);
   await storage.put(
     OPTIMIZATION_INDEX_FILE,
-    new TextEncoder().encode(jsonStr),
+    jsonStr,
     "application/json"
   );
 }
@@ -53,18 +56,24 @@ async function markImageOptimized(
   imagePath: string
 ): Promise<void> {
   let index = await getOptimizationIndex(storage);
-  if (!index) {
-    index = {
-      version: 1,
+  const matchesCurrentProfile = !!index &&
+    index.version === CURRENT_OPTIMIZATION_INDEX_VERSION &&
+    index.profile === CURRENT_OPTIMIZATION_PROFILE &&
+    JSON.stringify(index.variantWidths) === JSON.stringify(CURRENT_VARIANT_WIDTHS);
+
+  const currentIndex: OptimizationIndex = matchesCurrentProfile
+    ? index!
+    : {
+      version: CURRENT_OPTIMIZATION_INDEX_VERSION,
       variantWidths: [...CURRENT_VARIANT_WIDTHS],
+      profile: CURRENT_OPTIMIZATION_PROFILE,
       optimizedImages: [],
       lastUpdated: new Date().toISOString(),
     };
-  }
-  if (!index.optimizedImages.includes(imagePath)) {
-    index.optimizedImages.push(imagePath);
-    index.lastUpdated = new Date().toISOString();
-    await saveOptimizationIndex(storage, index);
+  if (!currentIndex.optimizedImages.includes(imagePath)) {
+    currentIndex.optimizedImages.push(imagePath);
+    currentIndex.lastUpdated = new Date().toISOString();
+    await saveOptimizationIndex(storage, currentIndex);
   }
 }
 

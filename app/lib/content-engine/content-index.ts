@@ -28,6 +28,10 @@ const PHOTOS_PER_GALLERY = 6;
  * This prevents multiple requests from triggering simultaneous rebuilds
  */
 let rebuildInProgress: Promise<ContentIndex> | null = null;
+const indexReadsInProgress = new WeakMap<
+  StorageAdapter,
+  Promise<ContentIndex | null>
+>();
 let lastRebuildTime = 0;
 const MIN_REBUILD_INTERVAL_MS = 5000; // Don't rebuild more than once per 5 seconds
 
@@ -262,6 +266,54 @@ export async function readContentIndex(storage: StorageAdapter): Promise<Content
 }
 
 /**
+ * Read an older index only as an EXIF cache during a schema rebuild.
+ *
+ * A version bump changes derived fields, not the source photos. Discarding the
+ * previous index made a public request download every original from R2 again
+ * before it could render. Reusing lastModified + EXIF data keeps migrations
+ * quick without ever serving the stale schema to a loader.
+ */
+async function readContentIndexForRebuild(
+  storage: StorageAdapter,
+): Promise<ContentIndex | null> {
+  try {
+    const content = await storage.getText(INDEX_FILE);
+    if (!content) return null;
+
+    const index = JSON.parse(content) as ContentIndex;
+    if (!Array.isArray(index.galleryData)) return null;
+
+    if (index.version !== INDEX_VERSION) {
+      console.log(
+        `[Index] Reusing EXIF cache from version ${index.version} while rebuilding version ${INDEX_VERSION}`,
+      );
+    }
+
+    return index;
+  } catch (error) {
+    console.warn("Could not reuse the previous content index:", error);
+    return null;
+  }
+}
+
+async function readContentIndexOnce(
+  storage: StorageAdapter,
+): Promise<ContentIndex | null> {
+  const activeRead = indexReadsInProgress.get(storage);
+  if (activeRead) return activeRead;
+
+  const readPromise = readContentIndex(storage);
+  indexReadsInProgress.set(storage, readPromise);
+  try {
+    return await readPromise;
+  } finally {
+    if (indexReadsInProgress.get(storage) === readPromise) {
+      indexReadsInProgress.delete(storage);
+    }
+  }
+}
+
+/**
  * Write the content index to storage
  */
 export async function writeContentIndex(storage: StorageAdapter, index: ContentIndex): Promise<void> {
@@ -318,7 +370,7 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
     photoCache = new Map();
     console.log(`[EXIF Cache] Skipping cache - will re-read all EXIF data from images`);
   } else {
-    const existingIndex = await readContentIndex(storage);
+    const existingIndex = await readContentIndexForRebuild(storage);
     photoCache = buildPhotoCacheFromIndex(existingIndex);
     const cacheSize = Array.from(photoCache.values()).reduce((sum, m) => sum + m.size, 0);
     console.log(`[EXIF Cache] Loaded ${cacheSize} cached photos from existing index`);
@@ -372,8 +424,8 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
         camera: [p.exif.make, p.exif.model].filter(Boolean).join(' ') || undefined,
         lens: p.exif.lensModel,
         focalLength: p.exif.focalLength,
-        aperture: p.exif.fNumber,
-        shutterSpeed: p.exif.exposureTime ? `1/${Math.round(1/p.exif.exposureTime)}` : undefined,
+        aperture: p.exif.aperture,
+        shutterSpeed: p.exif.shutterSpeed,
         iso: p.exif.iso,
         width: p.exif.imageWidth,
         height: p.exif.imageHeight,
@@ -534,7 +586,7 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
  */
 export async function getContentIndex(storage: StorageAdapter, forceRebuild = false): Promise<ContentIndex> {
   if (!forceRebuild) {
-    const cached = await readContentIndex(storage);
+    const cached = await readContentIndexOnce(storage);
     if (cached) {
       return cached;
     }
@@ -898,8 +950,8 @@ export async function addPhotosToGalleryIndex(
                 camera: [exif.make, exif.model].filter(Boolean).join(' ') || undefined,
                 lens: exif.lensModel,
                 focalLength: exif.focalLength,
-                aperture: exif.fNumber,
-                shutterSpeed: exif.exposureTime ? `1/${Math.round(1/exif.exposureTime)}` : undefined,
+                aperture: exif.aperture,
+                shutterSpeed: exif.shutterSpeed,
                 iso: exif.iso,
                 width: exif.imageWidth,
                 height: exif.imageHeight,

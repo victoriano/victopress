@@ -136,7 +136,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       slug: gallery.slug,
       title: gallery.title,
       description: gallery.description,
-      cover: gallery.cover,
+      cover: gallery.cover || allPhotos[0]?.path || "",
       photoCount: allPhotos.length,
       tags: gallery.tags,
       password: gallery.password,
@@ -247,9 +247,11 @@ export default function GalleryPage() {
             key={photo.path}
             src={`/api/images/${photo.path}`}
             alt={photo.title || photo.filename}
+            width={photo.exif?.width}
+            height={photo.exif?.height}
             href={`/photo/${(photo as any).gallerySlug}/${photo.filename}`}
             aspectRatio="auto"
-            priority={index < 8} // First 8 images are above the fold
+            priority={index === 0}
           />
         ))}
       </PhotoGrid>

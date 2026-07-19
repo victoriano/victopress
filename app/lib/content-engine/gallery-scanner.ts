@@ -12,6 +12,7 @@ import type {
   Gallery,
   GalleryMetadata,
   Photo,
+  ExifData,
   StorageAdapter,
   FileInfo,
 } from "./types";
@@ -301,10 +302,16 @@ async function scanPhotos(
     
     // Check cache for this photo
     const cached = photoCache?.get(file.name);
-    const cacheValid = cached && cached.lastModified === fileLastModified;
+    // Older indexes did not persist pixel dimensions. Treat those entries as
+    // incomplete once so the next rebuild can reserve gallery layout space.
+    const cacheValid =
+      cached &&
+      cached.lastModified === fileLastModified &&
+      !!cached.exif?.width &&
+      !!cached.exif?.height;
     
     // Try to extract EXIF data (or use cache)
-    let exifData = null;
+    let exifData: ExifData | null = null;
     
     if (cacheValid && cached.exif) {
       // Use cached EXIF data - don't read the file!
@@ -315,8 +322,8 @@ async function scanPhotos(
         model: cached.exif.camera?.split(' ').slice(1).join(' '),
         lensModel: cached.exif.lens,
         focalLength: cached.exif.focalLength,
-        fNumber: cached.exif.aperture,
-        exposureTime: cached.exif.shutterSpeed,
+        aperture: cached.exif.aperture,
+        shutterSpeed: cached.exif.shutterSpeed,
         iso: cached.exif.iso,
         imageWidth: cached.exif.width,
         imageHeight: cached.exif.height,
