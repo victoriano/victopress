@@ -44,8 +44,21 @@
 }
 
 @layer base {
+  :root {
+    --victopress-styles-ready: 1;
+  }
+
   html {
     @apply antialiased;
+  }
+
+  /*
+   * app/root.tsx keeps the body display:none inline. Only a successfully
+   * parsed main stylesheet may reveal it, making raw-HTML flashes impossible
+   * even while an old document is retained during refresh or tab resume.
+   */
+  body.victopress-app-body {
+    display: block !important;
   }
 }
 

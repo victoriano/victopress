@@ -16,6 +16,18 @@ export default defineConfig({
     port: 5174,
     host: true,
     allowedHosts: ["victopress-dev.nominao.com"],
+    // This hostname is a persistent development preview behind Cloudflare.
+    // Never let the browser or an intermediary retain Vite's transformed
+    // modules: cached CSS modules can outlive an HMR graph/server restart and
+    // strand a resumed tab without styles.
+    headers: {
+      "Cache-Control":
+        "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      "CDN-Cache-Control": "no-store",
+      "Cloudflare-CDN-Cache-Control": "no-store",
+      Expires: "0",
+      Pragma: "no-cache",
+    },
   },
   // Exclude Workers-only WASM packages from Vite bundling
   // These only work in wrangler pages dev / production
