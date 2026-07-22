@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-07-18T19:07:13.131Z",
+  "generatedAt": "2026-07-22T18:01:00.936Z",
   "repo": "victoriano/victopress",
   "branch": "main",
   "contentPath": "content",
@@ -26,8 +26,13 @@
       "type": "binary"
     },
     {
+      "path": "blog/2017/1/22/granada/index.en.md",
+      "size": 3316,
+      "type": "text"
+    },
+    {
       "path": "blog/2017/1/22/granada/index.md",
-      "size": 3876,
+      "size": 3887,
       "type": "text"
     },
     {
@@ -41,8 +46,13 @@
       "type": "binary"
     },
     {
+      "path": "blog/2017/1/31/aos-de-crcel/index.en.md",
+      "size": 4989,
+      "type": "text"
+    },
+    {
       "path": "blog/2017/1/31/aos-de-crcel/index.md",
-      "size": 5472,
+      "size": 5483,
       "type": "text"
     },
     {
@@ -51,8 +61,13 @@
       "type": "binary"
     },
     {
+      "path": "blog/2017/1/31/la-nia-fotgrafa-de-sol/index.en.md",
+      "size": 955,
+      "type": "text"
+    },
+    {
       "path": "blog/2017/1/31/la-nia-fotgrafa-de-sol/index.md",
-      "size": 1203,
+      "size": 1214,
       "type": "text"
     },
     {
@@ -61,8 +76,13 @@
       "type": "binary"
     },
     {
+      "path": "blog/2017/1/31/tiendas-de-barrio/index.en.md",
+      "size": 2827,
+      "type": "text"
+    },
+    {
       "path": "blog/2017/1/31/tiendas-de-barrio/index.md",
-      "size": 3148,
+      "size": 3159,
       "type": "text"
     },
     {
@@ -156,18 +176,23 @@
       "type": "binary"
     },
     {
+      "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/index.es.md",
+      "size": 5381,
+      "type": "text"
+    },
+    {
       "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/index.md",
-      "size": 5440,
+      "size": 5451,
       "type": "text"
     },
     {
       "path": "galleries/geographies/america/gallery.yaml",
-      "size": 71,
+      "size": 168,
       "type": "text"
     },
     {
       "path": "galleries/geographies/america/usa/boston/gallery.yaml",
-      "size": 64,
+      "size": 157,
       "type": "text"
     },
     {
@@ -187,7 +212,7 @@
     },
     {
       "path": "galleries/geographies/america/usa/gallery.yaml",
-      "size": 72,
+      "size": 181,
       "type": "text"
     },
     {
@@ -202,7 +227,7 @@
     },
     {
       "path": "galleries/geographies/america/usa/new york/gallery.yaml",
-      "size": 73,
+      "size": 187,
       "type": "text"
     },
     {
@@ -297,7 +322,12 @@
     },
     {
       "path": "galleries/geographies/america/usa/san francisco/gallery.yaml",
-      "size": 78,
+      "size": 185,
+      "type": "text"
+    },
+    {
+      "path": "galleries/geographies/america/usa/san francisco/photos.yaml",
+      "size": 1500,
       "type": "text"
     },
     {
@@ -402,7 +432,7 @@
     },
     {
       "path": "galleries/geographies/asia/china/gallery.yaml",
-      "size": 62,
+      "size": 153,
       "type": "text"
     },
     {
@@ -412,7 +442,7 @@
     },
     {
       "path": "galleries/geographies/asia/dubai/gallery.yaml",
-      "size": 62,
+      "size": 155,
       "type": "text"
     },
     {
@@ -487,7 +517,7 @@
     },
     {
       "path": "galleries/geographies/asia/gallery.yaml",
-      "size": 71,
+      "size": 174,
       "type": "text"
     },
     {
@@ -752,7 +782,7 @@
     },
     {
       "path": "galleries/geographies/asia/japan/gallery.yaml",
-      "size": 58,
+      "size": 147,
       "type": "text"
     },
     {
@@ -787,7 +817,7 @@
     },
     {
       "path": "galleries/geographies/australia/gallery.yaml",
-      "size": 70,
+      "size": 169,
       "type": "text"
     },
     {
@@ -822,7 +852,7 @@
     },
     {
       "path": "galleries/geographies/europe/gallery.yaml",
-      "size": 76,
+      "size": 179,
       "type": "text"
     },
     {
@@ -842,12 +872,12 @@
     },
     {
       "path": "galleries/geographies/europe/spain/canary islands/gallery.yaml",
-      "size": 84,
+      "size": 197,
       "type": "text"
     },
     {
       "path": "galleries/geographies/europe/spain/gallery.yaml",
-      "size": 62,
+      "size": 157,
       "type": "text"
     },
     {
@@ -857,7 +887,7 @@
     },
     {
       "path": "galleries/geographies/europe/spain/madrid/gallery.yaml",
-      "size": 71,
+      "size": 173,
       "type": "text"
     },
     {
@@ -951,6 +981,11 @@
       "type": "binary"
     },
     {
+      "path": "galleries/geographies/europe/spain/madrid/photos.yaml",
+      "size": 567,
+      "type": "text"
+    },
+    {
       "path": "galleries/geographies/europe/spain/north of spain/DSC02607.jpg",
       "size": 733503,
       "type": "binary"
@@ -1012,12 +1047,12 @@
     },
     {
       "path": "galleries/geographies/europe/spain/north of spain/gallery.yaml",
-      "size": 80,
+      "size": 194,
       "type": "text"
     },
     {
       "path": "galleries/geographies/europe/spain/south of spain/gallery.yaml",
-      "size": 95,
+      "size": 220,
       "type": "text"
     },
     {
@@ -1032,7 +1067,7 @@
     },
     {
       "path": "galleries/geographies/europe/spain/south of spain/granada/gallery.yaml",
-      "size": 90,
+      "size": 207,
       "type": "text"
     },
     {
@@ -1152,7 +1187,7 @@
     },
     {
       "path": "galleries/geographies/europe/united kingdom/gallery.yaml",
-      "size": 72,
+      "size": 176,
       "type": "text"
     },
     {
@@ -1172,12 +1207,12 @@
     },
     {
       "path": "galleries/geographies/gallery.yaml",
-      "size": 101,
+      "size": 228,
       "type": "text"
     },
     {
       "path": "galleries/humans/gallery.yaml",
-      "size": 106,
+      "size": 243,
       "type": "text"
     },
     {
@@ -1222,7 +1257,7 @@
     },
     {
       "path": "galleries/humans/portraits/gallery.yaml",
-      "size": 86,
+      "size": 205,
       "type": "text"
     },
     {
@@ -1272,7 +1307,7 @@
     },
     {
       "path": "galleries/humans/rituals/gallery.yaml",
-      "size": 86,
+      "size": 204,
       "type": "text"
     },
     {
@@ -1296,6 +1331,11 @@
       "type": "binary"
     },
     {
+      "path": "galleries/humans/rituals/photos.yaml",
+      "size": 302,
+      "type": "text"
+    },
+    {
       "path": "galleries/humans/social/2806871438_1afdd3d2e0_o.jpg",
       "size": 988044,
       "type": "binary"
@@ -1307,7 +1347,7 @@
     },
     {
       "path": "galleries/humans/social/gallery.yaml",
-      "size": 84,
+      "size": 221,
       "type": "text"
     },
     {
@@ -1342,7 +1382,7 @@
     },
     {
       "path": "galleries/spaces/gallery.yaml",
-      "size": 115,
+      "size": 257,
       "type": "text"
     },
     {
@@ -1382,7 +1422,7 @@
     },
     {
       "path": "galleries/spaces/landscapes/gallery.yaml",
-      "size": 80,
+      "size": 193,
       "type": "text"
     },
     {
@@ -1421,8 +1461,13 @@
       "type": "binary"
     },
     {
+      "path": "galleries/spaces/landscapes/photos.yaml",
+      "size": 304,
+      "type": "text"
+    },
+    {
       "path": "galleries/spaces/travelling/gallery.yaml",
-      "size": 359,
+      "size": 472,
       "type": "text"
     },
     {
@@ -1497,7 +1542,7 @@
     },
     {
       "path": "galleries/spaces/urban/gallery.yaml",
-      "size": 342,
+      "size": 454,
       "type": "text"
     },
     {
@@ -1556,8 +1601,18 @@
       "type": "binary"
     },
     {
+      "path": "pages/about/index.es.html",
+      "size": 2236,
+      "type": "text"
+    },
+    {
       "path": "pages/about/index.html",
-      "size": 2219,
+      "size": 2294,
+      "type": "text"
+    },
+    {
+      "path": "pages/about/page.yaml",
+      "size": 18,
       "type": "text"
     },
     {
@@ -1566,11 +1621,26 @@
       "type": "text"
     },
     {
+      "path": "pages/contact/index.es.md",
+      "size": 969,
+      "type": "text"
+    },
+    {
       "path": "pages/contact/index.md",
-      "size": 944,
+      "size": 955,
+      "type": "text"
+    },
+    {
+      "path": "pages/contact/page.yaml",
+      "size": 18,
+      "type": "text"
+    },
+    {
+      "path": "site.yaml",
+      "size": 214,
       "type": "text"
     }
   ],
-  "totalSize": 241889473,
-  "totalFiles": 313
+  "totalSize": 241916196,
+  "totalFiles": 327
 }

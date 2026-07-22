@@ -8,7 +8,16 @@
  * - Auto-updates when content is modified via the CMS
  */
 
-import type { StorageAdapter, Gallery, BlogPost, Page } from "./types";
+import type {
+  StorageAdapter,
+  Gallery,
+  BlogPost,
+  Page,
+  GalleryTranslation,
+  PhotoTranslation,
+  BlogPostTranslation,
+  PageTranslation,
+} from "./types";
 import { scanGalleries, scanParentMetadata, type PhotoCache, type CachedPhotoData } from "./gallery-scanner";
 import { scanBlog } from "./blog-scanner";
 import { scanPages } from "./page-scanner";
@@ -16,9 +25,15 @@ import { addGalleryMemberships, readGalleryMemberships } from "./gallery-members
 import { readGalleryOrders, sortPhotosByGalleryOrder } from "./gallery-orders";
 import { buildNavigation } from "../../utils/navigation";
 import type { NavItem } from "../../components/Sidebar";
+import {
+  normalizeLocale,
+  resolveTranslation,
+  type Locale,
+  type TranslationMap,
+} from "~/lib/i18n";
 
 const INDEX_FILE = "_content-index.json";
-const INDEX_VERSION = 9; // Bumped to include deterministic cross-gallery photo ordering
+const INDEX_VERSION = 10; // Bilingual metadata and edition status
 
 /** Number of photos to store per gallery for home page */
 const PHOTOS_PER_GALLERY = 6;
@@ -42,6 +57,8 @@ export interface ParentMetadataEntry {
   slug: string;
   title?: string;
   order?: number;
+  locale?: Locale;
+  translations?: TranslationMap<GalleryTranslation>;
 }
 
 /**
@@ -54,8 +71,12 @@ export interface PhotoIndexEntry {
   filename: string;
   title?: string;
   description?: string;
+  locale?: Locale;
+  translations?: TranslationMap<PhotoTranslation>;
   gallerySlug: string;
   galleryTitle: string;
+  galleryLocale?: Locale;
+  galleryTranslations?: TranslationMap<GalleryTranslation>;
   hidden?: boolean;
   /** Year the photo was taken (from EXIF or filename) */
   year?: number;
@@ -68,6 +89,8 @@ export interface GalleryDataEntry {
   slug: string;
   title: string;
   description?: string;
+  locale?: Locale;
+  translations?: TranslationMap<GalleryTranslation>;
   /** Editorial inclusion/exclusion criteria for optional AI classification */
   classificationHint?: string;
   /** Cover image path (optional for parent galleries without photos) */
@@ -98,6 +121,8 @@ export interface GalleryPhotoEntry {
   filename: string;
   title?: string;
   description?: string;
+  locale?: Locale;
+  translations?: TranslationMap<PhotoTranslation>;
   hidden?: boolean;
   order?: number;
   year?: number;
@@ -201,6 +226,8 @@ export interface GalleryIndexEntry {
   slug: string;
   title: string;
   description?: string;
+  locale?: Locale;
+  translations?: TranslationMap<GalleryTranslation>;
   /** Cover image path (relative to content root, e.g., "galleries/asia/japan/photo.jpg") */
   cover?: string;
   photoCount: number;
@@ -227,6 +254,8 @@ export interface PostIndexEntry {
   coverImage?: string;
   tags?: string[];
   readingTime: number;
+  locale?: Locale;
+  translations?: TranslationMap<BlogPostTranslation>;
 }
 
 /**
@@ -239,6 +268,8 @@ export interface PageIndexEntry {
   path: string;
   hidden: boolean;
   order?: number;
+  locale?: Locale;
+  translations?: TranslationMap<PageTranslation>;
 }
 
 /**
@@ -391,6 +422,8 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
     slug: g.slug,
     title: g.title,
     description: g.description,
+    locale: normalizeLocale(g.locale) || "en",
+    translations: g.translations,
     cover: g.cover,
     photoCount: g.photoCount,
     isProtected: g.isProtected,
@@ -440,6 +473,8 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
         filename: p.filename,
         title: p.title || p.exif?.title,
         description: p.description || p.exif?.imageDescription,
+        locale: normalizeLocale(p.locale) || "en",
+        translations: p.translations,
         hidden: p.hidden,
         order: p.order,
         year,
@@ -453,6 +488,8 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
       slug: g.slug,
       title: g.title,
       description: g.description,
+      locale: normalizeLocale(g.locale) || "en",
+      translations: g.translations,
       classificationHint: g.classificationHint,
       cover: g.cover,
       path: g.path,
@@ -494,6 +531,8 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
     coverImage: p.cover,
     tags: p.tags,
     readingTime: p.readingTime,
+    locale: normalizeLocale(p.locale) || "en",
+    translations: p.translations,
   }));
   
   const pageEntries: PageIndexEntry[] = pages.map(p => ({
@@ -503,6 +542,8 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
     path: p.path,
     hidden: p.hidden,
     order: p.order,
+    locale: normalizeLocale(p.locale) || "en",
+    translations: p.translations,
   }));
   
   // Convert parent metadata
@@ -510,6 +551,8 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
     slug: p.slug,
     title: p.title,
     order: p.order,
+    locale: normalizeLocale(p.locale) || "en",
+    translations: p.translations,
   }));
   
   // Build featured photos: first N non-hidden photos from each public gallery
@@ -540,8 +583,12 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
         filename: photo.filename,
         title: photo.title || photo.exif?.title,
         description: photo.description || photo.exif?.imageDescription,
+        locale: normalizeLocale(photo.locale) || "en",
+        translations: photo.translations,
         gallerySlug: gallery.slug,
         galleryTitle: gallery.title,
+        galleryLocale: normalizeLocale(gallery.locale) || "en",
+        galleryTranslations: gallery.translations,
         hidden: photo.hidden,
         year,
       });
@@ -669,6 +716,8 @@ export async function updateGalleryMetadataInIndex(
     password?: string;
     tags?: string[];
     includeNestedPhotos?: boolean;
+    locale?: Locale;
+    translations?: TranslationMap<GalleryTranslation>;
   }
 ): Promise<{ success: boolean; message: string }> {
   const startTime = Date.now();
@@ -702,6 +751,8 @@ export async function updateGalleryMetadataInIndex(
     if (updates.password !== undefined) gallery.password = updates.password || undefined;
     if (updates.tags !== undefined) gallery.tags = updates.tags.length > 0 ? updates.tags : undefined;
     if (updates.includeNestedPhotos !== undefined) gallery.includeNestedPhotos = updates.includeNestedPhotos;
+    if (updates.locale !== undefined) gallery.locale = updates.locale;
+    if (updates.translations !== undefined) gallery.translations = updates.translations;
     
     // Also update the light gallery entry (for navigation)
     const lightIdx = index.galleries.findIndex(g => g.path === galleryPath);
@@ -712,6 +763,8 @@ export async function updateGalleryMetadataInIndex(
       if (updates.order !== undefined) light.order = updates.order;
       if (updates.private !== undefined) light.isProtected = updates.private;
       if (updates.tags !== undefined) light.tags = updates.tags.length > 0 ? updates.tags : undefined;
+      if (updates.locale !== undefined) light.locale = updates.locale;
+      if (updates.translations !== undefined) light.translations = updates.translations;
     }
     
     // Update timestamp
@@ -1005,11 +1058,65 @@ export async function addPhotosToGalleryIndex(
 
 // ==================== Navigation Helper ====================
 
+function localizedText<T extends {
+  title?: string;
+  description?: string;
+  tags?: string[];
+  locale?: Locale;
+  translations?: TranslationMap<{ title?: string; description?: string; tags?: string[] }>;
+}>(entry: T, locale: Locale): T {
+  const sourceLocale = normalizeLocale(entry.locale) || "en";
+  const base = {
+    title: entry.title,
+    description: entry.description,
+    tags: entry.tags,
+  };
+  const resolution = resolveTranslation(base, sourceLocale, entry.translations, locale);
+  const translated = resolution.value;
+
+  return {
+    ...entry,
+    title: translated.title || entry.title,
+    description: translated.description ?? entry.description,
+    tags: translated.tags || entry.tags,
+  };
+}
+
+export function localizeGalleryDataEntry(
+  gallery: GalleryDataEntry,
+  locale: Locale,
+): GalleryDataEntry {
+  const localizedGallery = localizedText(gallery, locale);
+  return {
+    ...localizedGallery,
+    photos: gallery.photos.map((photo) => localizedText(photo, locale)),
+  };
+}
+
+function localizePhotoIndexEntry(photo: PhotoIndexEntry, locale: Locale): PhotoIndexEntry {
+  const localizedPhoto = localizedText(photo, locale);
+  const localizedGallery = localizedText(
+    {
+      title: photo.galleryTitle,
+      locale: photo.galleryLocale,
+      translations: photo.galleryTranslations,
+    },
+    locale,
+  );
+  return {
+    ...localizedPhoto,
+    galleryTitle: localizedGallery.title || photo.galleryTitle,
+  };
+}
+
 /**
  * Get navigation structure directly from the content index
  * This is much faster than scanning galleries for navigation
  */
-export async function getNavigationFromIndex(storage: StorageAdapter): Promise<NavItem[]> {
+export async function getNavigationFromIndex(
+  storage: StorageAdapter,
+  locale?: Locale,
+): Promise<NavItem[]> {
   const index = await getContentIndex(storage);
   
   // Filter public galleries and sort by order
@@ -1017,7 +1124,14 @@ export async function getNavigationFromIndex(storage: StorageAdapter): Promise<N
     .filter(g => !g.isProtected || g.photoCount > 0) // Include protected if has photos
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   
-  return buildNavigation(publicGalleries, index.parentMetadata);
+  const galleries = locale
+    ? publicGalleries.map((gallery) => localizedText(gallery, locale))
+    : publicGalleries;
+  const parentMetadata = locale
+    ? index.parentMetadata.map((parent) => localizedText(parent, locale))
+    : index.parentMetadata;
+
+  return buildNavigation(galleries, parentMetadata, locale);
 }
 
 // ==================== Home Page Helper ====================
@@ -1035,7 +1149,8 @@ export interface HomePhoto extends PhotoIndexEntry {
  */
 export async function getHomePhotosFromIndex(
   storage: StorageAdapter,
-  homeConfig?: { photos?: Array<{ gallery: string; filename: string }> }
+  homeConfig?: { photos?: Array<{ gallery: string; filename: string }> },
+  locale?: Locale,
 ): Promise<HomePhoto[]> {
   const index = await getContentIndex(storage);
   
@@ -1047,7 +1162,7 @@ export async function getHomePhotosFromIndex(
       const photo = gallery?.photos.find((entry) => entry.filename === config.filename);
 
       if (gallery && photo && !photo.hidden) {
-        homePhotos.push({
+        const homePhoto: HomePhoto = {
           id: photo.id,
           path: photo.path,
           filename: photo.filename,
@@ -1055,19 +1170,27 @@ export async function getHomePhotosFromIndex(
           description: photo.description,
           gallerySlug: gallery.slug,
           galleryTitle: gallery.title,
+          galleryLocale: gallery.locale,
+          galleryTranslations: gallery.translations,
+          locale: photo.locale,
+          translations: photo.translations,
           hidden: photo.hidden,
           year: photo.year,
           homeIndex: idx,
-        });
+        };
+        homePhotos.push(locale ? localizePhotoIndexEntry(homePhoto, locale) as HomePhoto : homePhoto);
       }
     });
     return homePhotos;
   }
   
   // Default: use all featured photos in order
-  return index.featuredPhotos
+  const photos = index.featuredPhotos
     .filter(p => !p.hidden)
     .map((photo, idx) => ({ ...photo, homeIndex: idx }));
+  return locale
+    ? photos.map((photo) => localizePhotoIndexEntry(photo, locale) as HomePhoto)
+    : photos;
 }
 
 // ==================== Gallery Data Helpers ====================
@@ -1078,10 +1201,12 @@ export async function getHomePhotosFromIndex(
  */
 export async function getGalleryFromIndex(
   storage: StorageAdapter,
-  slug: string
+  slug: string,
+  locale?: Locale,
 ): Promise<GalleryDataEntry | null> {
   const index = await getContentIndex(storage);
-  return index.galleryData.find(g => g.slug === slug) || null;
+  const gallery = index.galleryData.find(g => g.slug === slug) || null;
+  return gallery && locale ? localizeGalleryDataEntry(gallery, locale) : gallery;
 }
 
 /**
@@ -1089,10 +1214,13 @@ export async function getGalleryFromIndex(
  * Use this instead of scanGalleries for gallery listing pages
  */
 export async function getAllGalleriesFromIndex(
-  storage: StorageAdapter
+  storage: StorageAdapter,
+  locale?: Locale,
 ): Promise<GalleryDataEntry[]> {
   const index = await getContentIndex(storage);
-  return index.galleryData;
+  return locale
+    ? index.galleryData.map((gallery) => localizeGalleryDataEntry(gallery, locale))
+    : index.galleryData;
 }
 
 /**
@@ -1101,12 +1229,16 @@ export async function getAllGalleriesFromIndex(
  */
 export async function getGalleriesByPrefix(
   storage: StorageAdapter,
-  slugPrefix: string
+  slugPrefix: string,
+  locale?: Locale,
 ): Promise<GalleryDataEntry[]> {
   const index = await getContentIndex(storage);
-  return index.galleryData.filter(g => 
+  const galleries = index.galleryData.filter(g =>
     g.slug === slugPrefix || g.slug.startsWith(slugPrefix + "/")
   );
+  return locale
+    ? galleries.map((gallery) => localizeGalleryDataEntry(gallery, locale))
+    : galleries;
 }
 
 /**
@@ -1115,9 +1247,10 @@ export async function getGalleriesByPrefix(
 export async function getPhotoFromIndex(
   storage: StorageAdapter,
   gallerySlug: string,
-  filename: string
+  filename: string,
+  locale?: Locale,
 ): Promise<{ gallery: GalleryDataEntry; photo: GalleryPhotoEntry; photoIndex: number } | null> {
-  const gallery = await getGalleryFromIndex(storage, gallerySlug);
+  const gallery = await getGalleryFromIndex(storage, gallerySlug, locale);
   if (!gallery) return null;
   
   const photos = gallery.photos.filter(p => !p.hidden);
@@ -1151,6 +1284,8 @@ export async function updateGalleryInIndex(
     slug: gallery.slug,
     title: gallery.title,
     description: gallery.description,
+    locale: normalizeLocale(gallery.locale) || "en",
+    translations: gallery.translations,
     cover: gallery.cover,
     photoCount: gallery.photoCount,
     isProtected: gallery.isProtected,
@@ -1222,6 +1357,8 @@ export async function updatePostInIndex(
     coverImage: post.cover,
     tags: post.tags,
     readingTime: post.readingTime,
+    locale: normalizeLocale(post.locale) || "en",
+    translations: post.translations,
   };
   
   const existingIdx = index.posts.findIndex(p => p.slug === post.slug);
@@ -1275,6 +1412,8 @@ export async function updatePageInIndex(
     path: page.path,
     hidden: page.hidden,
     order: page.order,
+    locale: normalizeLocale(page.locale) || "en",
+    translations: page.translations,
   };
   
   const existingIdx = index.pages.findIndex(p => p.slug === page.slug);

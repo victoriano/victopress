@@ -2,6 +2,16 @@ import { Marked, Renderer } from "marked";
 
 const ALLOWED_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
 const ALLOWED_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
+const DEFAULT_IMAGE_CACHE_VERSION = "mime-v2";
+
+export interface MarkdownRenderOptions {
+  /** Absolute origin used for VictoPress-owned image routes in headless output. */
+  imageBaseUrl?: string;
+  /** Absolute origin used for legacy root-relative links in headless output. */
+  linkBaseUrl?: string;
+  /** Set to null to omit the cache version query parameter. */
+  imageCacheVersion?: string | null;
+}
 
 export function escapeHtml(value: string): string {
   return value
@@ -22,84 +32,145 @@ function safeUrl(value: string, allowedProtocols: Set<string>): string | null {
   return allowedProtocols.has(protocolMatch[1].toLowerCase()) ? trimmed : null;
 }
 
-function imageUrl(value: string): string | null {
-  const safe = safeUrl(value, ALLOWED_IMAGE_PROTOCOLS);
-  if (!safe) return null;
-  if (/^https?:/i.test(safe) || safe.startsWith("/")) return safe;
+function normalizeOrigin(value: string | undefined): string | null {
+  if (!value) return null;
 
-  return `/api/images/${safe.replace(/^\.\//, "")}`;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
 }
 
-const renderer = new Renderer();
+function appendCacheVersion(url: string, version: string | null): string {
+  if (!version) return url;
 
-// Blog content is authored by an authenticated editor, but Markdown should
-// remain Markdown. Rendering raw HTML as text prevents an accidental paste
-// from turning into executable markup in the public site or admin preview.
-renderer.html = ({ text }) => escapeHtml(text);
+  const [withoutFragment, fragment] = url.split("#", 2);
+  const separator = withoutFragment.includes("?") ? "&" : "?";
+  const versioned = `${withoutFragment}${separator}v=${encodeURIComponent(version)}`;
+  return fragment ? `${versioned}#${fragment}` : versioned;
+}
 
-renderer.link = function ({ href, title, tokens }) {
-  const label = this.parser.parseInline(tokens);
-  const safeHref = safeUrl(href, ALLOWED_LINK_PROTOCOLS);
-  if (!safeHref) return label;
+export function resolveMarkdownImageUrl(
+  value: string,
+  options: MarkdownRenderOptions = {},
+): string | null {
+  const safe = safeUrl(value, ALLOWED_IMAGE_PROTOCOLS);
+  if (!safe) return null;
 
-  const external = /^https?:/i.test(safeHref);
-  const titleAttribute = title ? ` title="${escapeHtml(title)}"` : "";
-  const externalAttributes = external
-    ? ' target="_blank" rel="noopener noreferrer"'
-    : "";
+  const imageOrigin = normalizeOrigin(options.imageBaseUrl);
+  const cacheVersion = options.imageCacheVersion === undefined
+    ? DEFAULT_IMAGE_CACHE_VERSION
+    : options.imageCacheVersion;
 
-  return `<a href="${escapeHtml(safeHref)}"${titleAttribute}${externalAttributes}>${label}</a>`;
-};
+  if (/^https?:/i.test(safe)) return safe;
 
-renderer.paragraph = function ({ tokens }) {
-  const imageTokens = tokens.filter((token) => token.type === "image");
-  const onlyImages = imageTokens.length > 0 && tokens.every((token) =>
-    token.type === "image" || (token.type === "text" && token.text.trim() === "")
-  );
-  const galleryColumns = imageTokens
-    .map((token) => token.type === "image" ? token.title?.match(/^gallery-([23])$/)?.[1] : undefined)
-    .find(Boolean);
-  const attributes = onlyImages
-    ? ` class="blog-image-row"${galleryColumns ? ` data-gallery-columns="${galleryColumns}"` : ""}`
-    : "";
+  let resolved: string;
+  if (safe.startsWith("/")) {
+    resolved = safe;
+  } else {
+    resolved = `/api/images/${safe.replace(/^\.\//, "")}`;
+  }
 
-  return `<p${attributes}>${this.parser.parseInline(tokens)}</p>\n`;
-};
+  if (resolved.startsWith("/api/images/")) {
+    resolved = appendCacheVersion(resolved, cacheVersion);
+  }
 
-renderer.image = ({ href, title, text }) => {
-  const src = imageUrl(href);
-  const alt = text.trim();
-  if (!src) return alt ? escapeHtml(alt) : "";
+  return imageOrigin ? `${imageOrigin}${resolved}` : resolved;
+}
 
-  const galleryColumns = title?.match(/^gallery-([23])$/)?.[1];
-  const isCaptioned = title === "caption" && alt.length > 0;
-  const galleryAttribute = galleryColumns
-    ? ` data-gallery-columns="${galleryColumns}"`
-    : "";
-  const titleAttribute = title && !galleryColumns && title !== "caption"
-    ? ` title="${escapeHtml(title)}"`
-    : "";
-  const caption = isCaptioned
-    ? `<span class="blog-image-caption">${escapeHtml(alt)}</span>`
-    : "";
+export function resolveMarkdownLinkUrl(
+  value: string,
+  options: MarkdownRenderOptions = {},
+): string | null {
+  const safe = safeUrl(value, ALLOWED_LINK_PROTOCOLS);
+  if (!safe) return null;
 
-  return [
-    `<span class="blog-image-frame"${galleryAttribute}>`,
-    `<a class="blog-image-link" href="${escapeHtml(src)}" target="_blank" rel="noopener noreferrer">`,
-    `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}"${titleAttribute} loading="lazy" decoding="async">`,
-    "</a>",
-    caption,
-    "</span>",
-  ].join("");
-};
+  const linkOrigin = normalizeOrigin(options.linkBaseUrl);
+  if (linkOrigin && safe.startsWith("/")) return `${linkOrigin}${safe}`;
 
-const markdown = new Marked({
-  async: false,
-  breaks: false,
-  gfm: true,
-  renderer,
-});
+  return safe;
+}
 
-export function renderMarkdown(content: string): string {
+function createRenderer(options: MarkdownRenderOptions): Renderer {
+  const renderer = new Renderer();
+
+  // Blog content is authored by an authenticated editor, but Markdown should
+  // remain Markdown. Rendering raw HTML as text prevents an accidental paste
+  // from turning into executable markup in the public site or admin preview.
+  renderer.html = ({ text }) => escapeHtml(text);
+
+  renderer.link = function ({ href, title, tokens }) {
+    const label = this.parser.parseInline(tokens);
+    const safeHref = resolveMarkdownLinkUrl(href, options);
+    if (!safeHref) return label;
+
+    const external = /^https?:/i.test(safeHref);
+    const titleAttribute = title ? ` title="${escapeHtml(title)}"` : "";
+    const externalAttributes = external
+      ? ' target="_blank" rel="noopener noreferrer"'
+      : "";
+
+    return `<a href="${escapeHtml(safeHref)}"${titleAttribute}${externalAttributes}>${label}</a>`;
+  };
+
+  renderer.paragraph = function ({ tokens }) {
+    const imageTokens = tokens.filter((token) => token.type === "image");
+    const onlyImages = imageTokens.length > 0 && tokens.every((token) =>
+      token.type === "image" || (token.type === "text" && token.text.trim() === "")
+    );
+    const galleryColumns = imageTokens
+      .map((token) => token.type === "image" ? token.title?.match(/^gallery-([23])$/)?.[1] : undefined)
+      .find(Boolean);
+    const attributes = onlyImages
+      ? ` class="blog-image-row"${galleryColumns ? ` data-gallery-columns="${galleryColumns}"` : ""}`
+      : "";
+
+    return `<p${attributes}>${this.parser.parseInline(tokens)}</p>\n`;
+  };
+
+  renderer.image = ({ href, title, text }) => {
+    const src = resolveMarkdownImageUrl(href, options);
+    const alt = text.trim();
+    if (!src) return alt ? escapeHtml(alt) : "";
+
+    const galleryColumns = title?.match(/^gallery-([23])$/)?.[1];
+    const isCaptioned = title === "caption" && alt.length > 0;
+    const galleryAttribute = galleryColumns
+      ? ` data-gallery-columns="${galleryColumns}"`
+      : "";
+    const titleAttribute = title && !galleryColumns && title !== "caption"
+      ? ` title="${escapeHtml(title)}"`
+      : "";
+    const caption = isCaptioned
+      ? `<span class="blog-image-caption">${escapeHtml(alt)}</span>`
+      : "";
+
+    return [
+      `<span class="blog-image-frame"${galleryAttribute}>`,
+      `<a class="blog-image-link" href="${escapeHtml(src)}" target="_blank" rel="noopener noreferrer">`,
+      `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}"${titleAttribute} loading="lazy" decoding="async">`,
+      "</a>",
+      caption,
+      "</span>",
+    ].join("");
+  };
+
+  return renderer;
+}
+
+export function renderMarkdown(
+  content: string,
+  options: MarkdownRenderOptions = {},
+): string {
+  const markdown = new Marked({
+    async: false,
+    breaks: false,
+    gfm: true,
+    renderer: createRenderer(options),
+  });
+
   return markdown.parse(content, { async: false });
 }

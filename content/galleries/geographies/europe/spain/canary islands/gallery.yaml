@@ -1,3 +1,8 @@
 title: "Canary Islands"
 description: "Photography from the Canary Islands"
+locale: en
+translations:
+  es:
+    title: "Islas Canarias"
+    description: "Fotografías de las Islas Canarias"
 order: 4

@@ -1,3 +1,8 @@
 title: "Granada"
 description: "Photography from Granada, including the Alhambra"
+locale: en
+translations:
+  es:
+    title: "Granada"
+    description: "Fotografías de Granada, incluida la Alhambra"
 order: 1

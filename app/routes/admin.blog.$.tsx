@@ -12,7 +12,58 @@ import { AdminLayout } from "~/components/AdminLayout";
 import { MarkdownEditor } from "~/components/MarkdownEditor";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { scanBlog, getStorage } from "~/lib/content-engine";
+import { buildPublicBlogPostUrl } from "~/lib/blog-urls";
+import { resolveHeadlessBlogConfig } from "~/lib/headless-blog";
 import { useState, useEffect, useCallback } from "react";
+import {
+  localeNames,
+  normalizeLocale,
+  SUPPORTED_LOCALES,
+  type Locale,
+} from "~/lib/i18n";
+import { useSiteLanguages } from "~/hooks/useSiteLanguages";
+
+interface BlogActionResponse {
+  success: boolean;
+  slug?: string;
+  message?: string;
+  error?: string;
+}
+
+type EditionState = {
+  title: string;
+  description: string;
+  content: string;
+};
+
+function emptyEdition(): EditionState {
+  return { title: "", description: "", content: "" };
+}
+
+function editionsForPost(post: any) {
+  const editions: Record<Locale, EditionState> = {
+    es: emptyEdition(),
+    en: emptyEdition(),
+  };
+  if (!post) return editions;
+
+  const sourceLocale = normalizeLocale(post.locale) || "es";
+  editions[sourceLocale] = {
+    title: post.title || "",
+    description: post.description || "",
+    content: post.content || "",
+  };
+  for (const locale of SUPPORTED_LOCALES) {
+    const translation = post.translations?.[locale];
+    if (!translation) continue;
+    editions[locale] = {
+      title: translation.title || "",
+      description: translation.description || "",
+      content: translation.content || "",
+    };
+  }
+  return editions;
+}
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
   await checkAdminAuth(request, context);
@@ -20,6 +71,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const slug = params["*"];
   const username = await getAdminUser(request, context);
   const storage = getStorage(context);
+  const blogConfig = resolveHeadlessBlogConfig(context, request);
   
   // Handle "new" post creation
   if (slug === "new") {
@@ -27,6 +79,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
       username, 
       post: null, 
       isNew: true,
+      publicBlogUrl: blogConfig.publicBlogUrl,
     });
   }
   
@@ -41,19 +94,51 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     throw new Response("Post not found", { status: 404 });
   }
   
-  return json({ username, post, isNew: false });
+  return json({
+    username,
+    post,
+    isNew: false,
+    publicBlogUrl: blogConfig.publicBlogUrl,
+  });
 }
 
 export default function AdminBlogEditor() {
-  const { username, post, isNew } = useLoaderData<typeof loader>();
+  const { username, post, isNew, publicBlogUrl } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<BlogActionResponse>();
+  const siteLanguages = useSiteLanguages();
   
-  // Form state
-  const [title, setTitle] = useState(post?.title || "");
+  // One editorial record, two language editions.
+  const sourceLocale = siteLanguages.multilingual
+    ? normalizeLocale(post?.locale) || siteLanguages.defaultLocale
+    : siteLanguages.defaultLocale;
+  const [activeLocale, setActiveLocale] = useState<Locale>(sourceLocale);
+  const [editions, setEditions] = useState<Record<Locale, EditionState>>(() =>
+    editionsForPost(post),
+  );
+  const activeEdition = editions[activeLocale];
+  const title = activeEdition.title;
+  const description = activeEdition.description;
+  const content = activeEdition.content;
+  const updateEdition = useCallback(
+    (field: keyof EditionState, value: string) => {
+      setEditions((current) => ({
+        ...current,
+        [activeLocale]: { ...current[activeLocale], [field]: value },
+      }));
+    },
+    [activeLocale],
+  );
+  const setTitle = useCallback((value: string) => updateEdition("title", value), [updateEdition]);
+  const setDescription = useCallback(
+    (value: string) => updateEdition("description", value),
+    [updateEdition],
+  );
+  const setContent = useCallback(
+    (value: string) => updateEdition("content", value),
+    [updateEdition],
+  );
   const [slug, setSlug] = useState(post?.slug || "");
-  const [description, setDescription] = useState(post?.description || "");
-  const [content, setContent] = useState(post?.content || "");
   const [tags, setTags] = useState((post?.tags || []).join(", "));
   const [date, setDate] = useState(post?.date ? new Date(post.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
   const [draft, setDraft] = useState(post?.draft ?? true);
@@ -67,8 +152,9 @@ export default function AdminBlogEditor() {
   
   // Auto-generate slug from title for new posts
   useEffect(() => {
-    if (isNew && title && !slugManuallyEdited) {
-      const generated = title
+    const sourceTitle = editions[sourceLocale].title;
+    if (isNew && sourceTitle && !slugManuallyEdited) {
+      const generated = sourceTitle
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, "")
         .replace(/\s+/g, "-")
@@ -76,24 +162,22 @@ export default function AdminBlogEditor() {
         .substring(0, 60);
       setSlug(generated);
     }
-  }, [title, isNew, slugManuallyEdited]);
+  }, [editions, sourceLocale, isNew, slugManuallyEdited]);
   
   // Track changes
   useEffect(() => {
     if (isNew) {
-      setHasChanges(!!title);
+      setHasChanges(SUPPORTED_LOCALES.some((locale) => Boolean(editions[locale].title)));
     } else if (post) {
       const changed = 
-        title !== post.title ||
-        description !== (post.description || "") ||
-        content !== (post.content || "") ||
+        JSON.stringify(editions) !== JSON.stringify(editionsForPost(post)) ||
         tags !== (post.tags || []).join(", ") ||
         date !== (post.date ? new Date(post.date).toISOString().split("T")[0] : "") ||
         draft !== (post.draft ?? false) ||
         author !== (post.author || "");
       setHasChanges(changed);
     }
-  }, [title, description, content, tags, date, draft, author, post, isNew]);
+  }, [editions, tags, date, draft, author, post, isNew]);
   
   // Handle save success/redirect
   useEffect(() => {
@@ -114,9 +198,12 @@ export default function AdminBlogEditor() {
     const formData = new FormData();
     formData.append("action", isNew ? "create" : "update");
     formData.append("slug", slug);
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("content", content);
+    formData.append("sourceLocale", sourceLocale);
+    for (const locale of SUPPORTED_LOCALES) {
+      formData.append(`title_${locale}`, editions[locale].title);
+      formData.append(`description_${locale}`, editions[locale].description);
+      formData.append(`content_${locale}`, editions[locale].content);
+    }
     formData.append("tags", tags);
     formData.append("date", date);
     formData.append("draft", draft.toString());
@@ -126,7 +213,7 @@ export default function AdminBlogEditor() {
       method: "POST",
       action: "/api/admin/blog",
     });
-  }, [isNew, slug, title, description, content, tags, date, draft, author, fetcher]);
+  }, [isNew, slug, sourceLocale, editions, tags, date, draft, author, fetcher]);
   
   const handleDelete = useCallback(() => {
     const formData = new FormData();
@@ -163,19 +250,22 @@ export default function AdminBlogEditor() {
           
           <div className="flex items-center gap-2">
             {!isNew && (
-              <Link
-                to={`/blog/${post?.slug}`}
+              <a
+                href={post?.slug
+                  ? buildPublicBlogPostUrl(post.slug, { publicBlogUrl }, activeLocale)
+                  : publicBlogUrl}
                 target="_blank"
+                rel="noreferrer"
                 className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
               >
                 <ExternalIcon />
                 View
-              </Link>
+              </a>
             )}
             <button
               type="button"
               onClick={handleSave}
-              disabled={isLoading || !title || !slug}
+              disabled={isLoading || !editions[sourceLocale].title || !slug}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
             >
               {isLoading ? (
@@ -214,11 +304,49 @@ export default function AdminBlogEditor() {
         
         {/* Editor Form */}
         <div className="space-y-6">
+          {siteLanguages.multilingual && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-950">
+            <div className="flex items-center gap-1" aria-label="Language edition">
+              {SUPPORTED_LOCALES.map((locale) => {
+                const complete = Boolean(
+                  editions[locale].title.trim() && editions[locale].content.trim(),
+                );
+                const active = activeLocale === locale;
+                return (
+                  <button
+                    key={locale}
+                    type="button"
+                    onClick={() => setActiveLocale(locale)}
+                    aria-pressed={active}
+                    className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                      active
+                        ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>{locale.toUpperCase()}</span>
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        complete ? "bg-emerald-500" : "bg-amber-400"
+                      }`}
+                      aria-label={complete ? "Complete" : "Incomplete"}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+            <p className="px-2 text-xs text-gray-500 dark:text-gray-400">
+              {localeNames[activeLocale]}
+              {activeLocale === sourceLocale ? " · source edition" : " · translation"}
+            </p>
+          </div>
+          )}
+
           {/* Title & Slug */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Title <span className="text-red-500">*</span>
+                Title{siteLanguages.multilingual ? ` · ${activeLocale.toUpperCase()}` : ""} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -259,7 +387,7 @@ export default function AdminBlogEditor() {
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description
+              Description{siteLanguages.multilingual ? ` · ${activeLocale.toUpperCase()}` : ""}
             </label>
             <input
               type="text"
@@ -337,7 +465,7 @@ export default function AdminBlogEditor() {
           {/* Content Editor */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Content (Markdown)
+              Content{siteLanguages.multilingual ? ` · ${activeLocale.toUpperCase()}` : ""} (Markdown)
             </label>
             <MarkdownEditor
               value={content}

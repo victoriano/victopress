@@ -4,6 +4,7 @@ slug: "2017/1/31/tiendas-de-barrio"
 date: 2013-06-23
 description: "Antonio tiene una tienda de tejidos para el hogar en pleno centro de Madrid. Almacenes de Aragón heredada de padre y abuelo, llevan en la Corredera Baja de San Pablo desde principios del siglo pasado. Tan vieja y tan…"
 author: "Victoriano Izquierdo"
+locale: es
 draft: false
 format: markdown
 coverInBody: true

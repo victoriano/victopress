@@ -4,6 +4,7 @@ slug: "2017/1/31/aos-de-crcel"
 date: 2013-09-25
 description: "A Coruña, España Estos días que se habla mucho de cárceles, y tanto de Teixeiro, donde han metido a los padres de Asunta y de donde han sacado a la terrorista Inés Del Río. No puedo dejar de acordarme de Pilar Mingote…"
 author: "Victoriano Izquierdo"
+locale: es
 draft: false
 format: markdown
 coverInBody: true

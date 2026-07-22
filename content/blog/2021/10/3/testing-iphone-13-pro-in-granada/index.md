@@ -4,6 +4,7 @@ slug: "2021/10/3/testing-iphone-13-pro-in-granada"
 date: 2021-10-03
 description: "I went for a walk in Granada, Spain, with the new iPhone 13 Pro, released last week, and shot all the pictures using the Apple ProRAW format to see how far digital photography is now compared to DSLR cameras. I also…"
 author: "Victoriano Izquierdo"
+locale: en
 draft: false
 format: markdown
 coverInBody: true

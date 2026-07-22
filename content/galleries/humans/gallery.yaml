@@ -1,3 +1,8 @@
 title: "Humans"
 description: "People and their stories - portraits, social moments, and rituals"
+locale: en
+translations:
+  es:
+    title: "Personas"
+    description: "Personas y sus historias: retratos, momentos sociales y rituales"
 order: 1

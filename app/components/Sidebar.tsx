@@ -7,6 +7,8 @@
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useState, useEffect, useMemo } from "react";
 import { ThemeToggle } from "./ThemeToggle";
+import { LanguageEditionSwitch } from "./LanguageEditionSwitch";
+import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
 export interface NavItem {
   title: string;
@@ -40,10 +42,13 @@ interface SidebarProps {
   };
   photoNav?: PhotoNavigation;
   photoAiEnabled?: boolean;
+  multilingual?: boolean;
+  locale: Locale;
 }
 
-export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEnabled = false }: SidebarProps) {
+export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEnabled = false, multilingual = false, locale }: SidebarProps) {
   const location = useLocation();
+  const messages = photoMessages[locale];
   
   // Find all slugs in the active path that should be expanded
   const activePathSlugs = useMemo(() => {
@@ -133,7 +138,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
     <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 flex-col justify-between px-12 py-12 bg-white dark:bg-gray-950 z-50">
       {/* Site Name */}
       <div>
-        <Link to="/" className="block mb-12">
+        <Link to={localizedPath(locale, "/")} className="block mb-12">
           <h1 className="text-[27px] font-bold leading-tight tracking-tight text-black dark:text-white">
             {siteName.split(" ").map((word, i) => (
               <span key={i} className="block">
@@ -161,20 +166,27 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
           {/* Static Links */}
           <div className="space-y-2 pt-6 mt-2">
             {photoAiEnabled && (
-              <StaticNavLink href="/search" currentPath={location.pathname}>
-                Search
+              <StaticNavLink href={localizedPath(locale, "/search")} currentPath={location.pathname}>
+                {messages.search}
               </StaticNavLink>
             )}
-            <StaticNavLink href="/blog" currentPath={location.pathname}>
-              Blog
+            <StaticNavLink href={localizedPath(locale, "/blog")} currentPath={location.pathname}>
+              {messages.blog}
             </StaticNavLink>
-            <StaticNavLink href="/about" currentPath={location.pathname}>
-              About Me
+            <StaticNavLink href={localizedPath(locale, "/about")} currentPath={location.pathname}>
+              {messages.about}
             </StaticNavLink>
-            <StaticNavLink href="/contact" currentPath={location.pathname}>
-              Contact
+            <StaticNavLink href={localizedPath(locale, "/contact")} currentPath={location.pathname}>
+              {messages.contact}
             </StaticNavLink>
           </div>
+
+          {/* Language edition */}
+          {multilingual && (
+            <div className="pt-5">
+              <LanguageEditionSwitch locale={locale} />
+            </div>
+          )}
 
           {/* Social Links + Theme Toggle */}
           <div className="flex items-center gap-4 pt-4">
@@ -212,7 +224,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
               </a>
             )}
             {/* Theme Toggle */}
-            <ThemeToggle />
+            <ThemeToggle locale={locale} />
           </div>
         </nav>
       </div>
@@ -256,7 +268,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
           {/* Photo counter */}
           {photoNav.currentIndex !== undefined && photoNav.totalPhotos !== undefined && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {photoNav.currentIndex + 1} of {photoNav.totalPhotos}
+              {photoNav.currentIndex + 1} {locale === "es" ? "de" : "of"} {photoNav.totalPhotos}
             </p>
           )}
           
@@ -267,10 +279,10 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
                 to={photoNav.prevPhotoUrl}
                 className="text-gray-500 hover:text-black dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
               >
-                PREV
+                {locale === "es" ? "ANT" : "PREV"}
               </Link>
             ) : (
-              <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">PREV</span>
+              <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">{locale === "es" ? "ANT" : "PREV"}</span>
             )}
             <span className="text-gray-300">/</span>
             {photoNav.nextPhotoUrl ? (
@@ -278,10 +290,10 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
                 to={photoNav.nextPhotoUrl}
                 className="text-gray-500 hover:text-black dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
               >
-                NEXT
+                {locale === "es" ? "SIG" : "NEXT"}
               </Link>
             ) : (
-              <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">NEXT</span>
+              <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">{locale === "es" ? "SIG" : "NEXT"}</span>
             )}
           </div>
           
@@ -290,10 +302,10 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
             to={photoNav.thumbnailsUrl}
             className="block text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors"
           >
-            <span className="text-xs uppercase tracking-wide">SHOW THUMBNAILS</span>
+            <span className="text-xs uppercase tracking-wide">{locale === "es" ? "VER MINIATURAS" : "SHOW THUMBNAILS"}</span>
             {photoNav.galleryTitle && (
               <p className="text-[11px] mt-0.5">
-                from <span className="font-bold">{photoNav.galleryTitle}</span>
+                {locale === "es" ? "de" : "from"} <span className="font-bold">{photoNav.galleryTitle}</span>
               </p>
             )}
           </Link>
@@ -337,7 +349,7 @@ function NavSection({
         // Top-level expanded item with no expanded descendants - collapse all and go home
         e.preventDefault();
         onCollapseAll();
-        navigate("/");
+        navigate(item.path.split("/gallery/")[0] || "/");
       } else if (isExpanded && hasExpandedDescendants) {
         // Already expanded with expanded descendants - collapse descendants only
         // Navigation still happens via Link

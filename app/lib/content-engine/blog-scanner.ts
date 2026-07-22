@@ -8,10 +8,16 @@
 import matter from "gray-matter";
 import type {
   BlogPost,
+  BlogPostTranslation,
   PostFrontmatter,
   StorageAdapter,
   FileInfo,
 } from "./types";
+import {
+  normalizeLocale,
+  resolveTranslation,
+  type Locale,
+} from "~/lib/i18n";
 import {
   folderNameToTitle,
   toSlug,
@@ -48,8 +54,11 @@ export async function scanBlog(storage: StorageAdapter): Promise<BlogPost[]> {
 
   for (const [directory, files] of filesByDirectory) {
     if (directory === BLOG_PATH) {
-      for (const file of files) {
-        const post = await scanBlogFile(storage, file);
+      for (const file of files.filter((candidate) => !localeFromVariantFilename(candidate.name))) {
+        const variants = files.filter((candidate) =>
+          localizedVariantBelongsTo(candidate.name, file.name),
+        );
+        const post = await scanBlogFile(storage, file, variants);
         if (post) posts.push(post);
       }
       continue;
@@ -58,7 +67,7 @@ export async function scanBlog(storage: StorageAdapter): Promise<BlogPost[]> {
     const mainMdFile = findMainMarkdownFile(files);
     if (!mainMdFile) continue;
 
-    const post = await scanBlogFolder(storage, directory, mainMdFile, items);
+    const post = await scanBlogFolder(storage, directory, mainMdFile, files, items);
     if (post) posts.push(post);
   }
 
@@ -72,6 +81,7 @@ async function scanBlogFolder(
   storage: StorageAdapter,
   folderPath: string,
   mainMdFile: FileInfo,
+  markdownFiles: FileInfo[],
   allItems: FileInfo[]
 ): Promise<BlogPost | null> {
   const defaultSlug = folderPath.slice(`${BLOG_PATH}/`.length);
@@ -92,7 +102,9 @@ async function scanBlogFolder(
     return null;
   }
 
-  return parseMarkdownPost(content, folderPath, defaultSlug, images);
+  const post = parseMarkdownPost(content, folderPath, defaultSlug, images);
+  const variants = markdownFiles.filter((file) => localeFromVariantFilename(file.name));
+  return attachTranslations(storage, post, variants, folderPath, defaultSlug, images);
 }
 
 /**
@@ -100,7 +112,8 @@ async function scanBlogFolder(
  */
 async function scanBlogFile(
   storage: StorageAdapter,
-  file: FileInfo
+  file: FileInfo,
+  variants: FileInfo[] = [],
 ): Promise<BlogPost | null> {
   const content = await storage.getText(file.path);
   
@@ -109,18 +122,20 @@ async function scanBlogFile(
   }
 
   const slug = getBasename(file.name);
-  return parseMarkdownPost(content, file.path, slug, []);
+  const post = parseMarkdownPost(content, file.path, slug, []);
+  return attachTranslations(storage, post, variants, file.path, slug, []);
 }
 
 /**
  * Find the main markdown file in a folder
  */
 function findMainMarkdownFile(files: FileInfo[]): FileInfo | null {
+  const baseFiles = files.filter((file) => !localeFromVariantFilename(file.name));
   // Priority: index.md > post.md > README.md > first .md file
   const priority = ["index.md", "post.md", "readme.md"];
   
   for (const name of priority) {
-    const file = files.find((f) => {
+    const file = baseFiles.find((f) => {
       const basename = f.name.split("/").pop()?.toLowerCase();
       return basename === name;
     });
@@ -130,7 +145,59 @@ function findMainMarkdownFile(files: FileInfo[]): FileInfo | null {
   }
   
   // Return first markdown file
-  return files[0] || null;
+  return baseFiles[0] || null;
+}
+
+function localeFromVariantFilename(filename: string): Locale | null {
+  const basename = filename.split("/").pop() || filename;
+  const match = basename.match(/\.(es|en)\.md$/i);
+  return normalizeLocale(match?.[1]);
+}
+
+function localizedVariantBelongsTo(variantName: string, baseName: string): boolean {
+  const locale = localeFromVariantFilename(variantName);
+  if (!locale) return false;
+  const expected = baseName.replace(/\.md$/i, `.${locale}.md`);
+  return variantName.toLowerCase() === expected.toLowerCase();
+}
+
+function translationFromPost(post: BlogPost, locale: Locale, path = post.path): BlogPostTranslation {
+  return {
+    locale,
+    title: post.title,
+    description: post.description,
+    content: post.content,
+    excerpt: post.excerpt || post.description || "",
+    readingTime: post.readingTime || 1,
+    format: post.format === "html" ? "html" : "markdown",
+    path,
+    tags: post.tags,
+  };
+}
+
+async function attachTranslations(
+  storage: StorageAdapter,
+  post: BlogPost,
+  variantFiles: FileInfo[],
+  postPath: string,
+  defaultSlug: string,
+  images: string[],
+): Promise<BlogPost> {
+  const sourceLocale = normalizeLocale(post.locale) || "en";
+  const translations: NonNullable<BlogPost["translations"]> = {
+    [sourceLocale]: translationFromPost(post, sourceLocale),
+  };
+
+  for (const file of variantFiles) {
+    const locale = localeFromVariantFilename(file.name);
+    if (!locale) continue;
+    const content = await storage.getText(file.path);
+    if (!content) continue;
+    const variant = parseMarkdownPost(content, postPath, defaultSlug, images);
+    translations[locale] = translationFromPost(variant, locale, file.path);
+  }
+
+  return { ...post, locale: sourceLocale, translations };
 }
 
 /**
@@ -193,9 +260,39 @@ function parseMarkdownPost(
     format: frontmatter.format,
     sourceUrl: frontmatter.sourceUrl,
     author: frontmatter.author,
+    locale: normalizeLocale(frontmatter.locale) || "en",
   };
 
   return post;
+}
+
+export type LocalizedBlogPost = BlogPost & {
+  requestedLocale: Locale;
+  resolvedLocale: Locale;
+  availableLocales: Locale[];
+  isFallback: boolean;
+};
+
+export function localizeBlogPost(post: BlogPost, locale: Locale): LocalizedBlogPost {
+  const sourceLocale = normalizeLocale(post.locale) || "en";
+  const base = translationFromPost(post, sourceLocale);
+  const resolution = resolveTranslation(base, sourceLocale, post.translations, locale);
+  const translation = resolution.value;
+
+  return {
+    ...post,
+    title: translation.title,
+    description: translation.description,
+    content: translation.content,
+    excerpt: translation.excerpt,
+    readingTime: translation.readingTime,
+    format: translation.format,
+    tags: translation.tags || post.tags,
+    requestedLocale: resolution.requestedLocale,
+    resolvedLocale: resolution.resolvedLocale,
+    availableLocales: resolution.availableLocales,
+    isFallback: resolution.isFallback,
+  };
 }
 
 /**

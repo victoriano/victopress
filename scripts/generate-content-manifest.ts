@@ -44,7 +44,7 @@ async function scanDirectory(dir: string, files: ManifestFile[], basePath: strin
   
   for (const entry of entries) {
     // Skip hidden files and directories
-    if (entry.name.startsWith(".")) continue;
+    if (entry.name.startsWith(".") || entry.name === "_content-index.json") continue;
     
     const fullPath = join(dir, entry.name);
     const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;

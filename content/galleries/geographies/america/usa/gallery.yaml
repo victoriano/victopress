@@ -1,3 +1,8 @@
 title: "USA"
 description: "Photography from the United States"
+locale: en
+translations:
+  es:
+    title: "Estados Unidos"
+    description: "Fotografías de Estados Unidos"
 order: 1

@@ -1,3 +1,8 @@
 title: "South of Spain"
 description: "Photography from Andalucía and southern Spain"
+locale: en
+translations:
+  es:
+    title: "Sur de España"
+    description: "Fotografías de Andalucía y el sur de España"
 order: 2

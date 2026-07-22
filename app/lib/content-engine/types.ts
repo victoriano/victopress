@@ -1,3 +1,5 @@
+import type { Locale, TranslationMap } from "~/lib/i18n";
+
 /**
  * VictoPress Content Engine Types
  * 
@@ -57,6 +59,12 @@ export interface Photo {
   
   /** Photo description/caption */
   description?: string;
+
+  /** Language of the legacy top-level title and description. */
+  locale?: Locale;
+
+  /** Bilingual editorial title and caption stored in photos.yaml. */
+  translations?: TranslationMap<PhotoTranslation>;
   
   /** Tags/keywords */
   tags?: string[];
@@ -84,6 +92,12 @@ export interface Photo {
   lastModified?: string;
 }
 
+export interface PhotoTranslation {
+  title?: string;
+  description?: string;
+  tags?: string[];
+}
+
 // =============================================================================
 // Gallery Types
 // =============================================================================
@@ -97,6 +111,12 @@ export interface GalleryMetadata {
   
   /** Gallery description */
   description?: string;
+
+  /** Language of the legacy top-level title and description. */
+  locale?: Locale;
+
+  /** Bilingual public metadata. */
+  translations?: TranslationMap<GalleryTranslation>;
 
   /** Optional editorial guidance used only by AI gallery classification */
   classificationHint?: string;
@@ -124,6 +144,12 @@ export interface GalleryMetadata {
   
   /** Include photos from nested galleries (default: true) */
   includeNestedPhotos?: boolean;
+}
+
+export interface GalleryTranslation {
+  title?: string;
+  description?: string;
+  tags?: string[];
 }
 
 export interface Gallery extends GalleryMetadata {
@@ -178,6 +204,20 @@ export interface PostFrontmatter {
   /** Original URL retained for migration audits and redirects. */
   sourceUrl?: string;
   author?: string;
+  /** Language of this Markdown edition. */
+  locale?: Locale;
+}
+
+export interface BlogPostTranslation {
+  locale: Locale;
+  title: string;
+  description?: string;
+  content: string;
+  excerpt: string;
+  readingTime: number;
+  format: "markdown" | "html";
+  path: string;
+  tags?: string[];
 }
 
 export interface BlogPost extends PostFrontmatter {
@@ -210,6 +250,9 @@ export interface BlogPost extends PostFrontmatter {
   
   /** Whether frontmatter was present */
   hasFrontmatter: boolean;
+
+  /** All authored language editions, including the source edition. */
+  translations?: TranslationMap<BlogPostTranslation>;
 }
 
 // =============================================================================
@@ -225,6 +268,17 @@ export interface PageFrontmatter {
   layout?: string;
   /** Hide from navigation */
   hidden?: boolean;
+  /** Language of this page edition. */
+  locale?: Locale;
+}
+
+export interface PageTranslation {
+  locale: Locale;
+  title: string;
+  description?: string;
+  content: string;
+  path: string;
+  isHtml: boolean;
 }
 
 export interface Page extends PageFrontmatter {
@@ -254,6 +308,9 @@ export interface Page extends PageFrontmatter {
   
   /** Whether content is HTML (not markdown) */
   isHtml: boolean;
+
+  /** All authored language editions, including the source edition. */
+  translations?: TranslationMap<PageTranslation>;
 }
 
 // =============================================================================

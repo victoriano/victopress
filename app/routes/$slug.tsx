@@ -11,39 +11,50 @@ import { json } from "@remix-run/cloudflare";
 import { getPageBySlug, getStorage, getNavigationFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
+import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
+import { readSiteLanguageSettings } from "~/lib/site-languages.server";
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
+export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
+
+export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
   if (!data?.page) {
-    return [{ title: "Page Not Found - VictoPress" }];
+    return [{ title: `${params.locale === "es" ? "Página no encontrada" : "Page not found"} - VictoPress` }];
   }
   return [
     { title: `${data.page.title} - VictoPress` },
     { name: "description", content: data.page.description },
+    { tagName: "link", rel: "canonical", href: data.alternates.canonical },
+    ...(data.alternates.es ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "es", href: data.alternates.es }] : []),
+    ...(data.alternates.en ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "en", href: data.alternates.en }] : []),
   ];
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
+  const storage = getStorage(context, request);
+  const siteLanguages = await readSiteLanguageSettings(storage);
+  const locale = requireRouteLocale(request, params.locale, siteLanguages);
   const { slug } = params;
   if (!slug) {
-    throw new Response("Not Found", { status: 404 });
+    throw new Response(locale === "es" ? "Página no encontrada" : "Page not found", { status: 404 });
   }
-
-  const storage = getStorage(context);
 
   // Load page and navigation from index in parallel
   const [page, navigation] = await Promise.all([
-    getPageBySlug(storage, slug),
-    getNavigationFromIndex(storage),
+    getPageBySlug(storage, slug, locale),
+    getNavigationFromIndex(storage, locale),
   ]);
 
   if (!page || page.hidden) {
-    throw new Response("Not Found", { status: 404 });
+    throw new Response(locale === "es" ? "Página no encontrada" : "Page not found", { status: 404 });
   }
 
+  const alternates = localizedAlternates(request, locale, `/${slug}`, siteLanguages);
   return json({
     page,
     navigation,
     siteName: "Victoriano Izquierdo",
+    locale,
+    alternates,
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",
@@ -54,16 +65,17 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 }
 
 export default function StaticPage() {
-  const { page, navigation, siteName, socialLinks } = useLoaderData<typeof loader>();
+  const { page, navigation, siteName, socialLinks, locale } = useLoaderData<typeof loader>();
 
   return (
     <Layout
       navigation={navigation}
       siteName={siteName}
       socialLinks={socialLinks}
+      locale={locale}
     >
       {/* Mobile Navigation */}
-      <GalleryBreadcrumb navigation={navigation} />
+      <GalleryBreadcrumb navigation={navigation} locale={locale} />
       
       {/* Custom CSS if provided */}
       {page.customCss && (

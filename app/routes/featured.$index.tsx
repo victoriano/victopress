@@ -16,6 +16,11 @@ import { useEffect, useCallback, useState } from "react";
 import yaml from "js-yaml";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
 import { getOptimizedImageUrl, getOriginalImageUrl } from "~/utils/image-optimization";
+import { localizedPath, photoMessages } from "~/lib/i18n";
+import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
+import { readSiteLanguageSettings } from "~/lib/site-languages.server";
+
+export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
 
 interface HomeConfig {
   photos?: Array<{
@@ -24,20 +29,25 @@ interface HomeConfig {
   }>;
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
+export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
   if (!data?.photo) {
-    return [{ title: "Photo Not Found - VictoPress" }];
+    return [{ title: `${params.locale === "es" ? "Foto no encontrada" : "Photo not found"} - VictoPress` }];
   }
   return [
-    { title: `${data.photo.title || data.photo.filename} - Featured` },
-    { name: "description", content: "Featured photo" },
+    { title: `${data.photo.title || data.photo.filename} - ${data.locale === "es" ? "Destacada" : "Featured"}` },
+    { name: "description", content: data.locale === "es" ? "Foto destacada" : "Featured photo" },
+    { tagName: "link", rel: "canonical", href: data.alternates.canonical },
+    ...(data.alternates.es ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "es", href: data.alternates.es }] : []),
+    ...(data.alternates.en ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "en", href: data.alternates.en }] : []),
   ];
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
+  const storage = getStorage(context, request);
+  const siteLanguages = await readSiteLanguageSettings(storage);
+  const locale = requireRouteLocale(request, params.locale, siteLanguages);
+  const messages = photoMessages[locale];
   const index = parseInt(params.index || "0", 10);
-  
-  const storage = getStorage(context);
   
   // Try to load home.yaml config for custom photo selection
   let homeConfig: HomeConfig | null = null;
@@ -52,12 +62,12 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   
   // Load navigation and home photos from index in parallel (fast!)
   const [navigation, homePhotos] = await Promise.all([
-    getNavigationFromIndex(storage),
-    getHomePhotosFromIndex(storage, homeConfig ?? undefined),
+    getNavigationFromIndex(storage, locale),
+    getHomePhotosFromIndex(storage, homeConfig ?? undefined, locale),
   ]);
 
   if (index < 0 || index >= homePhotos.length) {
-    throw new Response("Photo Not Found", { status: 404 });
+    throw new Response(messages.photoNotFound, { status: 404 });
   }
 
   const photo = homePhotos[index];
@@ -79,6 +89,13 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     ? getOptimizedImageUrl(nextPhoto.path, { width: 1600 })
     : null;
 
+  const alternates = localizedAlternates(
+    request,
+    locale,
+    `/featured/${index}`,
+    siteLanguages,
+  );
+
   return json({
     photo,
     photoUrl,
@@ -91,6 +108,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     totalPhotos: homePhotos.length,
     navigation,
     siteName: "Victoriano Izquierdo",
+    locale,
+    alternates,
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",
@@ -114,7 +133,9 @@ export default function FeaturedPhotoPage() {
     navigation,
     siteName,
     socialLinks,
+    locale,
   } = useLoaderData<typeof loader>();
+  const messages = photoMessages[locale];
 
   const navigate = useNavigate();
   const [useOriginal, setUseOriginal] = useState(false);
@@ -160,14 +181,14 @@ export default function FeaturedPhotoPage() {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft" && prevIndex !== null) {
-        navigate(`/featured/${prevIndex}`);
+        navigate(localizedPath(locale, `/featured/${prevIndex}`));
       } else if (e.key === "ArrowRight" && nextIndex !== null) {
-        navigate(`/featured/${nextIndex}`);
+        navigate(localizedPath(locale, `/featured/${nextIndex}`));
       } else if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Escape") {
-        navigate("/");
+        navigate(localizedPath(locale, "/"));
       }
     },
-    [navigate, prevIndex, nextIndex]
+    [navigate, prevIndex, nextIndex, locale]
   );
 
   useEffect(() => {
@@ -182,9 +203,9 @@ export default function FeaturedPhotoPage() {
 
   // Photo navigation for sidebar
   const photoNav = {
-    prevPhotoUrl: prevIndex !== null ? `/featured/${prevIndex}` : undefined,
-    nextPhotoUrl: nextIndex !== null ? `/featured/${nextIndex}` : undefined,
-    thumbnailsUrl: "/",
+    prevPhotoUrl: prevIndex !== null ? localizedPath(locale, `/featured/${prevIndex}`) : undefined,
+    nextPhotoUrl: nextIndex !== null ? localizedPath(locale, `/featured/${nextIndex}`) : undefined,
+    thumbnailsUrl: localizedPath(locale, "/"),
     title: photoTitle,
     description: photoDescription,
     year: photoYear,
@@ -199,9 +220,10 @@ export default function FeaturedPhotoPage() {
       siteName={siteName}
       socialLinks={socialLinks}
       photoNav={photoNav}
+      locale={locale}
     >
       {/* Mobile Navigation - show path to photo's original gallery */}
-      <GalleryBreadcrumb currentSlug={photo.gallerySlug} navigation={navigation} />
+      <GalleryBreadcrumb currentSlug={photo.gallerySlug} navigation={navigation} locale={locale} />
 
       {/* Mobile layout - simple stacked layout */}
       <div className="lg:hidden">
@@ -209,10 +231,10 @@ export default function FeaturedPhotoPage() {
         {photo.galleryTitle && (
           <div className="bg-white dark:bg-gray-950 px-4 py-2 border-b border-gray-100 dark:border-gray-800">
             <Link
-              to={`/gallery/${photo.gallerySlug}`}
+              to={localizedPath(locale, `/gallery/${photo.gallerySlug}`)}
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"
             >
-              Go to <span className="font-semibold">{photo.galleryTitle}</span> Gallery →
+              {messages.goToGallery} <span className="font-semibold">{photo.galleryTitle}</span>{locale === "en" ? " Gallery" : ""} →
             </Link>
           </div>
         )}
@@ -233,16 +255,16 @@ export default function FeaturedPhotoPage() {
           {/* Invisible tap zones - left half = prev, right half = next */}
           <div className="absolute inset-0 flex z-10">
             <Link
-              to={prevIndex !== null ? `/featured/${prevIndex}` : "#"}
+              to={prevIndex !== null ? localizedPath(locale, `/featured/${prevIndex}`) : "#"}
               onClick={(e) => prevIndex === null && e.preventDefault()}
               className={`w-1/2 h-full focus:outline-none ${prevIndex === null ? "pointer-events-none" : ""}`}
-              aria-label="Previous photo"
+              aria-label={messages.previousPhoto}
             />
             <Link
-              to={nextIndex !== null ? `/featured/${nextIndex}` : "#"}
+              to={nextIndex !== null ? localizedPath(locale, `/featured/${nextIndex}`) : "#"}
               onClick={(e) => nextIndex === null && e.preventDefault()}
               className={`w-1/2 h-full focus:outline-none ${nextIndex === null ? "pointer-events-none" : ""}`}
-              aria-label="Next photo"
+              aria-label={messages.nextPhoto}
             />
           </div>
         </div>
@@ -266,30 +288,30 @@ export default function FeaturedPhotoPage() {
           <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
             {/* Photo counter */}
             <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-              {currentIndex + 1} of {totalPhotos}
+              {currentIndex + 1} {locale === "es" ? "de" : "of"} {totalPhotos}
             </span>
             <span className="text-gray-300 dark:text-gray-600">·</span>
             {/* Prev/Next */}
             {prevIndex !== null ? (
               <Link
-                to={`/featured/${prevIndex}`}
+                to={localizedPath(locale, `/featured/${prevIndex}`)}
                 className="hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide"
               >
-                PREV
+                {locale === "es" ? "ANT" : "PREV"}
               </Link>
             ) : (
-              <span className="text-gray-300 dark:text-gray-600 uppercase text-xs tracking-wide">PREV</span>
+              <span className="text-gray-300 dark:text-gray-600 uppercase text-xs tracking-wide">{locale === "es" ? "ANT" : "PREV"}</span>
             )}
             <span className="text-gray-300 dark:text-gray-600">/</span>
             {nextIndex !== null ? (
               <Link
-                to={`/featured/${nextIndex}`}
+                to={localizedPath(locale, `/featured/${nextIndex}`)}
                 className="hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide"
               >
-                NEXT
+                {locale === "es" ? "SIG" : "NEXT"}
               </Link>
             ) : (
-              <span className="text-gray-300 dark:text-gray-600 uppercase text-xs tracking-wide">NEXT</span>
+              <span className="text-gray-300 dark:text-gray-600 uppercase text-xs tracking-wide">{locale === "es" ? "SIG" : "NEXT"}</span>
             )}
           </div>
         </div>
@@ -316,9 +338,9 @@ export default function FeaturedPhotoPage() {
             {/* Left zone - Previous */}
             {prevIndex !== null ? (
               <Link
-                to={`/featured/${prevIndex}`}
+                to={localizedPath(locale, `/featured/${prevIndex}`)}
                 className="w-1/3 h-full cursor-prev focus:outline-none"
-                aria-label="Previous photo"
+                aria-label={messages.previousPhoto}
               />
             ) : (
               <div className="w-1/3 h-full" />
@@ -326,17 +348,17 @@ export default function FeaturedPhotoPage() {
             
             {/* Center zone - Thumbnails */}
             <Link
-              to="/"
+              to={localizedPath(locale, "/")}
               className="w-1/3 h-full cursor-thumbnails focus:outline-none"
-              aria-label="Show thumbnails"
+              aria-label={messages.showThumbnails}
             />
             
             {/* Right zone - Next */}
             {nextIndex !== null ? (
               <Link
-                to={`/featured/${nextIndex}`}
+                to={localizedPath(locale, `/featured/${nextIndex}`)}
                 className="w-1/3 h-full cursor-next focus:outline-none"
-                aria-label="Next photo"
+                aria-label={messages.nextPhoto}
               />
             ) : (
               <div className="w-1/3 h-full" />
@@ -347,4 +369,3 @@ export default function FeaturedPhotoPage() {
     </Layout>
   );
 }
-

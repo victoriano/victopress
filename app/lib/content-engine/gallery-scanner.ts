@@ -24,6 +24,8 @@ import {
   sortPhotosAlphabetically,
 } from "./utils";
 import { extractExif } from "./exif";
+import { normalizeLocale, type TranslationMap } from "~/lib/i18n";
+import type { GalleryTranslation, PhotoTranslation } from "./types";
 
 const GALLERIES_PATH = "galleries";
 
@@ -174,6 +176,8 @@ async function scanGalleryFolder(
     slug: yamlMetadata?.slug || fullSlug,
     title: yamlMetadata?.title || autoTitle,
     description: yamlMetadata?.description,
+    locale: normalizeLocale(yamlMetadata?.locale) || "en",
+    translations: yamlMetadata?.translations,
     classificationHint: yamlMetadata?.classificationHint,
     path: folderPath,
     cover: coverPath,
@@ -266,6 +270,8 @@ interface PhotoYamlEntry {
   tags?: string[];
   hidden?: boolean;
   order?: number;
+  locale?: "es" | "en";
+  translations?: TranslationMap<PhotoTranslation>;
 }
 
 /**
@@ -362,6 +368,9 @@ async function scanPhotos(
       description:
         yamlOverride?.description ||
         exifData?.imageDescription,
+
+      locale: normalizeLocale(yamlOverride?.locale) || "en",
+      translations: yamlOverride?.translations,
       
       // Tags: YAML > EXIF keywords
       tags:
@@ -397,6 +406,18 @@ async function scanPhotos(
  */
 function sortPhotos(photos: Photo[], photosYaml: PhotoYamlEntry[] | null): Photo[] {
   if (photosYaml && photosYaml.length > 0) {
+    // A partial sidecar containing only translated metadata must not move those
+    // photos to the front. Array order remains authoritative when the sidecar
+    // covers the full gallery; partial sidecars need an explicit `order`.
+    const yamlFilenames = new Set(
+      photosYaml.map((entry) => entry.filename || entry.file).filter(Boolean),
+    );
+    const hasExplicitOrder = photosYaml.some((entry) => entry.order !== undefined);
+    const coversWholeGallery = photos.every((photo) => yamlFilenames.has(photo.filename));
+    if (!hasExplicitOrder && !coversWholeGallery) {
+      return sortPhotosAlphabetically(photos);
+    }
+
     // Use YAML order
     const orderMap = new Map<string, number>();
     photosYaml.forEach((entry, index) => {
@@ -456,6 +477,8 @@ export interface ParentGalleryMetadata {
   slug: string;
   title?: string;
   order?: number;
+  locale?: "es" | "en";
+  translations?: TranslationMap<GalleryTranslation>;
 }
 
 /**
@@ -491,6 +514,8 @@ async function scanParentMetadataRecursive(
           slug: currentSlug,
           title: data.title,
           order: data.order,
+          locale: normalizeLocale(data.locale) || "en",
+          translations: data.translations,
         });
       } catch {
         // Invalid YAML, skip

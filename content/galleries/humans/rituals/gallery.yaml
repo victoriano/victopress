@@ -1,3 +1,8 @@
 title: "Rituals"
 description: "Cultural ceremonies, traditions, and rituals"
+locale: en
+translations:
+  es:
+    title: "Rituales"
+    description: "Ceremonias culturales, tradiciones y rituales"
 order: 3

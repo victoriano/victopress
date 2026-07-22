@@ -1,5 +1,6 @@
 import { Link, useRouteLoaderData } from "@remix-run/react";
 import { useEffect, useState } from "react";
+import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
 interface SimilarPhoto {
   assetId: string;
@@ -20,6 +21,7 @@ interface SimilarPhotosResponse {
 interface SimilarPhotosProps {
   photoPath: string;
   limit?: number;
+  locale: Locale;
 }
 
 type LoadState =
@@ -31,10 +33,11 @@ type LoadState =
  * Loads recommendations after the main photo has rendered. Failures are kept
  * deliberately silent so this optional feature can never disrupt photo pages.
  */
-export function SimilarPhotos({ photoPath, limit = 8 }: SimilarPhotosProps) {
+export function SimilarPhotos({ photoPath, limit = 8, locale }: SimilarPhotosProps) {
   const rootData = useRouteLoaderData<{ photoAiEnabled?: boolean }>("root");
   const photoAiEnabled = rootData?.photoAiEnabled === true;
   const [state, setState] = useState<LoadState>({ status: "loading", photos: [] });
+  const messages = photoMessages[locale];
 
   useEffect(() => {
     if (!photoAiEnabled) {
@@ -49,6 +52,7 @@ export function SimilarPhotos({ photoPath, limit = 8 }: SimilarPhotosProps) {
         const searchParams = new URLSearchParams({
           path: photoPath,
           limit: String(limit),
+          locale,
         });
         const response = await fetch(`/api/photos/similar?${searchParams.toString()}`, {
           method: "GET",
@@ -73,14 +77,14 @@ export function SimilarPhotos({ photoPath, limit = 8 }: SimilarPhotosProps) {
 
     void loadSimilarPhotos();
     return () => controller.abort();
-  }, [limit, photoAiEnabled, photoPath]);
+  }, [limit, locale, photoAiEnabled, photoPath]);
 
   if (!photoAiEnabled) return null;
 
   if (state.status === "hidden") return null;
 
   if (state.status === "loading") {
-    return <SimilarPhotosSkeleton />;
+    return <SimilarPhotosSkeleton locale={locale} />;
   }
 
   return (
@@ -91,13 +95,13 @@ export function SimilarPhotos({ photoPath, limit = 8 }: SimilarPhotosProps) {
       <div className="mx-auto max-w-7xl">
         <div className="mb-4 flex items-baseline justify-between gap-4">
           <h2 id="similar-photos-heading" className="text-base font-semibold text-gray-900 dark:text-white">
-            Similar photos
+            {messages.similarPhotos}
           </h2>
-          <span className="text-xs text-gray-400 dark:text-gray-500">Selected visually</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{messages.selectedVisually}</span>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {state.photos.map((photo) => (
-            <SimilarPhotoCard key={photo.assetId || photo.path} photo={photo} />
+            <SimilarPhotoCard key={photo.assetId || photo.path} photo={photo} locale={locale} />
           ))}
         </div>
       </div>
@@ -105,16 +109,17 @@ export function SimilarPhotos({ photoPath, limit = 8 }: SimilarPhotosProps) {
   );
 }
 
-function SimilarPhotoCard({ photo }: { photo: SimilarPhoto }) {
+function SimilarPhotoCard({ photo, locale }: { photo: SimilarPhoto; locale: Locale }) {
   const [imageFailed, setImageFailed] = useState(false);
   const title = photo.title || photo.filename;
+  const messages = photoMessages[locale];
   const accessibleLabel = photo.galleryTitle
-    ? `View ${title} from ${photo.galleryTitle}`
-    : `View ${title}`;
+    ? `${messages.viewPhoto} ${title} ${messages.fromGallery} ${photo.galleryTitle}`
+    : `${messages.viewPhoto} ${title}`;
 
   return (
     <Link
-      to={photo.href}
+      to={localizedPath(locale, photo.href)}
       prefetch="intent"
       aria-label={accessibleLabel}
       className="group block min-w-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 dark:focus-visible:ring-white dark:focus-visible:ring-offset-gray-950"
@@ -122,7 +127,7 @@ function SimilarPhotoCard({ photo }: { photo: SimilarPhoto }) {
       <div className="relative aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-900">
         {imageFailed ? (
           <div className="flex h-full items-center justify-center px-3 text-center text-xs text-gray-400 dark:text-gray-500">
-            Preview unavailable
+            {messages.previewUnavailable}
           </div>
         ) : (
           <img
@@ -145,11 +150,12 @@ function SimilarPhotoCard({ photo }: { photo: SimilarPhoto }) {
   );
 }
 
-function SimilarPhotosSkeleton() {
+function SimilarPhotosSkeleton({ locale }: { locale: Locale }) {
+  const messages = photoMessages[locale];
   return (
     <section
       aria-busy="true"
-      aria-label="Loading similar photos"
+      aria-label={messages.loadingSimilarPhotos}
       className="border-t border-gray-100 bg-white px-4 py-8 dark:border-gray-800 dark:bg-gray-950 lg:px-8 lg:py-10"
     >
       <div className="mx-auto max-w-7xl">
@@ -163,7 +169,7 @@ function SimilarPhotosSkeleton() {
             />
           ))}
         </div>
-        <span className="sr-only">Loading similar photos…</span>
+        <span className="sr-only">{messages.loadingSimilarPhotos}…</span>
       </div>
     </section>
   );

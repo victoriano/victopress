@@ -15,6 +15,7 @@ import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getContentIndex } from "~/lib/content-engine";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSiteLanguages } from "~/hooks/useSiteLanguages";
 
 // Drag and drop
 import {
@@ -128,6 +129,7 @@ export default function AdminGalleries() {
     totalPhotos,
     allGalleries,
   } = useLoaderData<typeof loader>();
+  const siteLanguages = useSiteLanguages();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fetcher = useFetcher();
@@ -286,10 +288,11 @@ export default function AdminGalleries() {
     formData.append("action", "create");
     formData.append("slug", data.slug);
     formData.append("title", data.title);
+    formData.append("sourceLocale", siteLanguages.defaultLocale);
     if (data.description) formData.append("description", data.description);
     if (data.parentSlug) formData.append("parentSlug", data.parentSlug);
     fetcher.submit(formData, { method: "POST", action: "/api/admin/galleries" });
-  }, [fetcher]);
+  }, [fetcher, siteLanguages.defaultLocale]);
 
   // Compute parent URL for "go back" navigation
   const parentUrl = useMemo(() => {

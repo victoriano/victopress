@@ -1,5 +1,10 @@
 title: "Travelling"
 description: "Moments captured while traveling"
+locale: en
+translations:
+  es:
+    title: "En tránsito"
+    description: "Momentos capturados durante el viaje"
 classificationHint: >-
   Suggest this gallery only when the photograph was taken from or inside a mode
   of transport while the photographer was travelling. Do not suggest it merely

@@ -1,5 +1,10 @@
 title: "Urban"
 description: "City architecture and urban environments"
+locale: en
+translations:
+  es:
+    title: "Urbano"
+    description: "Arquitectura de ciudad y entornos urbanos"
 classificationHint: >-
   Suggest this gallery only when architecture, the built environment, or
   infrastructure is a main visual subject of the photograph. A scene merely

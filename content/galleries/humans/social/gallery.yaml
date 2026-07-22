@@ -1,3 +1,8 @@
 title: "Social"
 description: "People in social contexts and everyday life"
+locale: en
+translations:
+  es:
+    title: "Vida social"
+    description: "Personas en contextos sociales y escenas de la vida cotidiana"
 order: 2

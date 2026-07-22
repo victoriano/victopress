@@ -14,6 +14,12 @@ import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, isDemoMode, getStorageMode, isDevelopment, getAdapterPreference, getContentIndex, rebuildContentIndex } from "~/lib/content-engine";
 import type { StorageAdapterPreference, ContentIndex } from "~/lib/content-engine";
 import { getPhotoAiConfiguration } from "~/lib/ai/photo-ai-service.server";
+import { normalizeLocale } from "~/lib/i18n";
+import {
+  readSiteLanguageSettings,
+  writeSiteLanguageSettings,
+  type SiteLanguageSettings,
+} from "~/lib/site-languages.server";
 
 type StorageAdapterType = "local" | "r2" | "unconfigured";
 
@@ -42,10 +48,41 @@ interface StorageTestResult {
   };
 }
 
+interface LanguageSettingsActionResult {
+  success: boolean;
+  message: string;
+  languageSettings?: SiteLanguageSettings;
+}
+
 export async function action({ request, context }: ActionFunctionArgs) {
   await checkAdminAuth(request, context);
   
   const storage = getStorage(context, request);
+  const formData = await request.formData();
+  if (formData.get("intent") === "save-language-settings") {
+    const defaultLocale = normalizeLocale(formData.get("defaultLocale")) || "es";
+    const languageSettings: SiteLanguageSettings = {
+      multilingual: formData.get("multilingual") === "true",
+      defaultLocale,
+    };
+
+    try {
+      await writeSiteLanguageSettings(storage, languageSettings);
+      return json<LanguageSettingsActionResult>({
+        success: true,
+        message: languageSettings.multilingual
+          ? "Spanish and English editions are enabled."
+          : `Single-language mode is enabled (${defaultLocale.toUpperCase()}).`,
+        languageSettings,
+      });
+    } catch (error) {
+      return json<LanguageSettingsActionResult>({
+        success: false,
+        message: error instanceof Error ? error.message : "Could not save language settings.",
+      }, { status: 500 });
+    }
+  }
+
   const env = context.cloudflare?.env as Env | undefined;
   const isR2 = !!env?.CONTENT_BUCKET;
   
@@ -100,7 +137,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const photoAiConfig = getPhotoAiConfiguration(context);
   
   // Use pre-calculated content index for fast loading
-  const contentIndex = await getContentIndex(storage);
+  const [contentIndex, siteLanguages] = await Promise.all([
+    getContentIndex(storage),
+    readSiteLanguageSettings(storage),
+  ]);
   
   // Get adapter preference from .dev.vars
   const adapterPreference = getAdapterPreference(context);
@@ -138,13 +178,15 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       analysisModel: photoAiConfig.analysisModel,
       embeddingModel: photoAiConfig.embeddingModel,
     },
+    siteLanguages,
     storageConfig,
   });
 }
 
 export default function AdminSettings() {
-  const { username, isDemoMode: demoMode, stats, indexInfo, env, photoAi, storageConfig } = useLoaderData<typeof loader>();
+  const { username, isDemoMode: demoMode, stats, indexInfo, env, photoAi, siteLanguages, storageConfig } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<{ testResult: StorageTestResult }>();
+  const languageFetcher = useFetcher<LanguageSettingsActionResult>();
   const isTestingStorage = fetcher.state !== "idle";
   const testResult = fetcher.data?.testResult;
 
@@ -270,6 +312,65 @@ export default function AdminSettings() {
         <Section title="Site Information">
           <InfoRow label="Site Name" value="VictoPress" />
           <InfoRow label="Version" value="0.1.0" />
+        </Section>
+
+        <Section title="Languages">
+          <languageFetcher.Form method="post" className="space-y-5">
+            <input type="hidden" name="intent" value="save-language-settings" />
+            <label className="flex items-start justify-between gap-6 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+              <span>
+                <span className="block font-medium text-gray-900 dark:text-white">
+                  Multilingual content
+                </span>
+                <span className="mt-1 block text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  Add separate Spanish and English editions to posts, pages, galleries, photo titles and descriptions.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                name="multilingual"
+                value="true"
+                defaultChecked={siteLanguages.multilingual}
+                className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+            </label>
+
+            <div>
+              <label htmlFor="defaultLocale" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Default and source language for new content
+              </label>
+              <select
+                id="defaultLocale"
+                name="defaultLocale"
+                defaultValue={siteLanguages.defaultLocale}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-900 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              >
+                <option value="es">Español (ES)</option>
+                <option value="en">English (EN)</option>
+              </select>
+              <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                With multilingual content off, visitors and editors see only this edition. Existing translations are preserved and become available again if you re-enable the option.
+              </p>
+            </div>
+
+            {languageFetcher.data && (
+              <p className={`rounded-lg px-4 py-3 text-sm ${
+                languageFetcher.data.success
+                  ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+                  : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+              }`}>
+                {languageFetcher.data.message}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={languageFetcher.state !== "idle"}
+              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:cursor-wait disabled:opacity-60 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
+            >
+              {languageFetcher.state === "idle" ? "Save language settings" : "Saving…"}
+            </button>
+          </languageFetcher.Form>
         </Section>
 
         {/* Content Stats */}

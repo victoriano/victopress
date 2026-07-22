@@ -6,12 +6,14 @@
 
 import { Form, useActionData, useNavigation } from "@remix-run/react";
 import { useState } from "react";
+import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
 interface PasswordProtectedGalleryProps {
   gallerySlug: string;
   galleryTitle: string;
   redirectTo: string;
   error?: string;
+  locale: Locale;
 }
 
 export function PasswordProtectedGallery({
@@ -19,10 +21,12 @@ export function PasswordProtectedGallery({
   galleryTitle,
   redirectTo,
   error: initialError,
+  locale,
 }: PasswordProtectedGalleryProps) {
   const [showPassword, setShowPassword] = useState(false);
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const messages = photoMessages[locale];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
@@ -33,10 +37,10 @@ export function PasswordProtectedGallery({
             <LockIcon className="h-8 w-8 text-gray-500 dark:text-gray-400" />
           </div>
           <h2 className="mt-6 text-2xl font-bold text-gray-900 dark:text-white">
-            Protected Gallery
+            {messages.protectedTitle}
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            <span className="font-medium">{galleryTitle}</span> is password protected.
+            <span className="font-medium">{galleryTitle}</span> {messages.protectedSuffix}
           </p>
         </div>
 
@@ -47,7 +51,7 @@ export function PasswordProtectedGallery({
 
           <div>
             <label htmlFor="password" className="sr-only">
-              Password
+              {messages.password}
             </label>
             <div className="relative">
               <input
@@ -58,12 +62,13 @@ export function PasswordProtectedGallery({
                 autoFocus
                 autoComplete="off"
                 className="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                placeholder="Enter password"
+                placeholder={messages.enterPassword}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                aria-label={showPassword ? messages.hidePassword : messages.showPassword}
               >
                 {showPassword ? (
                   <EyeOffIcon className="h-5 w-5" />
@@ -89,10 +94,10 @@ export function PasswordProtectedGallery({
             {isSubmitting ? (
               <span className="flex items-center">
                 <LoadingSpinner className="h-4 w-4 mr-2" />
-                Verifying...
+                {messages.verifying}
               </span>
             ) : (
-              "Enter Gallery"
+              messages.enterGallery
             )}
           </button>
         </Form>
@@ -100,10 +105,10 @@ export function PasswordProtectedGallery({
         {/* Back Link */}
         <div className="text-center">
           <a
-            href="/"
+            href={localizedPath(locale, "/")}
             className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
           >
-            ← Back to home
+            ← {messages.backHome}
           </a>
         </div>
       </div>

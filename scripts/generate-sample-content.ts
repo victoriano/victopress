@@ -36,6 +36,9 @@ async function scanDirectory(dir: string, files: BundledFile[], basePath: string
   const entries = await readdir(dir, { withFileTypes: true });
   
   for (const entry of entries) {
+    // Runtime cache: never bundle it as source content or the sample bundle
+    // grows after merely visiting a page in development.
+    if (entry.name.startsWith(".") || entry.name === "_content-index.json") continue;
     const fullPath = join(dir, entry.name);
     const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
     const stats = await stat(fullPath);

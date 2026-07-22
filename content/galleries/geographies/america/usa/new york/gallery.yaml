@@ -1,3 +1,8 @@
 title: "New York"
 description: "Photography from New York City"
+locale: en
+translations:
+  es:
+    title: "Nueva York"
+    description: "Fotografías de la ciudad de Nueva York"
 order: 1

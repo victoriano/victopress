@@ -1,3 +1,8 @@
 title: "Asia"
 description: "Photography from Asian countries"
+locale: en
+translations:
+  es:
+    title: "Asia"
+    description: "Fotografías de países asiáticos"
 order: 3

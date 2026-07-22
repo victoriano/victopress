@@ -1,3 +1,8 @@
 title: "Madrid"
 description: "Photography from Madrid, Spain"
+locale: en
+translations:
+  es:
+    title: "Madrid"
+    description: "Fotografías de Madrid, España"
 order: 1

@@ -1,3 +1,8 @@
 title: "Dubai"
 description: "Photography from Dubai"
+locale: en
+translations:
+  es:
+    title: "Dubái"
+    description: "Fotografías de Dubái"
 order: 3

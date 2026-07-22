@@ -1,4 +1,5 @@
 import type { NavItem } from "~/components/Sidebar";
+import { localizedPath, type Locale } from "~/lib/i18n";
 
 interface GalleryLike {
   slug: string;
@@ -27,7 +28,8 @@ interface NavItemWithOrder extends NavItem {
  */
 export function buildNavigation(
   galleries: GalleryLike[], 
-  parentMetadata?: ParentMetadata[]
+  parentMetadata?: ParentMetadata[],
+  locale?: Locale,
 ): NavItem[] {
   // Create a map of parent metadata for quick lookup
   const parentMap = new Map<string, ParentMetadata>();
@@ -62,7 +64,9 @@ export function buildNavigation(
         const parentItem: NavItemWithOrder = {
           title: meta?.title || defaultTitle,
           slug: parentSlug,
-          path: `/gallery/${parentSlug}`,
+          path: locale
+            ? localizedPath(locale, `/gallery/${parentSlug}`)
+            : `/gallery/${parentSlug}`,
           children: [],
           order: meta?.order ?? 999, // Use metadata order or default high
         };
@@ -96,7 +100,9 @@ export function buildNavigation(
     const item: NavItemWithOrder = {
       title: gallery.title,
       slug: gallery.slug,
-      path: `/gallery/${gallery.slug}`,
+      path: locale
+        ? localizedPath(locale, `/gallery/${gallery.slug}`)
+        : `/gallery/${gallery.slug}`,
       children: [],
       order: gallery.order,
     };

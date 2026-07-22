@@ -8,6 +8,8 @@ build/
 dist/
 .cache/
 .wrangler/
+/content/_content-index.json
+/content/.victopress/
 
 # Environment
 .env

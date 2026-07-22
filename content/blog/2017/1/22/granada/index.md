@@ -4,6 +4,7 @@ slug: "2017/1/22/granada"
 date: 2013-09-27
 description: "Los granaínos somos un poco como esos hijos, al que les sale un padre majo, listo, guapo y famoso. Cuando viajamos a la gran ciudad y por el apellido, o el acento, sospechan del paretesco y nos preguntan: - ¿ usted no…"
 author: "Victoriano Izquierdo"
+locale: es
 draft: false
 format: markdown
 coverInBody: true

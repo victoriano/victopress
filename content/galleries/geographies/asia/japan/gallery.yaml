@@ -1,3 +1,8 @@
 title: Japan
 description: Photography from Japan
+locale: en
+translations:
+  es:
+    title: Japón
+    description: Fotografías de Japón
 order: 1

@@ -13,6 +13,7 @@
 import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { isImageFile, getStorage } from "~/lib/content-engine";
 import { detectImageContentType } from "~/lib/image-content-type";
+import { resolveImageAsset } from "~/lib/image-delivery.server";
 
 type RuntimeCacheContext = {
   cloudflare?: {
@@ -111,18 +112,23 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
     const storage = getStorage(context, request);
     
-    // Get the image from storage
-    const buffer = await storage.get(decodedPath);
-    
-    if (!buffer) {
+    const sourceExtensionHint = new URL(request.url).searchParams.get("source");
+    const asset = await resolveImageAsset(storage, decodedPath, sourceExtensionHint);
+
+    if (!asset) {
       return new Response("Not Found", { status: 404 });
     }
-    
-    const contentType = detectImageContentType(buffer, filename);
+
+    const { buffer, path: resolvedPath, usedOriginalFallback } = asset;
+    const resolvedFilename = resolvedPath.split("/").pop() || resolvedPath;
+    const contentType = detectImageContentType(buffer, resolvedFilename);
+    const cacheControl = usedOriginalFallback
+      ? "private, no-store, max-age=0"
+      : "public, max-age=31536000, immutable";
 
     // Include the detected MIME type so an old extension-derived ETag cannot
     // keep stale response metadata after a hard refresh or revalidation.
-    const etag = generateETag(decodedPath, buffer.byteLength, contentType);
+    const etag = generateETag(resolvedPath, buffer.byteLength, contentType);
     
     // Check for conditional request (If-None-Match)
     const ifNoneMatch = request.headers.get("If-None-Match");
@@ -132,9 +138,12 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
         headers: {
           "ETag": etag,
           "Content-Type": contentType,
-          "Cache-Control": "public, max-age=31536000, immutable",
+          "Cache-Control": cacheControl,
           "X-Content-Type-Options": "nosniff",
           "Vary": "Accept-Encoding",
+          ...(usedOriginalFallback
+            ? { "X-VictoPress-Image-Fallback": "original" }
+            : {}),
         },
       });
     }
@@ -142,16 +151,21 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     const response = new Response(buffer, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "Cloudflare-CDN-Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": cacheControl,
+        "Cloudflare-CDN-Cache-Control": cacheControl,
         "ETag": etag,
         "X-Content-Type-Options": "nosniff",
         "Vary": "Accept-Encoding",
         "X-VictoPress-Image-Cache": "MISS",
+        ...(usedOriginalFallback
+          ? { "X-VictoPress-Image-Fallback": "original" }
+          : {}),
       },
     });
 
-    if (runtimeCache) {
+    // Never pin a full-size fallback under a variant URL. Once optimization
+    // creates the WebP, the next request should be able to discover it.
+    if (runtimeCache && !usedOriginalFallback) {
       scheduleCacheWrite(
         context,
         runtimeCache.put(cacheKey, response.clone()).catch(() => undefined),

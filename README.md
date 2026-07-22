@@ -123,6 +123,11 @@ EXIF data is automatically extracted from JPEG files. You can override with `pho
 - filename: "DSC_001.jpg"
   title: "Shibuya Crossing"
   description: "The famous scramble crossing at night"
+  locale: en
+  translations:
+    es:
+      title: "Cruce de Shibuya"
+      description: "El famoso cruce iluminado por la noche"
   tags: ["night", "street"]
   
 - filename: "DSC_002.jpg"
@@ -130,6 +135,12 @@ EXIF data is automatically extracted from JPEG files. You can override with `pho
 ```
 
 ### Blog Posts
+
+For the versioned headless API, external Remix frontend, configuration and
+production cutover, see
+[Headless blog architecture](docs/headless-blog-architecture.md).
+For the ES/EN file model, locale negotiation, CMS edition tabs and public URL
+contract, see [Spanish and English editions](docs/multilingual-content.md).
 
 Markdown files in `content/blog/`:
 

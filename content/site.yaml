@@ -1,0 +1,6 @@
+# VictoPress site-level editorial settings
+language:
+  # Multilingual support is opt-in for each VictoPress installation.
+  # This portfolio enables Spanish and English editions.
+  multilingual: true
+  default: en

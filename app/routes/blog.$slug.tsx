@@ -8,17 +8,22 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { getPostBySlug, getStorage, getNavigationFromIndex } from "~/lib/content-engine";
+import { getPostBySlug, getStorage, getNavigationFromIndex, localizeBlogPost } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { BlogPostContent } from "~/components/BlogPostContent";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
+import { photoMessages } from "~/lib/i18n";
+import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
+import { readSiteLanguageSettings } from "~/lib/site-languages.server";
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
+export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
+
+export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
   if (!data?.post) {
-    return [{ title: "Post Not Found - VictoPress" }];
+    return [{ title: `${params.locale === "es" ? "Artículo no encontrado" : "Post not found"} - VictoPress` }];
   }
 
-  return generateMetaTags({
+  const tags = generateMetaTags({
     title: `${data.post.title} - ${data.siteName}`,
     description: data.post.excerpt || data.post.description,
     url: data.canonicalUrl,
@@ -30,29 +35,44 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
     publishedTime: data.post.date,
     keywords: data.post.tags,
   });
+  return [
+    ...tags,
+    ...(data.alternates.es ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "es", href: data.alternates.es }] : []),
+    ...(data.alternates.en ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "en", href: data.alternates.en }] : []),
+    ...(data.alternates.xDefault ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "x-default", href: data.alternates.xDefault }] : []),
+  ];
 };
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
+  const storage = getStorage(context, request);
+  const siteLanguages = await readSiteLanguageSettings(storage);
+  const locale = requireRouteLocale(request, params.locale, siteLanguages);
   const slug = params.slug || params["*"];
   if (!slug) {
-    throw new Response("Not Found", { status: 404 });
+    throw new Response(locale === "es" ? "Artículo no encontrado" : "Post not found", { status: 404 });
   }
 
   const baseUrl = getBaseUrl(request);
-  const storage = getStorage(context);
-
   // Load post and navigation from index in parallel
-  const [post, navigation] = await Promise.all([
+  const [rawPost, navigation] = await Promise.all([
     getPostBySlug(storage, slug),
-    getNavigationFromIndex(storage),
+    getNavigationFromIndex(storage, locale),
   ]);
 
-  if (!post || post.draft) {
-    throw new Response("Not Found", { status: 404 });
+  if (!rawPost || rawPost.draft) {
+    throw new Response(locale === "es" ? "Artículo no encontrado" : "Post not found", { status: 404 });
   }
 
+  const post = localizeBlogPost(rawPost, locale);
+
   const siteName = "Victoriano Izquierdo";
-  const canonicalUrl = `${baseUrl}/blog/${post.slug}`;
+  const alternates = localizedAlternates(
+    request,
+    locale,
+    `/blog/${post.slug}`,
+    siteLanguages,
+  );
+  const canonicalUrl = alternates.canonical;
   const ogImage = buildImageUrl(baseUrl, post.cover);
 
   return json({
@@ -61,6 +81,8 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     siteName,
     canonicalUrl,
     ogImage,
+    locale,
+    alternates,
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",
@@ -91,7 +113,8 @@ function ShareIcon({ className }: { className?: string }) {
 }
 
 export default function BlogPostPage() {
-  const { post, navigation, siteName, socialLinks } = useLoaderData<typeof loader>();
+  const { post, navigation, siteName, socialLinks, locale } = useLoaderData<typeof loader>();
+  const messages = photoMessages[locale];
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -109,7 +132,7 @@ export default function BlogPostPage() {
     } else {
       // Fallback: copy to clipboard
       await navigator.clipboard.writeText(url);
-      alert("Link copied to clipboard!");
+      alert(messages.linkCopied);
     }
   };
 
@@ -118,6 +141,7 @@ export default function BlogPostPage() {
       navigation={navigation}
       siteName={siteName}
       socialLinks={socialLinks}
+      locale={locale}
     >
       <article className="blog-page-shell blog-entry">
         {/* Header */}
@@ -127,7 +151,7 @@ export default function BlogPostPage() {
           </h1>
           
           <time className="blog-entry-date" dateTime={post.date ? new Date(post.date).toISOString() : undefined}>
-            {post.date && new Date(post.date).toLocaleDateString("en-US", {
+            {post.date && new Date(post.date).toLocaleDateString(locale === "es" ? "es-ES" : "en-US", {
               year: "numeric",
               month: "long",
               day: "2-digit",
@@ -156,7 +180,7 @@ export default function BlogPostPage() {
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               {post.tags && post.tags.length > 0 && (
                 <>
-                  <span>Tags:</span>
+                  <span>{messages.tags}:</span>
                   {post.tags.map((tag) => (
                     <span
                       key={tag}
@@ -175,7 +199,7 @@ export default function BlogPostPage() {
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
             >
               <ShareIcon className="w-4 h-4" />
-              <span>Share</span>
+              <span>{messages.share}</span>
             </button>
           </div>
         </footer>}

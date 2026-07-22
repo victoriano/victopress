@@ -1,3 +1,8 @@
 title: "Australia"
 description: "Photography from Australia"
+locale: en
+translations:
+  es:
+    title: "Australia"
+    description: "Fotografías de Australia"
 order: 4

@@ -4,10 +4,21 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useRouteLoaderData,
 } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type {
+  HeadersFunction,
+  LinksFunction,
+  LoaderFunctionArgs,
+} from "@remix-run/cloudflare";
 import { isPhotoAiEnabled } from "~/lib/ai/photo-ai-service.server";
+import { getStorage } from "~/lib/content-engine";
+import { localeForRequest, localeResponseHeaders } from "~/lib/i18n.server";
+import {
+  DEFAULT_SITE_LANGUAGE_SETTINGS,
+  readSiteLanguageSettings,
+} from "~/lib/site-languages.server";
 
 import stylesheet from "./tailwind.css?url";
 
@@ -19,10 +30,22 @@ const resilientStylesheet = import.meta.env.DEV
   ? "/app/tailwind.css?direct&v=linked-3"
   : stylesheet;
 
-export function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ context, request }: LoaderFunctionArgs) {
   // Only expose the capability bit. The user's Gemini key never reaches the browser.
-  return json({ photoAiEnabled: isPhotoAiEnabled(context) });
+  let siteLanguages = DEFAULT_SITE_LANGUAGE_SETTINGS;
+  try {
+    siteLanguages = await readSiteLanguageSettings(getStorage(context, request));
+  } catch {
+    // Setup and unconfigured-storage routes still need a renderable document.
+  }
+  const locale = localeForRequest(request, siteLanguages);
+  return json(
+    { photoAiEnabled: isPhotoAiEnabled(context), locale, siteLanguages },
+    { headers: localeResponseHeaders(request, locale, siteLanguages) },
+  );
 }
+
+export const headers: HeadersFunction = ({ loaderHeaders }) => loaderHeaders;
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: resilientStylesheet },
@@ -204,8 +227,9 @@ const styleRecoveryScript = `
 `;
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const data = useRouteLoaderData<typeof loader>("root");
   return (
-    <html lang="en" className="h-full" suppressHydrationWarning>
+    <html lang={data?.locale || "es"} className="h-full" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

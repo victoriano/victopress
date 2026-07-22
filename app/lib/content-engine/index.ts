@@ -16,13 +16,17 @@
 // Types
 export type {
   Photo,
+  PhotoTranslation,
   ExifData,
   Gallery,
   GalleryMetadata,
+  GalleryTranslation,
   BlogPost,
   PostFrontmatter,
+  BlogPostTranslation,
   Page,
   PageFrontmatter,
+  PageTranslation,
   Tag,
   ContentIndex,
   FileInfo,
@@ -39,8 +43,10 @@ export {
 // Scanners
 export { scanGalleries, scanParentMetadata } from "./gallery-scanner";
 export type { ParentGalleryMetadata } from "./gallery-scanner";
-export { scanBlog, filterPublishedPosts } from "./blog-scanner";
-export { scanPages, filterVisiblePages, getPageBySlug } from "./page-scanner";
+export { scanBlog, filterPublishedPosts, localizeBlogPost } from "./blog-scanner";
+export type { LocalizedBlogPost } from "./blog-scanner";
+export { scanPages, filterVisiblePages, getPageBySlug, localizePage } from "./page-scanner";
+export type { LocalizedPage } from "./page-scanner";
 
 // Tag system
 export {
@@ -61,6 +67,7 @@ export {
   getIndexAge,
   invalidateContentIndex,
   getNavigationFromIndex,
+  localizeGalleryDataEntry,
   getHomePhotosFromIndex,
   getGalleryFromIndex,
   getAllGalleriesFromIndex,

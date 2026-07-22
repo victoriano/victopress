@@ -1,3 +1,8 @@
 title: "North of Spain"
 description: "Photography from northern Spain"
+locale: en
+translations:
+  es:
+    title: "Norte de España"
+    description: "Fotografías del norte de España"
 order: 3

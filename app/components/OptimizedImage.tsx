@@ -88,15 +88,10 @@ export function OptimizedImage({
         includeOriginal: width !== undefined,
       });
 
-  // Prefer 1600w as the broadly useful fallback, but never point src at a
-  // variant that cannot exist for a smaller source image.
-  const defaultVariantWidth =
-    availableVariantWidths.find((candidate) => candidate >= 1600) ??
-    availableVariantWidths.at(-1);
-  const defaultSrc =
-    useOriginal || defaultVariantWidth === undefined
-      ? getOriginalImageUrl(src)
-      : getOptimizedImageUrl(src, { width: defaultVariantWidth });
+  // Keep the universally available original in `src`. Modern browsers select
+  // an optimized candidate from `srcset`; crawlers, no-JS clients and legacy
+  // browsers still get a valid image before hydration.
+  const defaultSrc = getOriginalImageUrl(src);
 
   // Placeholder styles
   const resolvedAspectRatio =

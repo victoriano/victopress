@@ -15,9 +15,15 @@ import matter from "gray-matter";
 import type {
   Page,
   PageFrontmatter,
+  PageTranslation,
   StorageAdapter,
   FileInfo,
 } from "./types";
+import {
+  normalizeLocale,
+  resolveTranslation,
+  type Locale,
+} from "~/lib/i18n";
 import {
   folderNameToTitle,
   toSlug,
@@ -82,12 +88,14 @@ async function scanPageFolder(
   
   // Check for page.yaml to determine type
   const pageYaml = contents.find((f) => f.name === "page.yaml");
+  let pageConfig: { type?: string; sourceLocale?: string } = {};
   if (pageYaml) {
     const yamlContent = await storage.getText(`${folderPath}/page.yaml`);
     if (yamlContent) {
       try {
         const yaml = await import("js-yaml");
-        const config = yaml.load(yamlContent) as { type?: string };
+        const config = yaml.load(yamlContent) as { type?: string; sourceLocale?: string };
+        pageConfig = config || {};
         // If type is "blog", skip this folder (it's a blog, not a page)
         if (config.type === "blog") {
           return null;
@@ -116,8 +124,12 @@ async function scanPageFolder(
   }
   
   // Find the main content file
-  const htmlFiles = contents.filter((f) => !f.isDirectory && isHtmlFile(f.name));
-  const mdFiles = contents.filter((f) => !f.isDirectory && isMarkdownFile(f.name));
+  const htmlFiles = contents.filter(
+    (f) => !f.isDirectory && isHtmlFile(f.name) && !localeFromVariantFilename(f.name),
+  );
+  const mdFiles = contents.filter(
+    (f) => !f.isDirectory && isMarkdownFile(f.name) && !localeFromVariantFilename(f.name),
+  );
   
   // Priority: index.html > index.md > first html > first md
   let mainFile: FileInfo | null = null;
@@ -160,7 +172,19 @@ async function scanPageFolder(
     customCss = await storage.getText(`${folderPath}/${cssFile.name}`) || undefined;
   }
 
-  return parsePageContent(content, folderPath, folderName, isHtml, customCss);
+  const sourceLocale = normalizeLocale(pageConfig.sourceLocale) || "en";
+  const page = parsePageContent(
+    content,
+    folderPath,
+    folderName,
+    isHtml,
+    customCss,
+    sourceLocale,
+  );
+  const variants = contents.filter(
+    (file) => !file.isDirectory && Boolean(localeFromVariantFilename(file.name)),
+  );
+  return attachPageTranslations(storage, page, variants, folderPath, folderName, customCss);
 }
 
 /**
@@ -179,7 +203,55 @@ async function scanPageFile(
   const isHtml = isHtmlFile(file.name);
   const slug = file.name.replace(/\.(md|html?)$/i, "");
   
-  return parsePageContent(content, file.path, slug, isHtml);
+  return parsePageContent(content, file.path, slug, isHtml, undefined, "en");
+}
+
+function localeFromVariantFilename(filename: string): Locale | null {
+  const match = filename.match(/\.(es|en)\.(?:md|html?)$/i);
+  return normalizeLocale(match?.[1]);
+}
+
+function translationFromPage(page: Page, locale: Locale, path = page.path): PageTranslation {
+  return {
+    locale,
+    title: page.title,
+    description: page.description,
+    content: page.content,
+    path,
+    isHtml: page.isHtml,
+  };
+}
+
+async function attachPageTranslations(
+  storage: StorageAdapter,
+  page: Page,
+  variantFiles: FileInfo[],
+  folderPath: string,
+  defaultSlug: string,
+  customCss?: string,
+): Promise<Page> {
+  const sourceLocale = normalizeLocale(page.locale) || "en";
+  const translations: NonNullable<Page["translations"]> = {
+    [sourceLocale]: translationFromPage(page, sourceLocale),
+  };
+
+  for (const file of variantFiles) {
+    const locale = localeFromVariantFilename(file.name);
+    if (!locale) continue;
+    const content = await storage.getText(file.path);
+    if (!content) continue;
+    const variant = parsePageContent(
+      content,
+      folderPath,
+      defaultSlug,
+      isHtmlFile(file.name),
+      customCss,
+      locale,
+    );
+    translations[locale] = translationFromPage(variant, locale, file.path);
+  }
+
+  return { ...page, locale: sourceLocale, translations };
 }
 
 /**
@@ -190,7 +262,8 @@ function parsePageContent(
   path: string,
   defaultSlug: string,
   isHtml: boolean,
-  customCss?: string
+  customCss?: string,
+  defaultLocale: Locale = "en",
 ): Page {
   let frontmatter: PageFrontmatter = {};
   let pageContent = content;
@@ -229,6 +302,7 @@ function parsePageContent(
     css: frontmatter.css,
     layout: frontmatter.layout,
     hidden: frontmatter.hidden,
+    locale: normalizeLocale(frontmatter.locale) || defaultLocale,
   };
 
   return page;
@@ -246,8 +320,37 @@ export function filterVisiblePages(pages: Page[]): Page[] {
  */
 export async function getPageBySlug(
   storage: StorageAdapter,
-  slug: string
+  slug: string,
+  locale?: Locale,
 ): Promise<Page | null> {
   const pages = await scanPages(storage);
-  return pages.find((p) => p.slug === slug) || null;
+  const page = pages.find((p) => p.slug === slug) || null;
+  return page && locale ? localizePage(page, locale) : page;
+}
+
+export type LocalizedPage = Page & {
+  requestedLocale: Locale;
+  resolvedLocale: Locale;
+  availableLocales: Locale[];
+  isFallback: boolean;
+};
+
+export function localizePage(page: Page, locale: Locale): LocalizedPage {
+  const sourceLocale = normalizeLocale(page.locale) || "en";
+  const base = translationFromPage(page, sourceLocale);
+  const resolution = resolveTranslation(base, sourceLocale, page.translations, locale);
+  const translation = resolution.value;
+
+  return {
+    ...page,
+    title: translation.title,
+    description: translation.description,
+    content: translation.content,
+    path: translation.path,
+    isHtml: translation.isHtml,
+    requestedLocale: resolution.requestedLocale,
+    resolvedLocale: resolution.resolvedLocale,
+    availableLocales: resolution.availableLocales,
+    isFallback: resolution.isFallback,
+  };
 }

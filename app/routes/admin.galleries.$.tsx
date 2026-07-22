@@ -12,6 +12,14 @@ import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getGalleryFromIndex, getAllGalleriesFromIndex, getContentIndex } from "~/lib/content-engine";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import {
+  localizedPath,
+  localeNames,
+  normalizeLocale,
+  SUPPORTED_LOCALES,
+  type Locale,
+} from "~/lib/i18n";
+import { useSiteLanguages } from "~/hooks/useSiteLanguages";
 
 // Drag and drop
 import {
@@ -121,6 +129,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 
 export default function AdminGalleryDetail() {
   const { username, gallery, parentGallery, childGalleries, isVirtualParent, allGalleries } = useLoaderData<typeof loader>();
+  const siteLanguages = useSiteLanguages();
   const navigate = useNavigate();
   const revalidator = useRevalidator();
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
@@ -408,7 +417,12 @@ export default function AdminGalleryDetail() {
           <div className="flex items-center gap-2">
             {!isVirtualParent && (
               <Link
-                to={`/gallery/${gallery.slug}`}
+                to={localizedPath(
+                  siteLanguages.multilingual
+                    ? normalizeLocale(gallery.locale) || siteLanguages.defaultLocale
+                    : siteLanguages.defaultLocale,
+                  `/gallery/${gallery.slug}`,
+                )}
                 target="_blank"
                 className="inline-flex items-center gap-2 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
                 title="View"
@@ -498,8 +512,11 @@ export default function AdminGalleryDetail() {
               formData.append("photoPath", photo.path);
               formData.append("filename", photo.filename);
               
-              if (updates.title !== undefined) formData.append("title", updates.title);
-              if (updates.description !== undefined) formData.append("description", updates.description);
+              formData.append("sourceLocale", updates.sourceLocale);
+              for (const locale of SUPPORTED_LOCALES) {
+                formData.append(`title_${locale}`, updates.editions[locale].title);
+                formData.append(`description_${locale}`, updates.editions[locale].description);
+              }
               if (updates.tags !== undefined) formData.append("tags", updates.tags.join(","));
               if (updates.hidden !== undefined) formData.append("hidden", updates.hidden.toString());
               if (updates.featured !== undefined) formData.append("featured", updates.featured.toString());
@@ -1075,8 +1092,40 @@ function GallerySettingsPanel({
   onDelete: () => void;
   isLoading: boolean;
 }) {
-  const [title, setTitle] = useState(gallery.title);
-  const [description, setDescription] = useState(gallery.description || "");
+  const siteLanguages = useSiteLanguages();
+  const sourceLocale = siteLanguages.multilingual
+    ? normalizeLocale(gallery.locale) || siteLanguages.defaultLocale
+    : siteLanguages.defaultLocale;
+  const initialEditions = (): Record<Locale, { title: string; description: string }> => {
+    const value = {
+      es: { title: "", description: "" },
+      en: { title: "", description: "" },
+    };
+    value[sourceLocale] = {
+      title: gallery.title || "",
+      description: gallery.description || "",
+    };
+    for (const locale of SUPPORTED_LOCALES) {
+      const translation = gallery.translations?.[locale];
+      if (translation) {
+        value[locale] = {
+          title: translation.title || "",
+          description: translation.description || "",
+        };
+      }
+    }
+    return value;
+  };
+  const [activeLocale, setActiveLocale] = useState<Locale>(sourceLocale);
+  const [editions, setEditions] = useState(initialEditions);
+  const title = editions[activeLocale].title;
+  const description = editions[activeLocale].description;
+  const setEditionField = (field: "title" | "description", value: string) => {
+    setEditions((current) => ({
+      ...current,
+      [activeLocale]: { ...current[activeLocale], [field]: value },
+    }));
+  };
   const [classificationHint, setClassificationHint] = useState(
     gallery.classificationHint || "",
   );
@@ -1086,25 +1135,26 @@ function GallerySettingsPanel({
   
   // Track changes
   useEffect(() => {
-    const titleChanged = title !== gallery.title;
-    const descChanged = description !== (gallery.description || "");
+    const editionsChanged = JSON.stringify(editions) !== JSON.stringify(initialEditions());
     const classificationHintChanged =
       classificationHint !== (gallery.classificationHint || "");
     const orderChanged = order !== (gallery.order?.toString() || "");
     const privateChanged = isPrivate !== (gallery.isProtected || false);
     setHasChanges(
-      titleChanged ||
-      descChanged ||
+      editionsChanged ||
       classificationHintChanged ||
       orderChanged ||
       privateChanged,
     );
-  }, [title, description, classificationHint, order, isPrivate, gallery]);
+  }, [editions, classificationHint, order, isPrivate, gallery]);
   
   const handleSave = () => {
     const updates: Record<string, string> = {};
-    if (title !== gallery.title) updates.title = title;
-    if (description !== (gallery.description || "")) updates.description = description;
+    updates.sourceLocale = sourceLocale;
+    for (const locale of SUPPORTED_LOCALES) {
+      updates[`title_${locale}`] = editions[locale].title;
+      updates[`description_${locale}`] = editions[locale].description;
+    }
     if (classificationHint !== (gallery.classificationHint || "")) {
       updates.classificationHint = classificationHint;
     }
@@ -1139,12 +1189,42 @@ function GallerySettingsPanel({
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        {siteLanguages.multilingual && (
+        <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex items-center gap-1" aria-label="Language edition">
+            {SUPPORTED_LOCALES.map((locale) => {
+              const complete = Boolean(editions[locale].title.trim());
+              const active = locale === activeLocale;
+              return (
+                <button
+                  key={locale}
+                  type="button"
+                  onClick={() => setActiveLocale(locale)}
+                  aria-pressed={active}
+                  className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-semibold transition-colors ${
+                    active
+                      ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+                      : "text-gray-500 hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                  }`}
+                >
+                  {locale.toUpperCase()}
+                  <span className={`h-1.5 w-1.5 rounded-full ${complete ? "bg-emerald-500" : "bg-amber-400"}`} />
+                </button>
+              );
+            })}
+          </div>
+          <span className="px-2 text-xs text-gray-500 dark:text-gray-400">
+            {localeNames[activeLocale]}
+            {activeLocale === sourceLocale ? " · source" : " · translation"}
+          </span>
+        </div>
+        )}
         <div>
-          <label className="block text-gray-500 dark:text-gray-400 mb-1">Title</label>
+          <label className="block text-gray-500 dark:text-gray-400 mb-1">Title{siteLanguages.multilingual ? ` · ${activeLocale.toUpperCase()}` : ""}</label>
           <input 
             type="text" 
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => setEditionField("title", e.target.value)}
             className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -1159,10 +1239,10 @@ function GallerySettingsPanel({
           />
         </div>
         <div className="md:col-span-2">
-          <label className="block text-gray-500 dark:text-gray-400 mb-1">Description</label>
+          <label className="block text-gray-500 dark:text-gray-400 mb-1">Description{siteLanguages.multilingual ? ` · ${activeLocale.toUpperCase()}` : ""}</label>
           <textarea 
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => setEditionField("description", e.target.value)}
             placeholder="Add a description for this gallery..."
             className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             rows={2}
@@ -1331,8 +1411,8 @@ function PhotoEditModal({
   photo: any;
   gallerySlug: string;
   onSave: (updates: {
-    title?: string;
-    description?: string;
+    sourceLocale: Locale;
+    editions: Record<Locale, { title: string; description: string }>;
     tags?: string[];
     hidden?: boolean;
     featured?: boolean;
@@ -1341,8 +1421,39 @@ function PhotoEditModal({
   onCancel: () => void;
   isLoading: boolean;
 }) {
-  const [title, setTitle] = useState(photo.title || "");
-  const [description, setDescription] = useState(photo.description || "");
+  const siteLanguages = useSiteLanguages();
+  const sourceLocale = siteLanguages.multilingual
+    ? normalizeLocale(photo.locale) || siteLanguages.defaultLocale
+    : siteLanguages.defaultLocale;
+  const [activeLocale, setActiveLocale] = useState<Locale>(sourceLocale);
+  const [editions, setEditions] = useState<Record<Locale, { title: string; description: string }>>(() => {
+    const value = {
+      es: { title: "", description: "" },
+      en: { title: "", description: "" },
+    };
+    value[sourceLocale] = {
+      title: photo.title || "",
+      description: photo.description || "",
+    };
+    for (const locale of SUPPORTED_LOCALES) {
+      const translation = photo.translations?.[locale];
+      if (translation) {
+        value[locale] = {
+          title: translation.title || "",
+          description: translation.description || "",
+        };
+      }
+    }
+    return value;
+  });
+  const title = editions[activeLocale].title;
+  const description = editions[activeLocale].description;
+  const setEditionField = (field: "title" | "description", value: string) => {
+    setEditions((current) => ({
+      ...current,
+      [activeLocale]: { ...current[activeLocale], [field]: value },
+    }));
+  };
   const [tags, setTags] = useState((photo.tags || []).join(", "));
   const [hidden, setHidden] = useState(photo.hidden || false);
   const [featured, setFeatured] = useState(photo.featured || false);
@@ -1464,8 +1575,8 @@ function PhotoEditModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
-      title: title || undefined,
-      description: description || undefined,
+      sourceLocale,
+      editions,
       tags: tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
       hidden,
       featured,
@@ -1504,32 +1615,63 @@ function PhotoEditModal({
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{photo.filename}</p>
           
           <div className="space-y-4">
+            {siteLanguages.multilingual && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex gap-1" aria-label="Language edition">
+                {SUPPORTED_LOCALES.map((locale) => (
+                  <button
+                    key={locale}
+                    type="button"
+                    onClick={() => setActiveLocale(locale)}
+                    aria-pressed={activeLocale === locale}
+                    className={`rounded-md px-3 py-1.5 text-sm font-semibold ${
+                      activeLocale === locale
+                        ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+                        : "text-gray-500 hover:bg-white dark:text-gray-400 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {locale.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <span className="px-2 text-xs text-gray-500 dark:text-gray-400">
+                {localeNames[activeLocale]}
+              </span>
+            </div>
+            )}
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Title
+                Title{siteLanguages.multilingual ? ` · ${activeLocale.toUpperCase()}` : ""}
               </label>
               <input
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => setEditionField("title", e.target.value)}
                 placeholder="Enter a title..."
                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                Used as the visible photo title, page title and image alt text.
+              </p>
             </div>
             
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Description
+                Description{siteLanguages.multilingual ? ` · ${activeLocale.toUpperCase()}` : ""}
               </label>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => setEditionField("description", e.target.value)}
                 placeholder="Enter a description..."
                 rows={3}
                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
+              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                Used beside the photo, in the search snippet and in image structured data.
+                {siteLanguages.multilingual ? " Leave it empty to fall back to the source edition." : ""}
+              </p>
             </div>
             
             {/* Tags */}

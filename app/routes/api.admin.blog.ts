@@ -1,30 +1,41 @@
 /**
- * API - Admin Blog CRUD
- * 
- * POST /api/admin/blog (action: create) - Create new blog post
- * POST /api/admin/blog (action: update) - Update blog post
- * POST /api/admin/blog (action: delete) - Delete blog post
+ * Bilingual blog CRUD.
+ *
+ * The source edition remains index.md for backwards compatibility. Additional
+ * editions live beside it as index.es.md or index.en.md.
  */
 
 import type { ActionFunctionArgs } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
+import matter from "gray-matter";
+import * as yaml from "yaml";
+
 import { checkAdminAuth } from "~/utils/admin-auth";
 import {
   getStorage,
   removePostFromIndex,
+  scanBlog,
   updatePostInIndex,
-  type BlogPost,
 } from "~/lib/content-engine";
-import { calculateReadingTime, generateExcerpt } from "~/lib/content-engine/utils";
-import * as yaml from "yaml";
+import {
+  normalizeLocale,
+  SUPPORTED_LOCALES,
+  type Locale,
+} from "~/lib/i18n";
+
+type BlogActionContext = ActionFunctionArgs["context"];
+
+type EditionInput = {
+  title: string;
+  description: string;
+  content: string;
+};
 
 export async function action({ request, context }: ActionFunctionArgs) {
   await checkAdminAuth(request, context);
-  
   const formData = await request.formData();
-  const actionType = formData.get("action") as string;
-  
-  switch (actionType) {
+
+  switch (formData.get("action")) {
     case "create":
       return handleCreate(formData, context);
     case "update":
@@ -36,252 +47,201 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 }
 
-function postForIndex(
-  slug: string,
-  indexPath: string,
-  frontmatter: Record<string, any>,
-  content: string,
-): BlogPost {
-  const rawDate = frontmatter.date;
-  const parsedDate = rawDate instanceof Date
-    ? rawDate
-    : rawDate
-      ? new Date(String(rawDate))
-      : undefined;
-  const date = parsedDate && !Number.isNaN(parsedDate.getTime())
-    ? parsedDate
-    : undefined;
+function text(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
 
+function edition(formData: FormData, locale: Locale): EditionInput {
   return {
-    id: slug,
-    slug,
-    title: String(frontmatter.title || "Untitled"),
-    path: indexPath.replace(/\/index\.md$/i, ""),
-    content,
-    excerpt: frontmatter.description || generateExcerpt(content),
-    readingTime: calculateReadingTime(content),
-    images: [],
-    hasFrontmatter: true,
-    date,
-    description: frontmatter.description,
-    tags: Array.isArray(frontmatter.tags) ? frontmatter.tags.map(String) : undefined,
-    draft: frontmatter.draft === true,
-    cover: frontmatter.cover,
-    coverInBody: frontmatter.coverInBody,
-    format: "markdown",
-    sourceUrl: frontmatter.sourceUrl,
-    author: frontmatter.author,
+    title: text(formData, `title_${locale}`),
+    description: text(formData, `description_${locale}`),
+    content: text(formData, `content_${locale}`),
   };
 }
 
-/**
- * Create a new blog post
- */
-async function handleCreate(
+function legacyEdition(formData: FormData): EditionInput {
+  return {
+    title: text(formData, "title"),
+    description: text(formData, "description"),
+    content: text(formData, "content"),
+  };
+}
+
+function sharedFrontmatter(formData: FormData, existing: Record<string, unknown> = {}) {
+  const next = { ...existing };
+  const date = text(formData, "date");
+  const author = text(formData, "author");
+  const tags = text(formData, "tags")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+  if (date) next.date = date;
+  else delete next.date;
+  if (author) next.author = author;
+  else delete next.author;
+  if (tags.length > 0) next.tags = tags;
+  else delete next.tags;
+  if (formData.get("draft") !== null) next.draft = formData.get("draft") === "true";
+  next.format = "markdown";
+
+  return next;
+}
+
+function serializeEdition(
+  shared: Record<string, unknown>,
+  slug: string,
+  locale: Locale,
+  value: EditionInput,
+): string {
+  const frontmatter: Record<string, unknown> = {
+    ...shared,
+    slug,
+    title: value.title,
+    locale,
+    format: "markdown",
+  };
+  if (value.description) frontmatter.description = value.description;
+  else delete frontmatter.description;
+
+  return `---\n${yaml.stringify(frontmatter)}---\n\n${value.content.trim()}\n`;
+}
+
+async function updateIndex(context: BlogActionContext, slug: string) {
+  const storage = getStorage(context);
+  const post = (await scanBlog(storage)).find((candidate) => candidate.slug === slug);
+  if (post) await updatePostInIndex(storage, post);
+}
+
+async function writeEditions(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: BlogActionContext,
+  slug: string,
+  sourceLocale: Locale,
+  shared: Record<string, unknown>,
+  fallbackSource?: EditionInput,
 ) {
-  const slug = formData.get("slug") as string;
-  const title = formData.get("title") as string;
-  
-  if (!slug || !title) {
-    return json({ 
-      success: false, 
-      error: "Slug and title are required" 
-    }, { status: 400 });
-  }
-  
-  // Validate slug format
-  const slugRegex = /^[a-z0-9-]+$/;
-  if (!slugRegex.test(slug)) {
-    return json({ 
-      success: false, 
-      error: "Slug must contain only lowercase letters, numbers, and hyphens" 
-    }, { status: 400 });
-  }
-  
   const storage = getStorage(context);
   const postPath = `blog/${slug}`;
-  const indexPath = `${postPath}/index.md`;
-  
-  // Check if post already exists
-  const exists = await storage.exists(indexPath);
-  if (exists) {
-    return json({ 
-      success: false, 
-      error: "A post with this slug already exists" 
-    }, { status: 400 });
-  }
-  
-  // Build frontmatter
-  const frontmatter: Record<string, any> = {
-    title,
-    date: new Date().toISOString().split("T")[0],
-    draft: true,
-    format: "markdown",
-  };
-  
-  const description = formData.get("description") as string | null;
-  if (description) frontmatter.description = description;
-  
-  const tagsStr = formData.get("tags") as string | null;
-  if (tagsStr) {
-    const tags = tagsStr.split(",").map(t => t.trim()).filter(Boolean);
-    if (tags.length > 0) frontmatter.tags = tags;
-  }
-  
-  // Create content
-  const content = formData.get("content") as string || `# ${title}\n\nStart writing your post here...`;
-  const fileContent = `---\n${yaml.stringify(frontmatter)}---\n\n${content}`;
-  
-  // Create directory and file
-  await storage.createDir(postPath);
-  await storage.put(indexPath, fileContent);
-  
-  await updatePostInIndex(
-    storage,
-    postForIndex(slug, indexPath, frontmatter, content),
+  const localizedEditions = Object.fromEntries(
+    SUPPORTED_LOCALES.map((locale) => [locale, edition(formData, locale)]),
+  ) as Record<Locale, EditionInput>;
+
+  const hasBilingualFields = SUPPORTED_LOCALES.some((locale) =>
+    formData.has(`title_${locale}`) || formData.has(`content_${locale}`),
   );
-  
-  return json({
-    success: true,
-    message: "Blog post created",
-    slug,
-  });
+  if (!hasBilingualFields) localizedEditions[sourceLocale] = legacyEdition(formData);
+  if (!localizedEditions[sourceLocale].title && fallbackSource) {
+    localizedEditions[sourceLocale] = fallbackSource;
+  }
+
+  const source = localizedEditions[sourceLocale];
+  if (!source.title) throw new Response("The source title is required", { status: 400 });
+
+  await storage.put(
+    `${postPath}/index.md`,
+    serializeEdition(shared, slug, sourceLocale, source),
+    "text/markdown; charset=utf-8",
+  );
+
+  for (const locale of SUPPORTED_LOCALES) {
+    const variantPath = `${postPath}/index.${locale}.md`;
+    if (locale === sourceLocale) {
+      if (await storage.exists(variantPath)) await storage.delete(variantPath);
+      continue;
+    }
+
+    const translated = localizedEditions[locale];
+    if (translated.title && translated.content) {
+      await storage.put(
+        variantPath,
+        serializeEdition(shared, slug, locale, translated),
+        "text/markdown; charset=utf-8",
+      );
+    } else if (await storage.exists(variantPath)) {
+      await storage.delete(variantPath);
+    }
+  }
 }
 
-/**
- * Update an existing blog post
- */
-async function handleUpdate(
-  formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
-) {
-  const slug = formData.get("slug") as string;
-  
-  if (!slug) {
-    return json({ 
-      success: false, 
-      error: "Slug is required" 
-    }, { status: 400 });
+async function handleCreate(formData: FormData, context: BlogActionContext) {
+  const slug = text(formData, "slug");
+  const sourceLocale = normalizeLocale(formData.get("sourceLocale")) || "es";
+  const source = edition(formData, sourceLocale);
+  const legacy = legacyEdition(formData);
+
+  if (!slug || !(source.title || legacy.title)) {
+    return json({ success: false, error: "Slug and source title are required" }, { status: 400 });
   }
-  
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    return json(
+      { success: false, error: "Slug must contain only lowercase letters, numbers, and hyphens" },
+      { status: 400 },
+    );
+  }
+
   const storage = getStorage(context);
   const indexPath = `blog/${slug}/index.md`;
-  
-  // Check if post exists
-  const existingContent = await storage.getText(indexPath);
-  if (!existingContent) {
-    return json({ 
-      success: false, 
-      error: "Post not found" 
-    }, { status: 404 });
-  }
-  
-  // Parse existing frontmatter
-  const frontmatterMatch = existingContent.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-  let frontmatter: Record<string, any> = {};
-  let content = "";
-  
-  if (frontmatterMatch) {
-    try {
-      frontmatter = yaml.parse(frontmatterMatch[1]) || {};
-      content = frontmatterMatch[2];
-    } catch {
-      // Invalid YAML, start fresh
-    }
-  } else {
-    content = existingContent;
-  }
-  
-  // Update fields if provided
-  const title = formData.get("title") as string | null;
-  const description = formData.get("description") as string | null;
-  const date = formData.get("date") as string | null;
-  const tagsStr = formData.get("tags") as string | null;
-  const draft = formData.get("draft");
-  const newContent = formData.get("content") as string | null;
-  const author = formData.get("author") as string | null;
-  
-  if (title !== null) frontmatter.title = title || "Untitled";
-  if (description !== null) frontmatter.description = description || undefined;
-  if (date !== null) frontmatter.date = date || undefined;
-  if (author !== null) frontmatter.author = author || undefined;
-  if (draft !== null) frontmatter.draft = draft === "true";
-  
-  if (tagsStr !== null) {
-    const tags = tagsStr.split(",").map(t => t.trim()).filter(Boolean);
-    frontmatter.tags = tags.length > 0 ? tags : undefined;
-  }
-  
-  if (newContent !== null) {
-    content = newContent;
+  if (await storage.exists(indexPath)) {
+    return json({ success: false, error: "A post with this slug already exists" }, { status: 400 });
   }
 
-  // The editor and public renderer now share Markdown as the canonical source.
-  frontmatter.format = "markdown";
-  
-  // Clean up undefined values
-  Object.keys(frontmatter).forEach(key => {
-    if (frontmatter[key] === undefined) {
-      delete frontmatter[key];
-    }
+  const shared = sharedFrontmatter(formData, {
+    date: text(formData, "date") || new Date().toISOString().slice(0, 10),
+    draft: formData.get("draft") === null ? true : formData.get("draft") === "true",
   });
-  
-  // Build new file content
-  const fileContent = `---\n${yaml.stringify(frontmatter)}---\n\n${content.trim()}\n`;
-  
-  // Save file
-  await storage.put(indexPath, fileContent);
-  
-  await updatePostInIndex(
-    storage,
-    postForIndex(slug, indexPath, frontmatter, content),
-  );
-  
-  return json({
-    success: true,
-    message: "Blog post updated",
-    slug,
-  });
+
+  await writeEditions(formData, context, slug, sourceLocale, shared, legacy);
+  await updateIndex(context, slug);
+
+  return json({ success: true, message: "Blog post created", slug });
 }
 
-/**
- * Delete a blog post
- */
-async function handleDelete(
-  formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
-) {
-  const slug = formData.get("slug") as string;
-  
+async function handleUpdate(formData: FormData, context: BlogActionContext) {
+  const slug = text(formData, "slug");
   if (!slug) {
-    return json({ 
-      success: false, 
-      error: "Slug is required" 
-    }, { status: 400 });
+    return json({ success: false, error: "Slug is required" }, { status: 400 });
   }
-  
+
+  const storage = getStorage(context);
+  const indexPath = `blog/${slug}/index.md`;
+  const existingContent = await storage.getText(indexPath);
+  if (!existingContent) {
+    return json({ success: false, error: "Post not found" }, { status: 404 });
+  }
+
+  const parsed = matter(existingContent);
+  const sourceLocale =
+    normalizeLocale(formData.get("sourceLocale")) ||
+    normalizeLocale(parsed.data.locale) ||
+    "es";
+  const fallbackSource: EditionInput = {
+    title: String(parsed.data.title || "Untitled"),
+    description: String(parsed.data.description || ""),
+    content: parsed.content.trim(),
+  };
+  const shared = sharedFrontmatter(formData, parsed.data as Record<string, unknown>);
+
+  await writeEditions(formData, context, slug, sourceLocale, shared, fallbackSource);
+  await updateIndex(context, slug);
+
+  return json({ success: true, message: "Blog post updated", slug });
+}
+
+async function handleDelete(formData: FormData, context: BlogActionContext) {
+  const slug = text(formData, "slug");
+  if (!slug) {
+    return json({ success: false, error: "Slug is required" }, { status: 400 });
+  }
+
   const storage = getStorage(context);
   const postPath = `blog/${slug}`;
-  
-  // Check if post exists
-  const exists = await storage.exists(`${postPath}/index.md`);
-  if (!exists) {
-    return json({ 
-      success: false, 
-      error: "Post not found" 
-    }, { status: 404 });
+  if (!(await storage.exists(`${postPath}/index.md`))) {
+    return json({ success: false, error: "Post not found" }, { status: 404 });
   }
-  
-  // Delete the entire post directory
-  await storage.deleteDir(postPath);
-  
+
+  await storage.deleteDirectory(postPath);
   await removePostFromIndex(storage, slug);
-  
-  return json({
-    success: true,
-    message: "Blog post deleted",
-    slug,
-  });
+  return json({ success: true, message: "Blog post deleted", slug });
 }

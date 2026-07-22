@@ -20,8 +20,12 @@ import {
 import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
 import { PasswordProtectedGallery } from "~/components/PasswordProtectedGallery";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
+export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { isGalleryAuthenticated } from "~/utils/gallery-auth";
+import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
+import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
+import { readSiteLanguageSettings } from "~/lib/site-languages.server";
 
 const PHOTOS_PER_PAGE = 50;
 
@@ -39,16 +43,17 @@ function dedupePhotosByPath(photos: PhotoWithGallery[]): PhotoWithGallery[] {
   });
 }
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
+export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
   if (!data?.gallery) {
-    return [{ title: "Gallery Not Found - VictoPress" }];
+    return [{ title: `${params.locale === "es" ? "Galería no encontrada" : "Gallery not found"} - VictoPress` }];
   }
+  const messages = photoMessages[data.locale];
 
   // For protected galleries, show generic title
   if (data.isProtected && !data.isAuthenticated) {
     return [
-      { title: `${data.gallery.title} - Protected - ${data.siteName}` },
-      { name: "description", content: "This gallery is password protected." },
+      { title: `${data.gallery.title} - ${data.locale === "es" ? "Protegida" : "Protected"} - ${data.siteName}` },
+      { name: "description", content: messages.protectedGallery },
       { name: "robots", content: "noindex" },
     ];
   }
@@ -56,9 +61,11 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const gallery = data.gallery;
   const description =
     gallery.description ||
-    `Photo gallery: ${gallery.title} (${gallery.photoCount} photos)`;
+    (data.locale === "es"
+      ? `Galería fotográfica: ${gallery.title} (${gallery.photoCount} fotos)`
+      : `Photo gallery: ${gallery.title} (${gallery.photoCount} photos)`);
 
-  return generateMetaTags({
+  const tags = generateMetaTags({
     title: `${gallery.title} - ${data.siteName}`,
     description,
     url: data.canonicalUrl,
@@ -68,21 +75,29 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
     siteName: data.siteName,
     keywords: gallery.tags,
   });
+  return [
+    ...tags,
+    ...(data.alternates.es ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "es", href: data.alternates.es }] : []),
+    ...(data.alternates.en ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "en", href: data.alternates.en }] : []),
+    ...(data.alternates.xDefault ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "x-default", href: data.alternates.xDefault }] : []),
+  ];
 };
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
+  const storage = getStorage(context, request);
+  const siteLanguages = await readSiteLanguageSettings(storage);
+  const locale = requireRouteLocale(request, params.locale, siteLanguages);
+  const messages = photoMessages[locale];
   const slug = params["*"];
   if (!slug) {
-    throw new Response("Not Found", { status: 404 });
+    throw new Response(messages.galleryNotFound, { status: 404 });
   }
 
   const baseUrl = getBaseUrl(request);
-  const storage = getStorage(context);
-  
   // Load all galleries from index and navigation in parallel (fast!)
   const [allGalleries, navigation] = await Promise.all([
-    getAllGalleriesFromIndex(storage),
-    getNavigationFromIndex(storage),
+    getAllGalleriesFromIndex(storage, locale),
+    getNavigationFromIndex(storage, locale),
   ]);
   
   // Filter public galleries
@@ -154,17 +169,23 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     displayGallery = {
       slug: slug,
       title: title,
-      description: `All photos from ${title}`,
+      description: `${messages.allPhotosFrom} ${title}`,
       cover: allPhotos[0]?.path || "",
       photoCount: allPhotos.length,
       tags: [],
     };
   } else {
-    throw new Response("Not Found", { status: 404 });
+    throw new Response(messages.galleryNotFound, { status: 404 });
   }
 
   const siteName = "Victoriano Izquierdo";
-  const canonicalUrl = `${baseUrl}/gallery/${displayGallery.slug}`;
+  const alternates = localizedAlternates(
+    request,
+    locale,
+    `/gallery/${displayGallery.slug}`,
+    siteLanguages,
+  );
+  const canonicalUrl = alternates.canonical;
   const ogImage = buildImageUrl(baseUrl, displayGallery.cover);
 
   // Check if gallery is password protected
@@ -207,6 +228,8 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     siteName,
     canonicalUrl,
     ogImage: exposedOgImage,
+    locale,
+    alternates,
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",
@@ -217,7 +240,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 }
 
 export default function GalleryPage() {
-  const { gallery, navigation, siteName, socialLinks, isProtected, isAuthenticated, pagination } =
+  const { gallery, navigation, siteName, socialLinks, isProtected, isAuthenticated, pagination, locale } =
     useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
 
@@ -227,7 +250,8 @@ export default function GalleryPage() {
       <PasswordProtectedGallery
         gallerySlug={gallery.slug}
         galleryTitle={gallery.title}
-        redirectTo={`/gallery/${gallery.slug}`}
+        redirectTo={localizedPath(locale, `/gallery/${gallery.slug}`)}
+        locale={locale}
       />
     );
   }
@@ -237,9 +261,10 @@ export default function GalleryPage() {
       navigation={navigation}
       siteName={siteName}
       socialLinks={socialLinks}
+      locale={locale}
     >
       {/* Mobile Breadcrumb Navigation */}
-      <GalleryBreadcrumb currentSlug={gallery.slug} navigation={navigation} />
+      <GalleryBreadcrumb currentSlug={gallery.slug} navigation={navigation} locale={locale} />
       
       <PhotoGrid>
         {gallery.photos.map((photo, index) => (
@@ -249,7 +274,7 @@ export default function GalleryPage() {
             alt={photo.title || photo.filename}
             width={photo.exif?.width}
             height={photo.exif?.height}
-            href={`/photo/${(photo as any).gallerySlug}/${photo.filename}`}
+            href={localizedPath(locale, `/photo/${(photo as any).gallerySlug}/${photo.filename}`)}
             aspectRatio="auto"
             priority={index === 0}
           />
@@ -262,6 +287,7 @@ export default function GalleryPage() {
           currentPage={pagination.page}
           totalPages={pagination.totalPages}
           gallerySlug={gallery.slug}
+          locale={locale}
         />
       )}
     </Layout>
@@ -275,11 +301,14 @@ function Pagination({
   currentPage,
   totalPages,
   gallerySlug,
+  locale,
 }: {
   currentPage: number;
   totalPages: number;
   gallerySlug: string;
+  locale: Locale;
 }) {
+  const messages = photoMessages[locale];
   // Generate page numbers to show
   const getPageNumbers = () => {
     const pages: (number | "...")[] = [];
@@ -327,25 +356,25 @@ function Pagination({
     return pages;
   };
 
-  const baseUrl = `/gallery/${gallerySlug}`;
+  const baseUrl = localizedPath(locale, `/gallery/${gallerySlug}`);
 
   return (
     <nav
       className="flex items-center justify-center gap-2 py-8 px-4"
-      aria-label="Pagination"
+      aria-label={messages.pagination}
     >
       {/* Previous button */}
       {currentPage > 1 ? (
         <Link
           to={currentPage === 2 ? baseUrl : `${baseUrl}?page=${currentPage - 1}`}
           className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors"
-          aria-label="Previous page"
+          aria-label={messages.previousPage}
         >
-          ← Prev
+          ← {messages.prevShort}
         </Link>
       ) : (
         <span className="px-3 py-2 text-sm font-medium text-gray-300 dark:text-gray-600">
-          ← Prev
+          ← {messages.prevShort}
         </span>
       )}
 
@@ -381,13 +410,13 @@ function Pagination({
         <Link
           to={`${baseUrl}?page=${currentPage + 1}`}
           className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors"
-          aria-label="Next page"
+          aria-label={messages.nextPage}
         >
-          Next →
+          {messages.next} →
         </Link>
       ) : (
         <span className="px-3 py-2 text-sm font-medium text-gray-300 dark:text-gray-600">
-          Next →
+          {messages.next} →
         </span>
       )}
     </nav>

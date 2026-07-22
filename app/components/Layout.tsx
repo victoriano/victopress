@@ -8,6 +8,7 @@ import { Link, useRouteLoaderData } from "@remix-run/react";
 import { Sidebar, type NavItem, type PhotoNavigation } from "./Sidebar";
 import { MobileMenu } from "./MobileMenu";
 import { OptimizedImage } from "./OptimizedImage";
+import type { Locale } from "~/lib/i18n";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ interface LayoutProps {
     facebook?: string;
   };
   photoNav?: PhotoNavigation;
+  locale: Locale;
 }
 
 export function Layout({
@@ -28,9 +30,14 @@ export function Layout({
   siteName = "VictoPress",
   socialLinks,
   photoNav,
+  locale,
 }: LayoutProps) {
-  const rootData = useRouteLoaderData<{ photoAiEnabled?: boolean }>("root");
+  const rootData = useRouteLoaderData<{
+    photoAiEnabled?: boolean;
+    siteLanguages?: { multilingual?: boolean };
+  }>("root");
   const photoAiEnabled = rootData?.photoAiEnabled === true;
+  const multilingual = rootData?.siteLanguages?.multilingual === true;
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
@@ -42,6 +49,8 @@ export function Layout({
           socialLinks={socialLinks}
           photoNav={photoNav}
           photoAiEnabled={photoAiEnabled}
+          multilingual={multilingual}
+          locale={locale}
         />
       </div>
 
@@ -52,6 +61,8 @@ export function Layout({
           navigation={navigation}
           socialLinks={socialLinks}
           photoAiEnabled={photoAiEnabled}
+          multilingual={multilingual}
+          locale={locale}
         />
       </div>
       

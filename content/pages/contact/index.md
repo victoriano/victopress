@@ -1,6 +1,7 @@
 ---
 title: Contact
 description: Get in touch with Victoriano Izquierdo
+locale: en
 ---
 
 # Contact

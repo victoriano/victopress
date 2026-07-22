@@ -19,7 +19,7 @@ describe("logical gallery memberships", () => {
     directory = await mkdtemp(join(tmpdir(), "victopress-memberships-"));
     storage = new LocalStorageAdapter(directory);
     const index: ContentIndex = {
-      version: 9,
+      version: 10,
       updatedAt: "2026-07-18T10:00:00.000Z",
       galleries: [
         {

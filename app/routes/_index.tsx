@@ -14,6 +14,11 @@ import { Layout, PhotoGrid, PhotoItem } from "~/components/Layout";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import yaml from "js-yaml";
+import { localizedPath } from "~/lib/i18n";
+import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
+import { readSiteLanguageSettings } from "~/lib/site-languages.server";
+
+export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
 
 interface HomeConfig {
   photos?: Array<{
@@ -23,7 +28,7 @@ interface HomeConfig {
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
-  return generateMetaTags({
+  const tags = generateMetaTags({
     title: data?.siteName || "VictoPress - Photo Portfolio",
     description: data?.siteDescription || "A curated photography portfolio",
     url: data?.canonicalUrl,
@@ -32,16 +37,25 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
     type: "website",
     siteName: data?.siteName || "VictoPress",
   });
+  if (!data?.alternates) return tags;
+  return [
+    ...tags,
+    ...(data.alternates.es ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "es", href: data.alternates.es }] : []),
+    ...(data.alternates.en ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "en", href: data.alternates.en }] : []),
+    ...(data.alternates.xDefault ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "x-default", href: data.alternates.xDefault }] : []),
+  ];
 };
 
-export async function loader({ context, request }: LoaderFunctionArgs) {
+export async function loader({ context, request, params }: LoaderFunctionArgs) {
   // Check if setup is needed (production + not configured)
   if (needsSetup(context)) {
     return redirect("/setup");
   }
   
   const baseUrl = getBaseUrl(request);
-  const storage = getStorage(context);
+  const storage = getStorage(context, request);
+  const siteLanguages = await readSiteLanguageSettings(storage);
+  const locale = requireRouteLocale(request, params.locale, siteLanguages);
   
   // Try to load home.yaml config for custom photo selection
   let homeConfig: HomeConfig | null = null;
@@ -56,13 +70,16 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   
   // Load navigation and home photos from index in parallel (fast!)
   const [navigation, homePhotos] = await Promise.all([
-    getNavigationFromIndex(storage),
-    getHomePhotosFromIndex(storage, homeConfig ?? undefined),
+    getNavigationFromIndex(storage, locale),
+    getHomePhotosFromIndex(storage, homeConfig ?? undefined, locale),
   ]);
 
   const siteName = "Victoriano Izquierdo"; // TODO: Make configurable
-  const siteDescription = "Photography portfolio showcasing travel, street, and portrait photography";
-  const canonicalUrl = baseUrl;
+  const siteDescription = locale === "es"
+    ? "Archivo fotográfico de viajes, calle y retratos"
+    : "Photography archive spanning travel, street life and portraiture";
+  const alternates = localizedAlternates(request, locale, "/", siteLanguages);
+  const canonicalUrl = alternates.canonical;
   // Use first photo as OG image if available
   const ogImage = homePhotos.length > 0 
     ? buildImageUrl(baseUrl, homePhotos[0].path) 
@@ -75,6 +92,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     siteDescription,
     canonicalUrl,
     ogImage,
+    locale,
+    alternates,
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",
@@ -85,16 +104,17 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 }
 
 export default function Index() {
-  const { navigation, photos, siteName, socialLinks } = useLoaderData<typeof loader>();
+  const { navigation, photos, siteName, socialLinks, locale } = useLoaderData<typeof loader>();
 
   return (
     <Layout
       navigation={navigation}
       siteName={siteName}
       socialLinks={socialLinks}
+      locale={locale}
     >
       {/* Mobile Navigation Breadcrumb */}
-      <GalleryBreadcrumb navigation={navigation} />
+      <GalleryBreadcrumb navigation={navigation} locale={locale} />
       
       <PhotoGrid>
         {photos.map((photo, index) => (
@@ -103,8 +123,8 @@ export default function Index() {
             src={`/api/images/${photo.path}`}
             alt={photo.title || photo.filename}
             aspectRatio="auto"
-            href={`/featured/${photo.homeIndex}`}
-            priority
+            href={localizedPath(locale, `/featured/${photo.homeIndex}`)}
+            priority={index < 4}
           />
         ))}
       </PhotoGrid>

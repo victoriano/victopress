@@ -21,6 +21,10 @@ bucket_name = "victopress-content"
 # Environment variables
 [vars]
 SITE_NAME = "VictoPress"
+BLOG_SITE_NAME = "Victoriano Izquierdo"
+PUBLIC_BLOG_URL = "https://victoriano.me/blog"
+# PUBLIC_MEDIA_URL is optional. When omitted, API image URLs use the request
+# origin, which becomes https://photos.victoriano.me after the domain move.
 
 # R2 Configuration
 R2_BUCKET_NAME = "victopress-content"

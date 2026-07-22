@@ -1,3 +1,8 @@
 title: "Geographies"
 description: "Photography from around the world organized by location"
+locale: en
+translations:
+  es:
+    title: "Geografías"
+    description: "Fotografías de todo el mundo organizadas por lugar"
 order: 3

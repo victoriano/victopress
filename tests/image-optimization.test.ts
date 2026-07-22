@@ -20,10 +20,10 @@ describe("responsive image delivery", () => {
     );
 
     expect(srcSet).toContain(
-      "/api/images/galleries/new%20york/photo%20one_800w.webp?v=webp-q86-v2 800w",
+      "/api/images/galleries/new%20york/photo%20one_800w.webp?v=webp-q86-v3&source=jpg 800w",
     );
     expect(srcSet).toContain(
-      "/api/images/galleries/new%20york/photo%20one_1600w.webp?v=webp-q86-v2 1600w",
+      "/api/images/galleries/new%20york/photo%20one_1600w.webp?v=webp-q86-v3&source=jpg 1600w",
     );
     expect(srcSet).not.toContain("2400w.webp");
     expect(srcSet).toContain(
@@ -37,7 +37,7 @@ describe("responsive image delivery", () => {
         width: 900,
       }),
     ).toBe(
-      "/api/images/galleries/south%20of%20spain/a%2Bb_1600w.webp?v=webp-q86-v2",
+      "/api/images/galleries/south%20of%20spain/a%2Bb_1600w.webp?v=webp-q86-v3&source=jpg",
     );
   });
 });

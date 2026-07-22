@@ -1,3 +1,8 @@
 title: "San Francisco"
 description: "Photography from San Francisco"
+locale: en
+translations:
+  es:
+    title: "San Francisco"
+    description: "Fotografías de San Francisco"
 order: 2

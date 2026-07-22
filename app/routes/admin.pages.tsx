@@ -5,11 +5,13 @@
  */
 
 import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
-import { useLoaderData, Link } from "@remix-run/react";
+import { Link, Outlet, useLoaderData, useParams } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getContentIndex } from "~/lib/content-engine";
+import { SUPPORTED_LOCALES } from "~/lib/i18n";
+import { useSiteLanguages } from "~/hooks/useSiteLanguages";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   await checkAdminAuth(request, context);
@@ -23,7 +25,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   // Add isHtml property based on path
   const pages = contentIndex.pages.map(page => ({
     ...page,
-    isHtml: page.path.endsWith('.html'),
+    isHtml:
+      page.translations?.[page.locale || "en"]?.isHtml ??
+      page.path.endsWith('.html'),
   }));
   
   return json({ username, pages });
@@ -31,6 +35,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 export default function AdminPages() {
   const { username, pages } = useLoaderData<typeof loader>();
+  const params = useParams();
+  const siteLanguages = useSiteLanguages();
+
+  // Flat-route children render through this parent. Without the outlet the
+  // URL changed to /admin/pages/:slug while the page list stayed on screen.
+  if (params.slug) return <Outlet />;
 
   return (
     <AdminLayout username={username || undefined}>
@@ -88,6 +98,26 @@ export default function AdminPages() {
                             {page.description}
                           </p>
                         )}
+                        {siteLanguages.multilingual && (
+                        <div className="mt-2 flex gap-1.5">
+                          {SUPPORTED_LOCALES.map((locale) => {
+                            const complete =
+                              page.locale === locale || Boolean(page.translations?.[locale]);
+                            return (
+                              <span
+                                key={locale}
+                                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                  complete
+                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
+                                    : "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+                                }`}
+                              >
+                                {locale.toUpperCase()} {complete ? "ready" : "missing"}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-4 hidden sm:table-cell">
@@ -106,7 +136,14 @@ export default function AdminPages() {
                     </td>
                     <td className="px-4 py-4 text-right">
                       <Link
-                        to={`/${page.slug}`}
+                        to={`/admin/pages/${page.slug}`}
+                        className="mr-1 inline-block p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        title={siteLanguages.multilingual ? "Edit translations" : "Edit"}
+                      >
+                        Edit
+                      </Link>
+                      <Link
+                        to={`/${siteLanguages.multilingual ? page.locale || siteLanguages.defaultLocale : siteLanguages.defaultLocale}/${page.slug}`}
                         target="_blank"
                         className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 inline-block"
                         title="View"

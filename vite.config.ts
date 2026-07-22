@@ -15,7 +15,10 @@ export default defineConfig({
   server: {
     port: 5174,
     host: true,
-    allowedHosts: ["victopress-dev.nominao.com"],
+    allowedHosts: [
+      "victopress-dev.nominao.com",
+      "victopress-headless.nominao.com",
+    ],
     // This hostname is a persistent development preview behind Cloudflare.
     // Never let the browser or an intermediary retain Vite's transformed
     // modules: cached CSS modules can outlive an HMR graph/server restart and

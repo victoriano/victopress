@@ -4,6 +4,7 @@ slug: "2017/1/31/la-nia-fotgrafa-de-sol"
 date: 2013-08-05
 description: "Iba sudando la gota gorda por Sol cámara en mano. No encontraba a nadie demasiado especial ni demasiado típico para retratar y poner por aquí. De repente me cruzo con esta niña adorable a hombros de su padre de safari…"
 author: "Victoriano Izquierdo"
+locale: es
 draft: false
 format: markdown
 coverInBody: true

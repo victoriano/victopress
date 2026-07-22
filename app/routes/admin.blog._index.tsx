@@ -10,12 +10,17 @@ import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getContentIndex } from "~/lib/content-engine";
+import { buildPublicBlogPostUrl } from "~/lib/blog-urls";
+import { resolveHeadlessBlogConfig } from "~/lib/headless-blog";
+import { normalizeLocale, SUPPORTED_LOCALES } from "~/lib/i18n";
+import { useSiteLanguages } from "~/hooks/useSiteLanguages";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   await checkAdminAuth(request, context);
   
   const username = await getAdminUser(request, context);
   const storage = getStorage(context);
+  const blogConfig = resolveHeadlessBlogConfig(context, request);
   
   // Use pre-calculated content index for fast loading
   const contentIndex = await getContentIndex(storage);
@@ -30,6 +35,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   return json({
     username,
     posts,
+    publicBlogUrl: blogConfig.publicBlogUrl,
     stats: {
       total: posts.length,
       published: posts.filter((p) => !p.draft).length,
@@ -39,7 +45,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function AdminBlog() {
-  const { username, posts, stats } = useLoaderData<typeof loader>();
+  const { username, posts, stats, publicBlogUrl } = useLoaderData<typeof loader>();
+  const siteLanguages = useSiteLanguages();
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "all";
 
@@ -139,6 +146,26 @@ export default function AdminBlog() {
                             {post.excerpt}
                           </p>
                         )}
+                        {siteLanguages.multilingual && (
+                        <div className="mt-2 flex items-center gap-1.5">
+                          {SUPPORTED_LOCALES.map((locale) => {
+                            const complete =
+                              post.locale === locale || Boolean(post.translations?.[locale]);
+                            return (
+                              <span
+                                key={locale}
+                                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${
+                                  complete
+                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
+                                    : "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+                                }`}
+                              >
+                                {locale.toUpperCase()} {complete ? "ready" : "missing"}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-4 hidden sm:table-cell">
@@ -161,14 +188,21 @@ export default function AdminBlog() {
                     </td>
                     <td className="px-4 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Link
-                          to={`/blog/${post.slug}`}
+                        <a
+                          href={buildPublicBlogPostUrl(
+                            post.slug,
+                            { publicBlogUrl },
+                            siteLanguages.multilingual
+                              ? normalizeLocale(post.locale) || siteLanguages.defaultLocale
+                              : siteLanguages.defaultLocale,
+                          )}
                           target="_blank"
+                          rel="noreferrer"
                           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                           title="View"
                         >
                           <ExternalIcon />
-                        </Link>
+                        </a>
                         <Link
                           to={`/admin/blog/${post.slug}`}
                           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"

@@ -1,3 +1,8 @@
 title: "America"
 description: "Photography from the Americas"
+locale: en
+translations:
+  es:
+    title: "América"
+    description: "Fotografías de América"
 order: 2

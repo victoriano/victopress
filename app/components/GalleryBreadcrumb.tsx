@@ -9,18 +9,13 @@ import { Link } from "@remix-run/react";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { NavItem } from "./Sidebar";
+import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
 interface GalleryBreadcrumbProps {
   currentSlug?: string;
   navigation: NavItem[];
+  locale: Locale;
 }
-
-// Static page links to show in the root dropdown
-const STATIC_PAGES: NavItem[] = [
-  { title: "Blog", slug: "blog", path: "/blog" },
-  { title: "About Me", slug: "about", path: "/about" },
-  { title: "Contact", slug: "contact", path: "/contact" },
-];
 
 interface BreadcrumbSegment {
   title: string;
@@ -29,14 +24,20 @@ interface BreadcrumbSegment {
   children: NavItem[]; // Next level galleries to discover
 }
 
-export function GalleryBreadcrumb({ currentSlug, navigation }: GalleryBreadcrumbProps) {
-  const segments = currentSlug ? buildBreadcrumb(currentSlug, navigation) : [];
+export function GalleryBreadcrumb({ currentSlug, navigation, locale }: GalleryBreadcrumbProps) {
+  const messages = photoMessages[locale];
+  const segments = currentSlug ? buildBreadcrumb(currentSlug, navigation, locale) : [];
+  const staticPages: NavItem[] = [
+    { title: messages.blog, slug: "blog", path: localizedPath(locale, "/blog") },
+    { title: messages.about, slug: "about", path: localizedPath(locale, "/about") },
+    { title: messages.contact, slug: "contact", path: localizedPath(locale, "/contact") },
+  ];
   
   // Create root segment with galleries only
   const rootSegment: BreadcrumbSegment = {
-    title: "PHOTOS",
+    title: locale === "es" ? "FOTOS" : "PHOTOS",
     slug: "",
-    path: "/",
+    path: localizedPath(locale, "/"),
     children: navigation,
   };
 
@@ -64,7 +65,7 @@ export function GalleryBreadcrumb({ currentSlug, navigation }: GalleryBreadcrumb
         {/* Static page links - same level as PHOTOS */}
         {isRootPage && (
           <>
-            {STATIC_PAGES.map((page) => (
+            {staticPages.map((page) => (
               <Link
                 key={page.slug}
                 to={page.path}
@@ -218,7 +219,7 @@ function BreadcrumbItem({
  * Build breadcrumb segments from current slug and navigation tree
  * Each segment includes its children (next level) for discovery
  */
-function buildBreadcrumb(currentSlug: string, navigation: NavItem[]): BreadcrumbSegment[] {
+function buildBreadcrumb(currentSlug: string, navigation: NavItem[], locale: Locale): BreadcrumbSegment[] {
   const segments: BreadcrumbSegment[] = [];
   const slugParts = currentSlug.split("/");
   
@@ -248,7 +249,7 @@ function buildBreadcrumb(currentSlug: string, navigation: NavItem[]): Breadcrumb
       segments.push({
         title,
         slug: accumulatedSlug,
-        path: `/gallery/${accumulatedSlug}`,
+        path: localizedPath(locale, `/gallery/${accumulatedSlug}`),
         children: [],
       });
       break;

@@ -8,6 +8,8 @@ import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useEffect, useState, useMemo } from "react";
 import type { NavItem } from "./Sidebar";
 import { ThemeToggle } from "./ThemeToggle";
+import { LanguageEditionSwitch } from "./LanguageEditionSwitch";
+import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
 interface MobileMenuProps {
   siteName: string;
@@ -19,11 +21,14 @@ interface MobileMenuProps {
     facebook?: string;
   };
   photoAiEnabled?: boolean;
+  multilingual?: boolean;
+  locale: Locale;
 }
 
-export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled = false }: MobileMenuProps) {
+export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled = false, multilingual = false, locale }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const messages = photoMessages[locale];
 
   // Find all slugs in the active path that should be expanded
   const activePathSlugs = useMemo(() => {
@@ -114,13 +119,13 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
     <>
       {/* Mobile Header */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-900 z-50 flex items-center justify-between px-6 lg:hidden">
-        <Link to="/" className="font-bold text-lg">
+        <Link to={localizedPath(locale, "/")} className="font-bold text-lg">
           {siteName}
         </Link>
         <button
           onClick={() => setIsOpen(true)}
           className="p-2 -mr-2"
-          aria-label="Open menu"
+          aria-label={messages.openMenu}
         >
           <HamburgerIcon />
         </button>
@@ -131,8 +136,8 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
         <div className="fixed inset-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm z-[100] lg:hidden overflow-y-auto">
           {/* Header - matches the mobile header exactly */}
           <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800">
-            <Link 
-              to="/" 
+            <Link
+              to={localizedPath(locale, "/")}
               className="font-bold text-lg"
               onClick={() => setIsOpen(false)}
             >
@@ -141,7 +146,7 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
             <button
               onClick={() => setIsOpen(false)}
               className="p-2 -mr-2"
-              aria-label="Close menu"
+              aria-label={messages.closeMenu}
             >
               <CloseIcon />
             </button>
@@ -160,31 +165,33 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
                 onCollapseDescendants={collapseDescendants}
                 onNavigate={() => setIsOpen(false)}
                 depth={0}
+                locale={locale}
               />
             ))}
 
             {/* Static Links */}
             <div className="space-y-2 pt-6 mt-2">
               {photoAiEnabled && (
-                <MobileNavLink href="/search" currentPath={location.pathname} onClick={() => setIsOpen(false)}>
-                  Search
+                <MobileNavLink href={localizedPath(locale, "/search")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
+                  {messages.search}
                 </MobileNavLink>
               )}
-              <MobileNavLink href="/blog" currentPath={location.pathname} onClick={() => setIsOpen(false)}>
-                Blog
+              <MobileNavLink href={localizedPath(locale, "/blog")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
+                {messages.blog}
               </MobileNavLink>
-              <MobileNavLink href="/about" currentPath={location.pathname} onClick={() => setIsOpen(false)}>
-                About Me
+              <MobileNavLink href={localizedPath(locale, "/about")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
+                {messages.about}
               </MobileNavLink>
-              <MobileNavLink href="/contact" currentPath={location.pathname} onClick={() => setIsOpen(false)}>
-                Contact
+              <MobileNavLink href={localizedPath(locale, "/contact")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
+                {messages.contact}
               </MobileNavLink>
             </div>
           </nav>
 
           {/* Social Links + Theme Toggle */}
           <div className="px-6 py-8 border-t border-gray-100 dark:border-gray-800">
-            <div className="flex items-center gap-6">
+            {multilingual && <LanguageEditionSwitch locale={locale} />}
+            <div className={`flex items-center gap-6 ${multilingual ? "mt-6" : ""}`}>
               {socialLinks?.instagram && (
                 <a
                   href={socialLinks.instagram}
@@ -219,7 +226,7 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
                 </a>
               )}
               {/* Theme Toggle */}
-              <ThemeToggle />
+              <ThemeToggle locale={locale} />
             </div>
           </div>
         </div>
@@ -237,6 +244,7 @@ function MobileNavSection({
   onCollapseDescendants,
   onNavigate,
   depth,
+  locale,
 }: {
   item: NavItem;
   currentPath: string;
@@ -246,6 +254,7 @@ function MobileNavSection({
   onCollapseDescendants: (slug: string) => void;
   onNavigate: () => void;
   depth: number;
+  locale: Locale;
 }) {
   const navigate = useNavigate();
   const hasChildren = item.children && item.children.length > 0;
@@ -264,7 +273,7 @@ function MobileNavSection({
         // Top-level expanded item with no expanded descendants - collapse all and go home
         e.preventDefault();
         onCollapseAll();
-        navigate("/");
+        navigate(item.path.split("/gallery/")[0] || "/");
         onNavigate();
       } else if (isExpanded && hasExpandedDescendants) {
         // Already expanded with expanded descendants - collapse descendants only
@@ -316,7 +325,7 @@ function MobileNavSection({
           <button
             onClick={() => onToggle(item.slug)}
             className="p-1 text-gray-600 dark:text-gray-400"
-            aria-label={isExpanded ? "Collapse" : "Expand"}
+            aria-label={isExpanded ? photoMessages[locale].collapse : photoMessages[locale].expand}
           >
             <ChevronIcon className={`transform transition-transform ${isExpanded ? "rotate-90" : ""}`} />
           </button>
@@ -337,6 +346,7 @@ function MobileNavSection({
               onCollapseDescendants={onCollapseDescendants}
               onNavigate={onNavigate}
               depth={depth + 1}
+              locale={locale}
             />
           ))}
         </div>

@@ -30,7 +30,7 @@ export const VARIANT_WIDTHS = [800, 1600, 2400] as const;
  * legacy assets, regenerate every variant, then bump this value so browsers
  * and Cloudflare cannot reuse a lower-quality response under the same path.
  */
-export const IMAGE_VARIANT_CACHE_REVISION = "webp-q86-v2";
+export const IMAGE_VARIANT_CACHE_REVISION = "webp-q86-v3";
 
 export interface ResponsiveImageOptions {
   /** Width of the source image. Used to avoid requesting variants that cannot exist. */
@@ -61,8 +61,16 @@ function findBestVariantWidth(requestedWidth: number): number {
   return VARIANT_WIDTHS[VARIANT_WIDTHS.length - 1];
 }
 
-function addVariantCacheRevision(url: string): string {
-  return `${url}?v=${encodeURIComponent(IMAGE_VARIANT_CACHE_REVISION)}`;
+function getSourceExtension(filename: string): string | null {
+  const dotIndex = filename.lastIndexOf(".");
+  if (dotIndex < 0 || dotIndex === filename.length - 1) return null;
+  return filename.slice(dotIndex + 1).toLowerCase();
+}
+
+function addVariantCacheRevision(url: string, sourceExtension?: string | null): string {
+  const params = new URLSearchParams({ v: IMAGE_VARIANT_CACHE_REVISION });
+  if (sourceExtension) params.set("source", sourceExtension);
+  return `${url}?${params.toString()}`;
 }
 
 /**
@@ -123,7 +131,10 @@ export function getOptimizedImageUrl(
   // Encode the path (handles spaces in folder names like "new york")
   const encodedPath = encodeImagePath(variantPath);
   
-  return addVariantCacheRevision(`/api/images/${encodedPath}`);
+  return addVariantCacheRevision(
+    `/api/images/${encodedPath}`,
+    getSourceExtension(filename),
+  );
 }
 
 /**
@@ -168,7 +179,10 @@ export function generateSrcSet(
     .map((width) => {
       const variantPath = `${dir}${nameWithoutExt}_${width}w.webp`;
       const encodedPath = encodeImagePath(variantPath);
-      return `${addVariantCacheRevision(`/api/images/${encodedPath}`)} ${width}w`;
+      return `${addVariantCacheRevision(
+        `/api/images/${encodedPath}`,
+        getSourceExtension(filename),
+      )} ${width}w`;
     });
 
   if (

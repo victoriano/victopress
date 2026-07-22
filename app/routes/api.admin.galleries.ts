@@ -12,6 +12,7 @@ import { json } from "@remix-run/cloudflare";
 import { checkAdminAuth } from "~/utils/admin-auth";
 import { getStorage, invalidateContentIndex, updateGalleryMetadataInIndex } from "~/lib/content-engine";
 import * as yaml from "yaml";
+import { normalizeLocale, type Locale } from "~/lib/i18n";
 
 interface GalleryMetadata {
   title?: string;
@@ -24,6 +25,8 @@ interface GalleryMetadata {
   private?: boolean;
   password?: string;
   includeNestedPhotos?: boolean;
+  locale?: Locale;
+  translations?: Partial<Record<Locale, { title?: string; description?: string }>>;
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -60,6 +63,7 @@ async function handleCreate(
   const description = formData.get("description") as string | null;
   const classificationHint = formData.get("classificationHint") as string | null;
   const parentSlug = formData.get("parentSlug") as string | null;
+  const sourceLocale = normalizeLocale(formData.get("sourceLocale")) || "es";
   
   if (!slug || !title) {
     return json({ success: false, error: "Slug and title are required" }, { status: 400 });
@@ -97,6 +101,13 @@ async function handleCreate(
     title,
     ...(description && { description }),
     ...(classificationHint?.trim() && { classificationHint: classificationHint.trim() }),
+    locale: sourceLocale,
+    translations: {
+      [sourceLocale]: {
+        title,
+        ...(description && { description }),
+      },
+    },
   };
   
   const yamlContent = yaml.stringify(metadata);
@@ -145,9 +156,31 @@ async function handleUpdate(
   
   // Parse update fields from form data
   const updateFields: Record<string, unknown> = {};
+  const translations = {
+    ...(existingMetadata.translations || {}),
+  } as NonNullable<GalleryMetadata["translations"]>;
+  let localizedFieldsSubmitted = false;
+  const sourceLocale =
+    normalizeLocale(formData.get("sourceLocale")) ||
+    normalizeLocale(existingMetadata.locale) ||
+    "en";
   
   for (const [key, value] of formData.entries()) {
-    if (key === "action" || key === "slug") continue;
+    if (key === "action" || key === "slug" || key === "sourceLocale") continue;
+
+    const localizedField = key.match(/^(title|description)_(es|en)$/);
+    if (localizedField) {
+      localizedFieldsSubmitted = true;
+      const field = localizedField[1] as "title" | "description";
+      const locale = localizedField[2] as Locale;
+      const edition = { ...(translations[locale] || {}) };
+      const cleanValue = String(value).trim();
+      if (cleanValue) edition[field] = cleanValue;
+      else delete edition[field];
+      if (edition.title || edition.description) translations[locale] = edition;
+      else delete translations[locale];
+      continue;
+    }
     
     // Handle special field types
     if (key === "order") {
@@ -185,6 +218,21 @@ async function handleUpdate(
       newMetadata[key] = value;
     }
   }
+
+  newMetadata.locale = sourceLocale;
+  newMetadata.translations = translations;
+  const sourceEdition = translations[sourceLocale];
+  if (localizedFieldsSubmitted && !sourceEdition?.title) {
+    return json(
+      { success: false, error: "The source-edition title is required" },
+      { status: 400 },
+    );
+  }
+  if (sourceEdition?.title) newMetadata.title = sourceEdition.title;
+  if (localizedFieldsSubmitted) {
+    if (sourceEdition?.description) newMetadata.description = sourceEdition.description;
+    else delete newMetadata.description;
+  }
   
   // Write updated YAML
   const yamlContent = yaml.stringify(newMetadata);
@@ -203,6 +251,8 @@ async function handleUpdate(
     password: newMetadata.password as string | undefined,
     tags: newMetadata.tags as string[] | undefined,
     includeNestedPhotos: newMetadata.includeNestedPhotos as boolean | undefined,
+    locale: sourceLocale,
+    translations: translations,
   });
   
   console.log(`[Gallery Update] ${slug}: ${indexResult.message}`);

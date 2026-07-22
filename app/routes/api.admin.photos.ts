@@ -40,6 +40,13 @@ function getAllVariantFilenames(originalFilename: string): string[] {
   return widths.map(w => `${nameWithoutExt}_${w}w.webp`);
 }
 import * as yaml from "yaml";
+import {
+  normalizeLocale,
+  SUPPORTED_LOCALES,
+  type Locale,
+  type TranslationMap,
+} from "~/lib/i18n";
+import type { PhotoTranslation } from "~/lib/content-engine";
 
 // Must match PhotoYamlEntry in gallery-scanner.ts
 interface PhotoMetadata {
@@ -51,6 +58,8 @@ interface PhotoMetadata {
   hidden?: boolean;
   featured?: boolean;
   date?: string;
+  locale?: Locale;
+  translations?: TranslationMap<PhotoTranslation>;
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -210,6 +219,23 @@ async function handleUpdate(
   const hidden = formData.get("hidden");
   const featured = formData.get("featured");
   const date = formData.get("date") as string | null;
+  const sourceLocale = normalizeLocale(formData.get("sourceLocale")) || "en";
+  const localizedMetadataSubmitted = formData.get("sourceLocale") !== null;
+  const translations: TranslationMap<PhotoTranslation> = {};
+
+  for (const locale of SUPPORTED_LOCALES) {
+    const localizedTitle = formData.get(`title_${locale}`);
+    const localizedDescription = formData.get(`description_${locale}`);
+    if (typeof localizedTitle !== "string" && typeof localizedDescription !== "string") continue;
+    const edition: PhotoTranslation = {};
+    if (typeof localizedTitle === "string" && localizedTitle.trim()) {
+      edition.title = localizedTitle.trim();
+    }
+    if (typeof localizedDescription === "string" && localizedDescription.trim()) {
+      edition.description = localizedDescription.trim();
+    }
+    if (edition.title || edition.description) translations[locale] = edition;
+  }
   
   if (title !== null) updates.title = title || undefined;
   if (description !== null) updates.description = description || undefined;
@@ -224,6 +250,12 @@ async function handleUpdate(
   if (hidden !== null) updates.hidden = hidden === "true";
   if (featured !== null) updates.featured = featured === "true";
   if (date !== null) updates.date = date || undefined;
+  if (Object.keys(translations).length > 0 || localizedMetadataSubmitted) {
+    updates.locale = sourceLocale;
+    updates.translations = translations;
+    updates.title = translations[sourceLocale]?.title;
+    updates.description = translations[sourceLocale]?.description;
+  }
   
   // Update photos.yaml
   await updatePhotoInYaml(storage, galleryPath, filename, updates);
@@ -234,8 +266,12 @@ async function handleUpdate(
       if (p.filename !== filename) return p;
       return {
         ...p,
-        title: updates.title ?? p.title,
-        description: updates.description ?? p.description,
+        title: localizedMetadataSubmitted ? updates.title : updates.title ?? p.title,
+        description: localizedMetadataSubmitted
+          ? updates.description
+          : updates.description ?? p.description,
+        locale: updates.locale ?? p.locale,
+        translations: updates.translations ?? p.translations,
         tags: updates.tags ?? p.tags,
         order: updates.order ?? p.order,
         hidden: updates.hidden ?? p.hidden,
