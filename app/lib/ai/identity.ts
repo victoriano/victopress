@@ -4,6 +4,7 @@ import type {
   PhotoAssetIdentity,
   SourceFingerprint,
 } from "./types";
+import { canonicalizeImageBytes } from "../content-engine/victopress-xmp";
 
 const SHA256_PREFIX = "sha256:";
 const ASSET_PREFIX = "asset_";
@@ -55,7 +56,7 @@ export function assetIdFromFingerprint(
 export async function createSourceFingerprint(
   bytes: ArrayBuffer | ArrayBufferView,
 ): Promise<SourceFingerprint> {
-  return sourceFingerprintFromHex(await sha256Hex(bytes));
+  return sourceFingerprintFromHex(await sha256Hex(canonicalizeImageBytes(bytes)));
 }
 
 export async function createPhotoAssetIdentity(input: {
@@ -79,7 +80,8 @@ export async function createPhotoAssetIdentity(input: {
     throw new AiDataValidationError("Gallery slug cannot be empty", "gallerySlug");
   }
 
-  const sourceFingerprint = await createSourceFingerprint(input.bytes);
+  const canonicalBytes = canonicalizeImageBytes(input.bytes);
+  const sourceFingerprint = sourceFingerprintFromHex(await sha256Hex(canonicalBytes));
 
   return {
     assetId: assetIdFromFingerprint(sourceFingerprint),
@@ -87,7 +89,9 @@ export async function createPhotoAssetIdentity(input: {
     sourcePath,
     filename,
     gallerySlug,
-    byteLength: input.bytes.byteLength,
+    // VictoPress-owned XMP is excluded so metadata writeback never changes the
+    // identity or apparent source size of the underlying photograph.
+    byteLength: canonicalBytes.byteLength,
     lastModified: input.lastModified,
   };
 }

@@ -11,6 +11,10 @@ import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getGalleryFromIndex, getAllGalleriesFromIndex, getContentIndex } from "~/lib/content-engine";
+import {
+  normalizeGalleryThumbnailAspectRatio,
+  type GalleryThumbnailAspectRatio,
+} from "~/lib/content-engine/gallery-layout";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 
 // Drag and drop
@@ -1064,7 +1068,7 @@ function InfoCard({
 }
 
 // Gallery Settings Panel Component
-function GallerySettingsPanel({
+export function GallerySettingsPanel({
   gallery,
   onUpdate,
   onDelete,
@@ -1082,6 +1086,10 @@ function GallerySettingsPanel({
   );
   const [order, setOrder] = useState(gallery.order?.toString() || "");
   const [isPrivate, setIsPrivate] = useState(gallery.isProtected || false);
+  const [thumbnailAspectRatio, setThumbnailAspectRatio] =
+    useState<GalleryThumbnailAspectRatio>(() =>
+      normalizeGalleryThumbnailAspectRatio(gallery.thumbnailAspectRatio),
+    );
   const [hasChanges, setHasChanges] = useState(false);
   
   // Track changes
@@ -1092,14 +1100,26 @@ function GallerySettingsPanel({
       classificationHint !== (gallery.classificationHint || "");
     const orderChanged = order !== (gallery.order?.toString() || "");
     const privateChanged = isPrivate !== (gallery.isProtected || false);
+    const thumbnailAspectRatioChanged =
+      thumbnailAspectRatio !==
+      normalizeGalleryThumbnailAspectRatio(gallery.thumbnailAspectRatio);
     setHasChanges(
       titleChanged ||
       descChanged ||
       classificationHintChanged ||
       orderChanged ||
-      privateChanged,
+      privateChanged ||
+      thumbnailAspectRatioChanged,
     );
-  }, [title, description, classificationHint, order, isPrivate, gallery]);
+  }, [
+    title,
+    description,
+    classificationHint,
+    order,
+    isPrivate,
+    thumbnailAspectRatio,
+    gallery,
+  ]);
   
   const handleSave = () => {
     const updates: Record<string, string> = {};
@@ -1110,6 +1130,12 @@ function GallerySettingsPanel({
     }
     if (order !== (gallery.order?.toString() || "")) updates.order = order;
     if (isPrivate !== (gallery.isProtected || false)) updates.private = isPrivate.toString();
+    if (
+      thumbnailAspectRatio !==
+      normalizeGalleryThumbnailAspectRatio(gallery.thumbnailAspectRatio)
+    ) {
+      updates.thumbnailAspectRatio = thumbnailAspectRatio;
+    }
     onUpdate(updates);
   };
 
@@ -1185,6 +1211,30 @@ function GallerySettingsPanel({
             only used when Photo AI is enabled with your own API key.
           </p>
         </div>
+        <fieldset className="md:col-span-2">
+          <legend className="mb-1 text-gray-500 dark:text-gray-400">
+            Gallery image proportions
+          </legend>
+          <div className="grid gap-2 sm:grid-cols-2" role="radiogroup">
+            <GalleryRatioOption
+              value="3:2"
+              selectedValue={thumbnailAspectRatio}
+              onChange={setThumbnailAspectRatio}
+              title="Uniform 3:2"
+              description="A consistent editorial rhythm. Images are cropped to fill the frame."
+            />
+            <GalleryRatioOption
+              value="original"
+              selectedValue={thumbnailAspectRatio}
+              onChange={setThumbnailAspectRatio}
+              title="Original proportions"
+              description="Shows every complete frame. Image heights can vary."
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+            Uniform 3:2 is the default for galleries without an explicit setting.
+          </p>
+        </fieldset>
         <div className="md:col-span-2 flex items-center gap-3">
           <label className="flex items-center gap-2 cursor-pointer">
             <input 
@@ -1205,6 +1255,64 @@ function GallerySettingsPanel({
         </p>
       </div>
     </div>
+  );
+}
+
+function GalleryRatioOption({
+  value,
+  selectedValue,
+  onChange,
+  title,
+  description,
+}: {
+  value: GalleryThumbnailAspectRatio;
+  selectedValue: GalleryThumbnailAspectRatio;
+  onChange: (value: GalleryThumbnailAspectRatio) => void;
+  title: string;
+  description: string;
+}) {
+  const selected = value === selectedValue;
+  const previewRatios = value === "3:2" ? [1.5, 1.5, 1.5] : [1.5, 1.25, 1.75];
+
+  return (
+    <label
+      className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-gray-950 ${
+        selected
+          ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/30"
+          : "border-gray-200 bg-gray-50 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
+      }`}
+    >
+      <input
+        type="radio"
+        name="thumbnailAspectRatio"
+        value={value}
+        checked={selected}
+        onChange={() => onChange(value)}
+        className="sr-only"
+      />
+      <span
+        className="grid w-20 shrink-0 grid-cols-3 items-start gap-1 pt-0.5"
+        aria-hidden="true"
+      >
+        {previewRatios.map((ratio, index) => (
+          <span
+            key={`${value}-${index}`}
+            className={`block w-full rounded-[2px] ${
+              selected ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
+            }`}
+            style={{ aspectRatio: ratio }}
+          />
+        ))}
+      </span>
+      <span className="min-w-0">
+        <span className="block font-medium text-gray-900 dark:text-white">
+          {title}
+        </span>
+        <span className="mt-0.5 block text-xs leading-4 text-gray-500 dark:text-gray-400">
+          {description}
+        </span>
+      </span>
+    </label>
   );
 }
 
@@ -1692,13 +1800,19 @@ function PhotoEditModal({
               )}
             </div>
             
-            {/* EXIF Info (read-only) */}
+            {/* Embedded metadata summary (read-only) */}
             {photo.exif && (
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Camera Info (from EXIF)
+                  Embedded Metadata
                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  {photo.exif.dateTaken && (
+                    <div>Taken: {new Date(photo.exif.dateTaken).toLocaleString()}</div>
+                  )}
+                  {photo.exif.artist && (
+                    <div>Author: {photo.exif.artist}</div>
+                  )}
                   {photo.exif.camera && (
                     <div>Camera: {photo.exif.camera}</div>
                   )}
@@ -1717,7 +1831,25 @@ function PhotoEditModal({
                   {photo.exif.iso && (
                     <div>ISO: {photo.exif.iso}</div>
                   )}
+                  {photo.exif.software && (
+                    <div>Software: {photo.exif.software}</div>
+                  )}
+                  {photo.exif.creatorTool && (
+                    <div>Creator tool: {photo.exif.creatorTool}</div>
+                  )}
+                  {photo.exif.colorProfile && (
+                    <div>Color profile: {photo.exif.colorProfile}</div>
+                  )}
+                  {(photo.exif.city || photo.exif.country) && (
+                    <div>Location: {[photo.exif.city, photo.exif.country].filter(Boolean).join(", ")}</div>
+                  )}
+                  {photo.exif.copyright && (
+                    <div className="col-span-2">Copyright: {photo.exif.copyright}</div>
+                  )}
                 </div>
+                <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+                  Full EXIF, IPTC, XMP/Photoshop, Camera Raw and ICC data stays in the original; new uploads and full rebuilds also index it privately.
+                </p>
               </div>
             )}
           </div>

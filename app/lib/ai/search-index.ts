@@ -18,8 +18,15 @@ export interface PhotoAiSearchDocument {
   gallerySlug: string;
   galleryTitle: string;
   title?: string;
+  /** Editorial/public description from photos.yaml/content index. */
   description?: string;
+  /** AI description kept separate from the editorial/public description. */
+  aiDescription?: string;
+  /** Legacy alias retained for existing consumers. */
   caption: string;
+  editorialTags?: string[];
+  aiTags?: string[];
+  /** Derived union used only for search; never written back as editorial tags. */
   tags: string[];
   year?: number;
   hidden: boolean;

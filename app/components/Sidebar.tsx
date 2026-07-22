@@ -134,7 +134,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
       {/* Site Name */}
       <div>
         <Link to="/" className="block mb-12">
-          <h1 className="text-[27px] font-bold leading-tight tracking-tight text-black dark:text-white">
+          <h1 className="text-[27px] font-bold leading-[1.2] tracking-normal text-black dark:text-white">
             {siteName.split(" ").map((word, i) => (
               <span key={i} className="block">
                 {word}
@@ -265,6 +265,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
             {photoNav.prevPhotoUrl ? (
               <Link
                 to={photoNav.prevPhotoUrl}
+                prefetch="render"
                 className="text-gray-500 hover:text-black dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
               >
                 PREV
@@ -276,6 +277,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
             {photoNav.nextPhotoUrl ? (
               <Link
                 to={photoNav.nextPhotoUrl}
+                prefetch="render"
                 className="text-gray-500 hover:text-black dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
               >
                 NEXT
@@ -356,12 +358,14 @@ function NavSection({
       return "text-black dark:text-white font-bold";
     }
     if (isInPath && hasChildren && isExpanded) {
-      return "text-gray-400";
+      return "text-gray-400 font-semibold";
     }
     if (isInPath) {
       return "text-black dark:text-white font-bold";
     }
-    return depth > 0 ? "text-gray-400" : "text-black dark:text-white";
+    return depth > 0
+      ? "text-gray-400 font-semibold"
+      : "text-black dark:text-white font-semibold";
   };
 
   return (
@@ -372,7 +376,7 @@ function NavSection({
           onClick={handleClick}
           prefetch="intent"
           className={`
-            block text-[15px] font-medium leading-[24px] transition-colors text-left w-full
+            block text-[15px] leading-[24px] transition-colors text-left w-full
             ${getTextColor()}
             hover:text-black dark:hover:text-white
           `}
@@ -385,7 +389,7 @@ function NavSection({
           prefetch="intent"
           className={`
             block text-[15px] leading-[24px] transition-colors
-            ${isInPath ? "text-black dark:text-white font-bold" : "text-gray-400"}
+            ${isInPath ? "text-black dark:text-white font-bold" : "text-gray-400 font-semibold"}
             hover:text-black dark:hover:text-white
           `}
         >
@@ -430,7 +434,7 @@ function StaticNavLink({
       to={href}
       className={`
         block text-xs transition-colors
-        ${isActive ? "text-black font-bold dark:text-white" : "text-gray-400"}
+        ${isActive ? "text-black font-bold dark:text-white" : "text-gray-800 font-semibold dark:text-gray-300"}
         hover:text-black dark:hover:text-white
       `}
     >

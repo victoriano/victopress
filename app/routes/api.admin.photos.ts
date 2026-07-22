@@ -16,7 +16,9 @@ import {
   invalidateContentIndex,
   updateGalleryPhotosInIndex,
   addPhotosToGalleryIndex,
+  getGalleryFromIndex,
   moveGalleryMemberships,
+  moveGalleryOrderPaths,
   removeGalleryMembershipsForPhotos,
   type GalleryPhotoEntry,
 } from "~/lib/content-engine";
@@ -25,6 +27,14 @@ import {
   removePhotoAiProjectionsByPaths,
   setPhotoAiVisibilityByPaths,
 } from "~/lib/ai/photo-ai-service.server";
+import {
+  enqueuePhotoMetadataWritebacks,
+  type PhotoMetadataWritebackReason,
+} from "~/lib/ai/photo-metadata-writeback.server";
+import {
+  deletePhotoMetadata,
+  movePhotoMetadata,
+} from "~/lib/content-engine/photo-metadata-store";
 // Helper functions that don't need Jimp
 function isVariantFile(filename: string): boolean {
   return /_\d+w\.webp$/.test(filename);
@@ -51,6 +61,18 @@ interface PhotoMetadata {
   hidden?: boolean;
   featured?: boolean;
   date?: string;
+}
+
+async function queueMetadataWriteback(
+  context: ActionFunctionArgs["context"],
+  paths: readonly string[],
+  reason: PhotoMetadataWritebackReason,
+): Promise<void> {
+  try {
+    await enqueuePhotoMetadataWritebacks(context, paths, reason);
+  } catch (error) {
+    console.error(`[Metadata Writeback] Failed to queue ${reason}`, error);
+  }
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -115,6 +137,11 @@ async function handleDelete(
       
       // Delete the original
       await storage.delete(photoPath);
+      try {
+        await deletePhotoMetadata(storage, photoPath);
+      } catch (error) {
+        console.warn(`[Metadata] Failed to delete sidecar for ${photoPath}:`, error);
+      }
       
       // Delete WebP variants (photo_400w.webp, photo_800w.webp, etc.)
       const filename = photoPath.split("/").pop()!;
@@ -239,9 +266,11 @@ async function handleUpdate(
         tags: updates.tags ?? p.tags,
         order: updates.order ?? p.order,
         hidden: updates.hidden ?? p.hidden,
+        dateTaken: updates.date ?? p.dateTaken,
       };
     });
   });
+  await queueMetadataWriteback(context, [photoPath], "editorial-metadata");
   
   return json({
     success: true,
@@ -297,6 +326,11 @@ async function handleMove(
       }
       
       await storage.move(photoPath, newPath);
+      try {
+        await movePhotoMetadata(storage, photoPath, newPath);
+      } catch (error) {
+        console.warn(`[Metadata] Failed to move sidecar for ${photoPath}:`, error);
+      }
       results.push({ path: photoPath, success: true, newPath });
     } catch (err) {
       results.push({ 
@@ -324,6 +358,10 @@ async function handleMove(
     storage,
     successfulMoves.map((result) => ({ from: result.path, to: result.newPath })),
   );
+  await moveGalleryOrderPaths(
+    storage,
+    successfulMoves.map((result) => ({ from: result.path, to: result.newPath })),
+  );
   try {
     await removePhotoAiProjectionsByPaths(
       context,
@@ -336,6 +374,11 @@ async function handleMove(
   } catch (error) {
     console.error("[Photo AI] Failed to requeue moved photo projections", error);
   }
+  await queueMetadataWriteback(
+    context,
+    successfulMoves.map((result) => result.newPath),
+    "gallery-move",
+  );
   
   const successCount = results.filter(r => r.success).length;
   
@@ -430,6 +473,14 @@ async function handleReorder(
     }).sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   });
 
+  const gallerySlug = galleryPath.replace(/^galleries\//, "");
+  const reorderedGallery = await getGalleryFromIndex(storage, gallerySlug);
+  await queueMetadataWriteback(
+    context,
+    reorderedGallery?.photos.map((photo) => photo.path) ?? [],
+    "gallery-order",
+  );
+
   return json({
     success: true,
     message: `Reordered ${order.length} photos`,
@@ -478,6 +529,7 @@ async function handleToggleVisibility(
   } catch (error) {
     console.error("[Photo AI] Failed to update photo visibility projection", error);
   }
+  await queueMetadataWriteback(context, photoPaths, "editorial-metadata");
   
   return json({
     success: true,
@@ -589,6 +641,7 @@ async function handleBulkUpdate(
       };
     });
   });
+  await queueMetadataWriteback(context, photoPaths, "editorial-metadata");
   
   return json({
     success: true,

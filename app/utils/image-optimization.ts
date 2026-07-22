@@ -40,6 +40,17 @@ export interface ResponsiveImageOptions {
 }
 
 /**
+ * Browser-ready responsive source used to warm the exact candidate that an
+ * adjacent photo will need. Unlike a string source, `src` is not transformed
+ * again and may be paired with `srcSet`/`sizes` for browser selection.
+ */
+export interface ImagePreloadSource {
+  src: string;
+  srcSet?: string;
+  sizes?: string;
+}
+
+/**
  * Encode a path for use in URLs (handles spaces and special chars)
  */
 function encodeImagePath(path: string): string {
@@ -189,20 +200,31 @@ export function generateSrcSet(
  * Preload an image with optional optimization
  */
 export function preloadImage(
-  src: string,
+  source: string | ImagePreloadSource,
   options: ImageOptimizationOptions = {}
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve();
-    img.onerror = () => reject(new Error(`Failed to preload: ${src}`));
+    const resolvedSource = typeof source === "string" ? source : source.src;
+    img.onerror = () => reject(new Error(`Failed to preload: ${resolvedSource}`));
     img.fetchPriority = "low";
+    img.decoding = "async";
+
+    if (typeof source !== "string") {
+      // Assign sizes before srcset so the browser can select the right
+      // responsive candidate on the first request.
+      if (source.sizes) img.sizes = source.sizes;
+      if (source.srcSet) img.srcset = source.srcSet;
+      img.src = source.src;
+      return;
+    }
 
     // Some callers already pass a generated variant. Transforming that URL a
     // second time produces names such as photo_1600w_1600w.webp and silently
     // defeats adjacent-photo preloading.
-    const isVariantUrl = /(?:^|\/)api\/images\/.*_\d+w\.webp(?:\?.*)?$/i.test(src);
-    img.src = isVariantUrl ? src : getOptimizedImageUrl(src, options);
+    const isVariantUrl = /(?:^|\/)api\/images\/.*_\d+w\.webp(?:\?.*)?$/i.test(source);
+    img.src = isVariantUrl ? source : getOptimizedImageUrl(source, options);
   });
 }
 
@@ -210,7 +232,7 @@ export function preloadImage(
  * Preload multiple images in parallel
  */
 export function preloadImages(
-  sources: string[],
+  sources: Array<string | ImagePreloadSource>,
   options: ImageOptimizationOptions = {}
 ): Promise<void[]> {
   return Promise.all(

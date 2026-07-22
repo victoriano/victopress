@@ -134,12 +134,11 @@ function SimilarPhotoCard({ photo }: { photo: SimilarPhoto }) {
             onError={() => setImageFailed(true)}
           />
         )}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-3 pb-2.5 pt-8 text-white">
-          <p className="truncate text-xs font-medium">{title}</p>
-          {photo.galleryTitle && (
-            <p className="mt-0.5 truncate text-[11px] text-white/75">{photo.galleryTitle}</p>
-          )}
-        </div>
+        {photo.galleryTitle && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-3 pb-2.5 pt-6 text-white">
+            <p className="truncate text-[11px] text-white/75">{photo.galleryTitle}</p>
+          </div>
+        )}
       </div>
     </Link>
   );

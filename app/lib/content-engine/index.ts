@@ -17,6 +17,9 @@
 export type {
   Photo,
   ExifData,
+  EmbeddedImageMetadata,
+  EmbeddedMetadataValue,
+  ImageMetadataSummary,
   Gallery,
   GalleryMetadata,
   BlogPost,
@@ -78,6 +81,14 @@ export {
   addPhotosToGalleryIndex,
   assignPhotosToGalleryInIndex,
 } from "./content-index";
+
+export {
+  DEFAULT_GALLERY_THUMBNAIL_ASPECT_RATIO,
+  GALLERY_THUMBNAIL_ASPECT_RATIOS,
+  isGalleryThumbnailAspectRatio,
+  normalizeGalleryThumbnailAspectRatio,
+} from "./gallery-layout";
+export type { GalleryThumbnailAspectRatio } from "./gallery-layout";
 export type {
   ContentIndex as ContentIndexData,
   GalleryIndexEntry,
@@ -97,8 +108,54 @@ export {
   moveGalleryMemberships,
 } from "./gallery-memberships";
 
-// EXIF
-export { extractExif, formatExifForDisplay } from "./exif";
+export {
+  GALLERY_ORDERS_KEY,
+  moveGalleryOrderPaths,
+  readGalleryOrders,
+  sortPhotosByGalleryOrder,
+} from "./gallery-orders";
+
+// Embedded image metadata (EXIF/IPTC/XMP/Photoshop/ICC)
+export {
+  IMAGE_METADATA_VERSION,
+  extractExif,
+  extractImageMetadata,
+  normalizeEmbeddedMetadata,
+  sanitizeEmbeddedMetadata,
+  toImageMetadataSummary,
+  fromImageMetadataSummary,
+  formatExifForDisplay,
+} from "./exif";
+export type { ExtractedImageMetadata } from "./exif";
+export {
+  PHOTO_METADATA_PREFIX,
+  PHOTO_METADATA_RECORD_VERSION,
+  getPhotoMetadataStorageKey,
+  readPhotoMetadata,
+  writePhotoMetadata,
+  deletePhotoMetadata,
+  movePhotoMetadata,
+} from "./photo-metadata-store";
+export type {
+  StoredPhotoMetadata,
+  PhotoMetadataSourceInfo,
+} from "./photo-metadata-store";
+export {
+  VICTOPRESS_EMBEDDED_METADATA_VERSION,
+  VICTOPRESS_XMP_NAMESPACE,
+  canonicalizeImageBytes,
+  createCanonicalImageSourceFingerprint,
+  readVictoPressEmbeddedMetadata,
+  writeVictoPressEmbeddedMetadata,
+} from "./victopress-xmp";
+export type {
+  EmbeddedMetadataWriteResult,
+  VictoPressAiMetadata,
+  VictoPressEditorialMetadata,
+  VictoPressEmbeddedMetadata,
+  VictoPressEmbeddedVectorIndex,
+  VictoPressGalleryMembershipMetadata,
+} from "./victopress-xmp";
 
 // Storage adapters
 export { R2StorageAdapter } from "./storage/r2-adapter";

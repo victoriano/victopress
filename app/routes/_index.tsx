@@ -102,9 +102,11 @@ export default function Index() {
             key={`${photo.gallerySlug}-${photo.id}-${photo.homeIndex}`}
             src={`/api/images/${photo.path}`}
             alt={photo.title || photo.filename}
-            aspectRatio="auto"
+            width={photo.width}
+            height={photo.height}
+            aspectRatio="3:2"
             href={`/featured/${photo.homeIndex}`}
-            priority
+            priority={index === 0}
           />
         ))}
       </PhotoGrid>

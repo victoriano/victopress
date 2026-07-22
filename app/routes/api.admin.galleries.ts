@@ -10,7 +10,23 @@
 import type { ActionFunctionArgs } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { checkAdminAuth } from "~/utils/admin-auth";
-import { getStorage, invalidateContentIndex, updateGalleryMetadataInIndex } from "~/lib/content-engine";
+import {
+  getContentIndex,
+  getStorage,
+  invalidateContentIndex,
+  moveGalleryMemberships,
+  moveGalleryOrderPaths,
+  updateGalleryMetadataInIndex,
+  isGalleryThumbnailAspectRatio,
+  normalizeGalleryThumbnailAspectRatio,
+  type GalleryThumbnailAspectRatio,
+} from "~/lib/content-engine";
+import { enqueuePhotoMetadataWritebacks } from "~/lib/ai/photo-metadata-writeback.server";
+import {
+  enqueueUploadedPhotosForAi,
+  removePhotoAiProjectionsByPaths,
+} from "~/lib/ai/photo-ai-service.server";
+import { movePhotoMetadata } from "~/lib/content-engine/photo-metadata-store";
 import * as yaml from "yaml";
 
 interface GalleryMetadata {
@@ -24,6 +40,7 @@ interface GalleryMetadata {
   private?: boolean;
   password?: string;
   includeNestedPhotos?: boolean;
+  thumbnailAspectRatio?: GalleryThumbnailAspectRatio;
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -53,7 +70,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
  */
 async function handleCreate(
   formData: FormData, 
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const slug = formData.get("slug") as string;
   const title = formData.get("title") as string;
@@ -120,7 +137,7 @@ async function handleCreate(
  */
 async function handleUpdate(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const slug = formData.get("slug") as string;
   
@@ -167,6 +184,14 @@ async function handleUpdate(
       updateFields[key] = hint ? hint.slice(0, 1_500) : undefined;
     } else if (key === "private" || key === "includeNestedPhotos") {
       updateFields[key] = value === "true";
+    } else if (key === "thumbnailAspectRatio") {
+      if (!isGalleryThumbnailAspectRatio(value)) {
+        return json(
+          { success: false, error: "Invalid gallery thumbnail aspect ratio" },
+          { status: 400 },
+        );
+      }
+      updateFields[key] = value;
     } else if (value === "" || value === "null") {
       // Remove field if empty
       updateFields[key] = undefined;
@@ -203,9 +228,22 @@ async function handleUpdate(
     password: newMetadata.password as string | undefined,
     tags: newMetadata.tags as string[] | undefined,
     includeNestedPhotos: newMetadata.includeNestedPhotos as boolean | undefined,
+    thumbnailAspectRatio: normalizeGalleryThumbnailAspectRatio(
+      newMetadata.thumbnailAspectRatio,
+    ),
   });
   
   console.log(`[Gallery Update] ${slug}: ${indexResult.message}`);
+
+  try {
+    const content = await getContentIndex(storage);
+    const photoPaths = content.galleryData
+      .find((gallery) => gallery.slug === slug)
+      ?.photos.map((photo) => photo.path) ?? [];
+    await enqueuePhotoMetadataWritebacks(context, photoPaths, "gallery-membership");
+  } catch (error) {
+    console.error("[Metadata Writeback] Failed to queue gallery update", error);
+  }
   
   return json({
     success: true,
@@ -219,7 +257,7 @@ async function handleUpdate(
  */
 async function handleDelete(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const slug = formData.get("slug") as string;
   const confirmDelete = formData.get("confirm") === "true";
@@ -259,7 +297,7 @@ async function handleDelete(
  */
 async function handleMove(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const fromSlug = formData.get("fromSlug") as string;
   const toSlug = formData.get("toSlug") as string;
@@ -297,6 +335,15 @@ async function handleMove(
   if (destFiles.length > 0) {
     return json({ success: false, error: "Destination gallery already exists" }, { status: 400 });
   }
+
+  const photoMoves = sourceFiles
+    .filter((file) =>
+      /\.(?:jpe?g|png|webp|avif)$/i.test(file.name) && !/_\d+w\.webp$/i.test(file.name),
+    )
+    .map((file) => ({
+      from: file.path,
+      to: file.path.replace(fromPath, toPath),
+    }));
   
   // Move all files
   let movedCount = 0;
@@ -304,6 +351,15 @@ async function handleMove(
     const newPath = file.path.replace(fromPath, toPath);
     await storage.move(file.path, newPath);
     movedCount++;
+  }
+  await moveGalleryMemberships(storage, photoMoves);
+  await moveGalleryOrderPaths(storage, photoMoves);
+  for (const move of photoMoves) {
+    try {
+      await movePhotoMetadata(storage, move.from, move.to);
+    } catch (error) {
+      console.warn(`[Metadata] Failed to move sidecar for ${move.from}`, error);
+    }
   }
   
   // Update gallery.yaml slug if present
@@ -325,6 +381,22 @@ async function handleMove(
   
   // Invalidate content index
   await invalidateContentIndex(storage);
+
+  const movedPhotoPaths = photoMoves.map((move) => move.to);
+  try {
+    await removePhotoAiProjectionsByPaths(
+      context,
+      photoMoves.map((move) => move.from),
+    );
+    await enqueueUploadedPhotosForAi(context, movedPhotoPaths);
+  } catch (error) {
+    console.error("[Photo AI] Failed to requeue moved gallery projections", error);
+  }
+  try {
+    await enqueuePhotoMetadataWritebacks(context, movedPhotoPaths, "gallery-move");
+  } catch (error) {
+    console.error("[Metadata Writeback] Failed to queue moved gallery photos", error);
+  }
   
   return json({
     success: true,
@@ -339,7 +411,7 @@ async function handleMove(
  */
 async function handleReorder(
   formData: FormData,
-  context: { cloudflare?: { env?: Record<string, unknown> } }
+  context: ActionFunctionArgs["context"]
 ) {
   const orderJson = formData.get("order") as string;
   const parentPath = formData.get("parentPath") as string | null;

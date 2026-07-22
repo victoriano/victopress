@@ -107,6 +107,7 @@ folders versus tags—see [Gallery Taxonomy and Editorial Hierarchy](docs/galler
 title: "Tokyo 2024"
 description: "Street photography from Tokyo"
 cover: "shibuya-crossing.jpg"
+thumbnailAspectRatio: "3:2" # Default; use "original" to preserve every frame
 tags:
   - travel
   - japan
@@ -116,7 +117,18 @@ private: false  # Set to true to hide from listings
 
 ### Photos Metadata
 
-EXIF data is automatically extracted from JPEG files. You can override with `photos.yaml`:
+Embedded EXIF/TIFF, IPTC, XMP (including Photoshop and Camera Raw), ICC, JFIF,
+and supported PNG metadata is decoded automatically. A compact normalized
+summary—capture date, title, caption, keywords, author, copyright, camera,
+location, software, and color profile—is kept in the content index. The full
+namespaced payload is stored in private per-photo sidecars under
+`_photo-metadata/v1/`. Uploads are initially preserved byte-for-byte; deliberate
+metadata writeback only changes an XMP container and never decodes or
+recompresses the photograph.
+
+New uploads are indexed immediately. **Settings → Full Rebuild** backfills the
+same metadata for existing originals. Editorial values in `photos.yaml` still
+take precedence over embedded title, caption, tags, and date:
 
 ```yaml
 # content/galleries/tokyo-2024/photos.yaml (optional)
@@ -128,6 +140,25 @@ EXIF data is automatically extracted from JPEG files. You can override with `pho
 - filename: "DSC_002.jpg"
   hidden: true  # Hide from gallery
 ```
+
+VictoPress can also make each JPEG or PNG original self-contained. **Photo AI →
+Embed metadata in originals** runs a resumable background backfill, and normal
+uploads, edits, AI reviews, and gallery assignments enqueue incremental updates
+under `.victopress/metadata-writeback/v1/`. The private VictoPress XMP namespace
+keeps these layers independent:
+
+- original camera, Photoshop, IPTC, and XMP fields, which are never overwritten;
+- editorial title, description, tags, visibility, gallery memberships, and
+  effective order;
+- AI description, AI tags, model/provenance, reviewed gallery suggestions, the
+  search document, and a compact `base64-f32le` copy of the embedding vector.
+
+In particular, an AI description never becomes `dc:description` and AI tags
+never become editorial/public tags. Combined search tags are a derived index
+only. VictoPress-owned XMP is excluded from the image fingerprint, so a
+writeback cannot make Photo AI analyze the same pixels again. Formats without a
+lossless writer stay in the failed/unsupported queue rather than being
+recompressed.
 
 ### Blog Posts
 
@@ -242,7 +273,7 @@ interface StorageAdapter {
 | `move()` | `fs.rename()` (atomic) | `copy()` + `delete()` (2 ops) |
 | `exists()` | `fs.access()` | `bucket.head()` |
 
-### EXIF Caching & Incremental Updates
+### Embedded Metadata Caching & Incremental Updates
 
 To optimize performance, especially with R2 where each file read is a network request:
 
@@ -256,7 +287,10 @@ Partial update (reorder/hide/edit):
   R2:     ~50-100ms
 ```
 
-The content index stores EXIF data and `lastModified` timestamps. On rebuild, if a photo hasn't changed, its cached EXIF is reused instead of re-reading the image file.
+The content index stores the normalized EXIF/IPTC/XMP summary and
+`lastModified` timestamps. On a fast rebuild, unchanged photos reuse that
+summary instead of reading the originals. A full rebuild re-reads each original
+and refreshes its private full-metadata sidecar.
 
 ## 📚 API Endpoints
 

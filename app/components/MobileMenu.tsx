@@ -289,12 +289,14 @@ function MobileNavSection({
       return "text-black dark:text-white font-bold";
     }
     if (isInPath && hasChildren && isExpanded) {
-      return "text-gray-600 dark:text-gray-400";
+      return "text-gray-600 dark:text-gray-400 font-semibold";
     }
     if (isInPath) {
       return "text-black dark:text-white font-bold";
     }
-    return depth > 0 ? "text-gray-600 dark:text-gray-400" : "text-black dark:text-white";
+    return depth > 0
+      ? "text-gray-600 dark:text-gray-400 font-semibold"
+      : "text-black dark:text-white font-semibold";
   };
 
   return (
@@ -305,7 +307,7 @@ function MobileNavSection({
           onClick={handleClick}
           prefetch="intent"
           className={`
-            text-[15px] font-medium leading-[24px] transition-colors
+            text-[15px] leading-[24px] transition-colors
             ${getTextColor()}
             hover:text-black dark:hover:text-white
           `}
@@ -364,7 +366,7 @@ function MobileNavLink({
       onClick={onClick}
       className={`
         block text-xs transition-colors
-        ${isActive ? "text-black font-bold dark:text-white" : "text-gray-600 dark:text-gray-400"}
+        ${isActive ? "text-black font-bold dark:text-white" : "text-gray-800 font-semibold dark:text-gray-300"}
         hover:text-black dark:hover:text-white
       `}
     >

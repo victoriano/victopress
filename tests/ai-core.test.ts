@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -225,6 +225,35 @@ describe("files-first AI record store", () => {
     const raw = await storage.getText(galleryAiRecordStorageKey("street"));
     expect(raw).toContain('"vectorId"');
     expect(raw).not.toContain('"values"');
+  });
+
+  test("writes a gallery sidecar once for a batch of records", async () => {
+    const store = new AiRecordStore(storage);
+    const assets = await Promise.all([
+      createPhotoAssetIdentity({
+        bytes: new Uint8Array([1]),
+        sourcePath: "galleries/street/one.jpg",
+        filename: "one.jpg",
+        gallerySlug: "street",
+      }),
+      createPhotoAssetIdentity({
+        bytes: new Uint8Array([2]),
+        sourcePath: "galleries/street/two.jpg",
+        filename: "two.jpg",
+        gallerySlug: "street",
+      }),
+    ]);
+    const records = assets.map((asset) => createPhotoAiRecord({ asset }));
+    const put = spyOn(storage, "put");
+
+    const first = await store.upsertRecords("street", records);
+    const second = await store.upsertRecords("street", records);
+
+    expect(first.map((record) => record.revision)).toEqual([1, 1]);
+    expect(second.map((record) => record.revision)).toEqual([2, 2]);
+    expect(put).toHaveBeenCalledTimes(2);
+    expect(await store.listGalleryRecords("street")).toHaveLength(2);
+    put.mockRestore();
   });
 
   test("refuses to overwrite a malformed sidecar", async () => {

@@ -17,6 +17,7 @@ import { AdminLayout } from "~/components/AdminLayout";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 import { getStorage, getContentIndex, addPhotosToGalleryIndex } from "~/lib/content-engine";
 import { enqueueUploadedPhotosForAi } from "~/lib/ai/photo-ai-service.server";
+import { enqueuePhotoMetadataWritebacks } from "~/lib/ai/photo-metadata-writeback.server";
 import { useState, useCallback, useRef, useEffect } from "react";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
@@ -138,6 +139,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
       console.log(`[Upload] Updated index with ${successfulPaths.length} new photos`);
     } catch (error) {
       console.error("[Upload] Failed to update index:", error);
+    }
+
+    try {
+      await enqueuePhotoMetadataWritebacks(context, successfulPaths, "upload");
+    } catch (error) {
+      console.error("[Metadata Writeback] Failed to queue uploaded photos", error);
     }
 
     // Queue derived AI metadata without delaying the upload with model calls.

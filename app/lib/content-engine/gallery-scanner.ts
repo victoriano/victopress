@@ -13,6 +13,7 @@ import type {
   GalleryMetadata,
   Photo,
   ExifData,
+  ImageMetadataSummary,
   StorageAdapter,
   FileInfo,
 } from "./types";
@@ -23,7 +24,13 @@ import {
   getBasename,
   sortPhotosAlphabetically,
 } from "./utils";
-import { extractExif } from "./exif";
+import { extractImageMetadata, fromImageMetadataSummary } from "./exif";
+import {
+  createCanonicalImageSourceFingerprint,
+  readVictoPressEmbeddedMetadata,
+  type VictoPressEmbeddedMetadata,
+} from "./victopress-xmp";
+import { normalizeGalleryThumbnailAspectRatio } from "./gallery-layout";
 
 const GALLERIES_PATH = "galleries";
 
@@ -33,18 +40,8 @@ const GALLERIES_PATH = "galleries";
 export interface CachedPhotoData {
   filename: string;
   lastModified: string;
-  exif?: {
-    dateTaken?: string;
-    camera?: string;
-    lens?: string;
-    focalLength?: number;
-    aperture?: number;
-    shutterSpeed?: string;
-    iso?: number;
-    width?: number;
-    height?: number;
-    gps?: { lat: number; lng: number };
-  };
+  exif?: ImageMetadataSummary;
+  sourceFingerprint?: string;
 }
 
 /**
@@ -188,6 +185,9 @@ async function scanGalleryFolder(
     order: yamlMetadata?.order,
     hasCustomMetadata: !!yamlMetadata,
     includeNestedPhotos: yamlMetadata?.includeNestedPhotos,
+    thumbnailAspectRatio: normalizeGalleryThumbnailAspectRatio(
+      yamlMetadata?.thumbnailAspectRatio,
+    ),
     isParentGallery,
   };
 
@@ -266,6 +266,7 @@ interface PhotoYamlEntry {
   tags?: string[];
   hidden?: boolean;
   order?: number;
+  date?: string;
 }
 
 /**
@@ -312,36 +313,51 @@ async function scanPhotos(
     
     // Try to extract EXIF data (or use cache)
     let exifData: ExifData | null = null;
+    let embeddedMetadata: Photo["embeddedMetadata"];
+    let victopressMetadata: VictoPressEmbeddedMetadata | undefined;
+    let sourceFingerprint = cached?.sourceFingerprint;
     
     if (cacheValid && cached.exif) {
       // Use cached EXIF data - don't read the file!
       cacheHits++;
-      exifData = {
-        dateTimeOriginal: cached.exif.dateTaken ? new Date(cached.exif.dateTaken) : undefined,
-        make: cached.exif.camera?.split(' ')[0],
-        model: cached.exif.camera?.split(' ').slice(1).join(' '),
-        lensModel: cached.exif.lens,
-        focalLength: cached.exif.focalLength,
-        aperture: cached.exif.aperture,
-        shutterSpeed: cached.exif.shutterSpeed,
-        iso: cached.exif.iso,
-        imageWidth: cached.exif.width,
-        imageHeight: cached.exif.height,
-        latitude: cached.exif.gps?.lat,
-        longitude: cached.exif.gps?.lng,
-      };
-    } else if (file.name.toLowerCase().endsWith(".jpg") || file.name.toLowerCase().endsWith(".jpeg")) {
+      exifData = fromImageMetadataSummary(cached.exif);
+    } else if (!/\.(?:gif|svg)$/i.test(file.name)) {
       // Cache miss - need to read file and extract EXIF
       cacheMisses++;
       try {
         const buffer = await storage.get(photoPath);
         if (buffer) {
-          exifData = await extractExif(buffer);
+          const [extracted, fingerprint] = await Promise.all([
+            extractImageMetadata(buffer),
+            createCanonicalImageSourceFingerprint(buffer),
+          ]);
+          exifData = extracted?.exif || null;
+          embeddedMetadata = extracted?.embedded;
+          sourceFingerprint = fingerprint;
+          const embeddedVictoPress = readVictoPressEmbeddedMetadata(buffer);
+          if (embeddedVictoPress?.source.sourceFingerprint === fingerprint) {
+            victopressMetadata = embeddedVictoPress;
+          }
         }
       } catch (error) {
-        console.warn(`Failed to extract EXIF from ${photoPath}:`, error);
+        console.warn(`Failed to extract embedded metadata from ${photoPath}:`, error);
       }
     }
+
+    const yamlDate = yamlOverride?.date ? new Date(yamlOverride.date) : undefined;
+    const validYamlDate = yamlDate && !Number.isNaN(yamlDate.getTime())
+      ? yamlDate
+      : undefined;
+    const embeddedEditorialDate = victopressMetadata?.editorial.dateTaken
+      ? new Date(victopressMetadata.editorial.dateTaken)
+      : undefined;
+    const validEmbeddedEditorialDate = embeddedEditorialDate &&
+      !Number.isNaN(embeddedEditorialDate.getTime())
+      ? embeddedEditorialDate
+      : undefined;
+    const embeddedEditorialTags = victopressMetadata?.editorial.tags.length
+      ? victopressMetadata.editorial.tags
+      : undefined;
 
     // Build photo object with priority: YAML > EXIF > auto-generated
     const photo: Photo = {
@@ -350,36 +366,63 @@ async function scanPhotos(
       path: photoPath,
       size: file.size,
       lastModified: fileLastModified,
+      sourceFingerprint,
       
       // Title: YAML > EXIF title > EXIF description > filename
       title:
-        yamlOverride?.title ||
-        exifData?.title ||
-        exifData?.imageDescription ||
+        yamlOverride?.title ??
+        victopressMetadata?.editorial.title ??
+        exifData?.title ??
+        exifData?.imageDescription ??
         undefined,
       
       // Description: YAML > EXIF description
       description:
-        yamlOverride?.description ||
+        yamlOverride?.description ??
+        victopressMetadata?.editorial.description ??
         exifData?.imageDescription,
       
       // Tags: YAML > EXIF keywords
       tags:
-        yamlOverride?.tags ||
+        yamlOverride?.tags ??
+        embeddedEditorialTags ??
         exifData?.keywords,
       
       // Date: EXIF date or file modification
-      dateTaken: exifData?.dateTimeOriginal || file.lastModified,
+      dateTaken:
+        validYamlDate ||
+        validEmbeddedEditorialDate ||
+        exifData?.dateTimeOriginal ||
+        file.lastModified,
       
       // EXIF data
       exif: exifData || undefined,
       
       // Hidden flag from YAML
-      hidden: yamlOverride?.hidden || false,
+      hidden: yamlOverride?.hidden ?? victopressMetadata?.editorial.hidden ?? false,
       
       // Order from YAML
-      order: yamlOverride?.order,
+      order: yamlOverride?.order ?? victopressMetadata?.editorial.order,
     };
+
+    if (embeddedMetadata !== undefined) {
+      // Keep the complete payload available to the private sidecar writer, but
+      // non-enumerable so legacy /api/content serialization cannot expose it.
+      Object.defineProperty(photo, "embeddedMetadata", {
+        value: embeddedMetadata,
+        enumerable: false,
+        configurable: false,
+        writable: false,
+      });
+    }
+    if (victopressMetadata !== undefined) {
+      Object.defineProperty(photo, "victopressMetadata", {
+        value: victopressMetadata,
+        enumerable: false,
+        configurable: false,
+        writable: false,
+      });
+    }
 
     photos.push(photo);
   }

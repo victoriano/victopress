@@ -42,6 +42,27 @@ interface StorageTestResult {
   };
 }
 
+const PHOTO_AI_AGENT_PROMPT = `Configure Photo AI securely in this VictoPress checkout.
+
+Requirements:
+- Never ask me to paste GEMINI_API_KEY into chat and never print it in logs, command output, diffs, or commits.
+- First detect whether this is local development or a Cloudflare Pages deployment.
+- If the key already exists in an approved password manager, macOS Keychain, or secret manager available to you, read it directly without displaying it.
+- For local development, verify that .dev.vars is ignored by Git, preserve every existing value, add or update only GEMINI_API_KEY, restrict the file permissions where supported, restart the development server, and verify /admin/settings reports Photo AI as enabled.
+- For Cloudflare Pages, authenticate Wrangler normally and run: bunx wrangler pages secret put GEMINI_API_KEY --project-name victopress. Let the interactive Wrangler prompt receive the value; never place the value in a command argument. Redeploy through the existing deployment workflow, then verify only that the secret exists and Photo AI is enabled.
+- Never put the key in wrangler.toml, source code, R2 content, browser storage, screenshots, or a tracked file.
+- Cloudflare Vectorize is optional; the files-first vector index is valid.
+- Report what was configured and verified without revealing any part of the key.`;
+
+const PHOTO_AI_CLOUDFLARE_COMMAND =
+  "bunx wrangler pages secret put GEMINI_API_KEY --project-name victopress";
+
+const PHOTO_AI_LOCAL_COMMAND = `cd /path/to/victopress
+\${EDITOR:-nano} .dev.vars
+chmod 600 .dev.vars`;
+
+const PHOTO_AI_LOCAL_SECRET = 'GEMINI_API_KEY="paste-your-key-here"';
+
 export async function action({ request, context }: ActionFunctionArgs) {
   await checkAdminAuth(request, context);
   
@@ -685,36 +706,114 @@ export default function AdminSettings() {
         </Section>
 
         {/* Optional BYOK Photo AI */}
-        <Section title="Photo AI (optional)">
-          <InfoRow
-            label="Status"
-            value={photoAi.configured ? "Enabled with your Gemini key" : "Disabled"}
-            status={photoAi.configured ? "success" : "warning"}
-          />
-          <div className="mt-4 space-y-3 text-xs leading-5 text-gray-500 dark:text-gray-400">
-            <p>
-              VictoPress does not include or proxy an AI subscription. To opt in, provide your own
-              Google Gemini API key as the server-side secret <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">GEMINI_API_KEY</code>.
-              The key is never returned to the browser.
-            </p>
-            <pre className="overflow-x-auto rounded-lg bg-gray-100 p-3 text-xs dark:bg-gray-800">
-{`# Local development (.dev.vars)
-GEMINI_API_KEY="your-key"
+        <div id="photo-ai-setup" className="scroll-mt-20">
+          <Section title="Photo AI (optional)">
+            <InfoRow
+              label="Status"
+              value={photoAi.configured ? "Enabled with your Gemini key" : "Disabled"}
+              status={photoAi.configured ? "success" : "warning"}
+            />
+            <InfoRow
+              label="Current environment"
+              value={storageConfig.isDevelopment ? "Local development" : "Cloudflare Pages"}
+              status="info"
+            />
 
-# Cloudflare Pages
-wrangler pages secret put GEMINI_API_KEY`}
-            </pre>
-            <p>
-              Without that secret, no photos are queued, no model requests are made, and all Photo AI navigation stays hidden.
-              Set <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">PHOTO_AI_ENABLED=false</code> to force it off even when a key exists.
-            </p>
-            {photoAi.configured && (
-              <a href="/admin/ai" className="inline-flex font-medium text-violet-700 hover:underline dark:text-violet-300">
-                Open Photo AI ({photoAi.analysisModel} + {photoAi.embeddingModel})
-              </a>
-            )}
-          </div>
-        </Section>
+            <div className="mt-5 space-y-5 text-sm leading-6 text-gray-600 dark:text-gray-400">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+                <p className="font-medium text-blue-900 dark:text-blue-200">Why there is no Gemini key field in VictoPress</p>
+                <p className="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-300">
+                  The R2 setup wizard only holds its Cloudflare token in memory while it configures your account, then clears it.
+                  A Gemini key must remain available after every request, so saving it in R2, CMS content, or browser storage would
+                  turn those systems into an unsafe secret vault. Keep the long-lived key in Cloudflare&apos;s encrypted secrets UI
+                  or in a local <code className="rounded bg-blue-100 px-1 dark:bg-blue-900">.dev.vars</code> file instead.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white">1. Create your Gemini API key</h3>
+                <p className="mt-1 text-xs leading-5">
+                  Create a dedicated key for this site and restrict it where your Google project allows it. Do not reuse a key
+                  from another application.
+                </p>
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  <ExternalIcon /> Open Google AI Studio
+                </a>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-medium text-gray-900 dark:text-white">2. Production: use Cloudflare&apos;s secure UI</h3>
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    Recommended
+                  </span>
+                </div>
+                <ol className="mt-3 list-decimal space-y-1 pl-5 text-xs leading-5">
+                  <li>Open Cloudflare Dashboard and go to Workers &amp; Pages.</li>
+                  <li>Select your VictoPress Pages project.</li>
+                  <li>Open Settings → Variables and Secrets → Add.</li>
+                  <li>Use the name <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">GEMINI_API_KEY</code>, paste the value, and select <strong>Encrypt</strong>.</li>
+                  <li>Save it and redeploy the project so the Function receives the new secret.</li>
+                </ol>
+                <a
+                  href={storageConfig.accountId ? `https://dash.cloudflare.com/${storageConfig.accountId}/workers-and-pages` : "https://dash.cloudflare.com/"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  <ExternalIcon /> Open Cloudflare Dashboard
+                </a>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="min-w-0">
+                  <h3 className="font-medium text-gray-900 dark:text-white">Production from a terminal</h3>
+                  <p className="mt-1 mb-2 text-xs leading-5">
+                    Run this from the repository. Wrangler asks for the value privately, so it is not included in the command or shell history.
+                  </p>
+                  <CopyableCodeBlock title="Cloudflare Pages secret" value={PHOTO_AI_CLOUDFLARE_COMMAND} />
+                </div>
+
+                <div className="min-w-0">
+                  <h3 className="font-medium text-gray-900 dark:text-white">Local development from a terminal</h3>
+                  <p className="mt-1 mb-2 text-xs leading-5">
+                    Open the ignored local secrets file, add the variable below, save it, and restart the development server.
+                  </p>
+                  <CopyableCodeBlock title="Open and protect .dev.vars" value={PHOTO_AI_LOCAL_COMMAND} />
+                  <div className="mt-2">
+                    <CopyableCodeBlock title="Line to add inside .dev.vars" value={PHOTO_AI_LOCAL_SECRET} />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white">Or give this task to Codex or Claude Code</h3>
+                <p className="mt-1 mb-2 text-xs leading-5">
+                  Paste this prompt into an agent that can access the checkout and your approved secret manager. It explicitly forbids exposing the key in chat or logs.
+                </p>
+                <CopyableCodeBlock title="Secure agent instructions" value={PHOTO_AI_AGENT_PROMPT} multiline />
+              </div>
+
+              <div className="rounded-lg bg-gray-50 p-4 text-xs leading-5 dark:bg-gray-900">
+                Without <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">GEMINI_API_KEY</code>, Photo AI remains inactive:
+                no photos are queued and no model requests are made. Set{" "}
+                <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">PHOTO_AI_ENABLED=false</code> to force it off even when a key exists.
+                Cloudflare Vectorize is optional; the built-in files-first vector index works without it.
+              </div>
+
+              {photoAi.configured && (
+                <a href="/admin/ai" className="inline-flex font-medium text-violet-700 hover:underline dark:text-violet-300">
+                  Open Photo AI ({photoAi.analysisModel} + {photoAi.embeddingModel})
+                </a>
+              )}
+            </div>
+          </Section>
+        </div>
 
         {/* R2 Setup Guide */}
         <Section title="R2 Setup Guide" icon={<BookIcon />} collapsible defaultCollapsed>
@@ -898,6 +997,51 @@ function InfoRow({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function CopyableCodeBlock({
+  title,
+  value,
+  multiline = false,
+}: {
+  title: string;
+  value: string;
+  multiline?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-950 dark:border-gray-700">
+      <div className="flex items-center justify-between gap-3 border-b border-gray-800 px-3 py-2">
+        <span className="text-[11px] font-medium text-gray-400">{title}</span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium text-gray-300 transition-colors hover:bg-gray-800 hover:text-white"
+          aria-label={`Copy ${title}`}
+        >
+          {copied ? (
+            <>
+              <CheckIcon className="h-3.5 w-3.5 text-green-400" /> Copied
+            </>
+          ) : (
+            <>
+              <CopyIcon className="h-3.5 w-3.5" /> Copy
+            </>
+          )}
+        </button>
+      </div>
+      <pre className={`${multiline ? "max-h-80 whitespace-pre-wrap" : "overflow-x-auto"} p-3 text-xs leading-5 text-gray-200`}>
+        <code>{value}</code>
+      </pre>
     </div>
   );
 }

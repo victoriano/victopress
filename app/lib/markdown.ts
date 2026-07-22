@@ -2,6 +2,7 @@ import { Marked, Renderer } from "marked";
 
 const ALLOWED_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
 const ALLOWED_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
+const LOCAL_IMAGE_CACHE_VERSION = "mime-v2";
 
 export function escapeHtml(value: string): string {
   return value
@@ -25,9 +26,16 @@ function safeUrl(value: string, allowedProtocols: Set<string>): string | null {
 function imageUrl(value: string): string | null {
   const safe = safeUrl(value, ALLOWED_IMAGE_PROTOCOLS);
   if (!safe) return null;
-  if (/^https?:/i.test(safe) || safe.startsWith("/")) return safe;
 
-  return `/api/images/${safe.replace(/^\.\//, "")}`;
+  const resolved = /^https?:/i.test(safe) || safe.startsWith("/")
+    ? safe
+    : `/api/images/${safe.replace(/^\.\//, "")}`;
+
+  if (!resolved.startsWith("/api/images/")) return resolved;
+
+  const [withoutFragment, fragment] = resolved.split("#", 2);
+  const separator = withoutFragment.includes("?") ? "&" : "?";
+  return `${withoutFragment}${separator}v=${LOCAL_IMAGE_CACHE_VERSION}${fragment ? `#${fragment}` : ""}`;
 }
 
 const renderer = new Renderer();
