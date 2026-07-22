@@ -10,7 +10,10 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "@remix-run/react";
-import { preloadImages } from "~/utils/image-optimization";
+import {
+  preloadImages,
+  type ImagePreloadSource,
+} from "~/utils/image-optimization";
 
 interface PhotoNavigationOptions {
   /** Current photo URL */
@@ -118,26 +121,41 @@ export function usePhotoNavigation({
  * Use this when you just want preloading without transition management
  */
 export function usePhotoPreloading(
-  photoUrls: (string | null | undefined)[]
+  photoSources: (string | ImagePreloadSource | null | undefined)[]
 ): void {
   const preloadedRef = useRef<Set<string>>(new Set());
 
+  const getSourceKey = (source: string | ImagePreloadSource) =>
+    typeof source === "string"
+      ? source
+      : JSON.stringify([source.src, source.srcSet ?? "", source.sizes ?? ""]);
+
+  // Depending on a semantic key avoids cancelling a scheduled preload when a
+  // caller creates an equivalent array during an unrelated render.
+  const sourcesKey = photoSources
+    .filter((source): source is string | ImagePreloadSource => !!source)
+    .map(getSourceKey)
+    .join("\u0000");
+
   useEffect(() => {
-    const validUrls = photoUrls.filter(
-      (url): url is string => !!url && !preloadedRef.current.has(url)
+    const validSources = photoSources.filter(
+      (source): source is string | ImagePreloadSource =>
+        !!source && !preloadedRef.current.has(getSourceKey(source))
     );
 
-    if (validUrls.length > 0) {
-      validUrls.forEach((url) => preloadedRef.current.add(url));
-
-      // Preload with a delay
+    if (validSources.length > 0) {
+      // Start after the primary image has had a head start. Each Image also
+      // carries low fetch priority, so this never competes as critical work.
       const timeout = setTimeout(() => {
-        preloadImages(validUrls).catch(() => {
+        validSources.forEach((source) =>
+          preloadedRef.current.add(getSourceKey(source))
+        );
+        preloadImages(validSources).catch(() => {
           // Silent fail
         });
       }, 200);
 
       return () => clearTimeout(timeout);
     }
-  }, [photoUrls]);
+  }, [sourcesKey]);
 }

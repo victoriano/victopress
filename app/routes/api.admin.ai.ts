@@ -9,6 +9,7 @@ import {
 } from "~/lib/ai/photo-ai-service.server";
 import { checkAdminAuth } from "~/utils/admin-auth";
 import { assignPhotosToGalleryInIndex, getStorage } from "~/lib/content-engine";
+import { enqueuePhotoMetadataWritebacks } from "~/lib/ai/photo-metadata-writeback.server";
 
 function errorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "Photo AI operation failed";
@@ -95,6 +96,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
         photoPaths,
         gallerySlug,
       );
+      if (result.added > 0) {
+        await enqueuePhotoMetadataWritebacks(
+          context,
+          photoPaths,
+          "gallery-membership",
+        );
+      }
       return json(result, { status: result.success ? 200 : 400 });
     }
 

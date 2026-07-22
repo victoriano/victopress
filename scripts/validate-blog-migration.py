@@ -123,7 +123,19 @@ def normalize_source_url(value: str, post: dict[str, Any]) -> str:
     return value
 
 
-def fetch_image(url: str, expected_hash: str, expected_bytes: int) -> dict[str, Any]:
+def normalize_target_image_url(value: str) -> str:
+    parsed = urlsplit(html.unescape(value))
+    if parsed.path.startswith("/api/images/"):
+        return parsed.path
+    return value
+
+
+def fetch_image(
+    url: str,
+    expected_hash: str,
+    expected_bytes: int,
+    expected_content_type: str,
+) -> dict[str, Any]:
     request = urllib.request.Request(
         url,
         headers={"User-Agent": "Mozilla/5.0", "Accept": "image/*"},
@@ -140,7 +152,7 @@ def fetch_image(url: str, expected_hash: str, expected_bytes: int) -> dict[str, 
         "sha256": sha256_bytes(payload),
         "matches": (
             status == 200
-            and content_type.startswith("image/")
+            and content_type == expected_content_type
             and len(payload) == expected_bytes
             and sha256_bytes(payload) == expected_hash
         ),
@@ -337,7 +349,7 @@ def compare_article(
         failures.append(f"{prefix}: one or more target images failed to decode")
 
     source_refs = [normalize_source_url(image["ref"], post) for image in source_article["images"]]
-    target_refs = [image["ref"] for image in target_article["images"]]
+    target_refs = [normalize_target_image_url(image["ref"]) for image in target_article["images"]]
     if source_refs != target_refs:
         failures.append(f"{prefix}: image order/reference mismatch")
 
@@ -681,9 +693,10 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         jobs = {
             executor.submit(
                 fetch_image,
-                f"{args.target}{image['localUrl']}",
+                f"{args.target}{image['localUrl']}?v=mime-v2",
                 image["sha256"],
                 image["bytes"],
+                image["contentType"],
             ): image
             for post in posts
             for image in post["images"]

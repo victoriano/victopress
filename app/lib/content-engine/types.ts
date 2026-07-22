@@ -7,6 +7,8 @@ import type { Locale, TranslationMap } from "~/lib/i18n";
  * Folder with images = gallery. Markdown = post.
  */
 
+import type { GalleryThumbnailAspectRatio } from "./gallery-layout";
+
 // =============================================================================
 // Photo Types
 // =============================================================================
@@ -14,6 +16,9 @@ import type { Locale, TranslationMap } from "~/lib/i18n";
 export interface ExifData {
   // Date/Time
   dateTimeOriginal?: Date;
+  createDate?: Date;
+  modifyDate?: Date;
+  metadataDate?: Date;
   
   // Description from Lightroom
   imageDescription?: string;
@@ -25,6 +30,17 @@ export interface ExifData {
   // Author
   artist?: string;
   copyright?: string;
+  credit?: string;
+  source?: string;
+  instructions?: string;
+
+  // Editing/application metadata
+  software?: string;
+  creatorTool?: string;
+  rating?: number;
+  label?: string;
+  colorSpace?: string;
+  colorProfile?: string;
   
   // Camera Info
   make?: string;
@@ -34,6 +50,12 @@ export interface ExifData {
   aperture?: number;
   iso?: number;
   shutterSpeed?: string;
+  exposureCompensation?: number;
+  exposureProgram?: string;
+  meteringMode?: string;
+  flash?: string;
+  whiteBalance?: string;
+  orientation?: string;
 
   // Pixel dimensions (EXIF when present, JPEG SOF fallback otherwise)
   imageWidth?: number;
@@ -42,6 +64,76 @@ export interface ExifData {
   // GPS
   latitude?: number;
   longitude?: number;
+  sublocation?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  countryCode?: string;
+}
+
+/** JSON-safe representation of decoded, embedded image metadata. */
+export type EmbeddedMetadataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | EmbeddedMetadataValue[]
+  | { [key: string]: EmbeddedMetadataValue };
+
+/**
+ * Decoded metadata grouped by source namespace (EXIF, IPTC, XMP, Photoshop,
+ * Camera Raw, ICC, and so on). Opaque binary values are base64 encoded.
+ */
+export interface EmbeddedImageMetadata {
+  [namespace: string]: EmbeddedMetadataValue;
+}
+
+/**
+ * Compact, JSON-safe projection kept in the content index. The complete
+ * decoded payload is stored separately so public page loaders stay small.
+ */
+export interface ImageMetadataSummary {
+  metadataVersion?: number;
+  dateTaken?: string;
+  createDate?: string;
+  modifyDate?: string;
+  metadataDate?: string;
+  title?: string;
+  description?: string;
+  keywords?: string[];
+  artist?: string;
+  copyright?: string;
+  credit?: string;
+  source?: string;
+  instructions?: string;
+  software?: string;
+  creatorTool?: string;
+  rating?: number;
+  label?: string;
+  colorSpace?: string;
+  colorProfile?: string;
+  make?: string;
+  model?: string;
+  camera?: string;
+  lens?: string;
+  focalLength?: number;
+  aperture?: number;
+  shutterSpeed?: string;
+  iso?: number;
+  exposureCompensation?: number;
+  exposureProgram?: string;
+  meteringMode?: string;
+  flash?: string;
+  whiteBalance?: string;
+  orientation?: string;
+  width?: number;
+  height?: number;
+  gps?: { lat: number; lng: number };
+  sublocation?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  countryCode?: string;
 }
 
 export interface Photo {
@@ -74,6 +166,19 @@ export interface Photo {
   
   /** EXIF metadata */
   exif?: ExifData;
+
+  /**
+   * Complete decoded embedded metadata, present only while scanning a newly
+   * read source image. It is persisted to a private sidecar, not the public
+   * content index.
+   */
+  embeddedMetadata?: EmbeddedImageMetadata;
+
+  /**
+   * Self-contained VictoPress state decoded during a source scan. Like the full
+   * embedded payload, this is private/non-enumerable and never sent publicly.
+   */
+  victopressMetadata?: import("./victopress-xmp").VictoPressEmbeddedMetadata;
   
   /** Sort order (lower = first) */
   order?: number;
@@ -90,6 +195,9 @@ export interface Photo {
   
   /** File last modified timestamp (ISO string) for cache invalidation */
   lastModified?: string;
+
+  /** Stable pixel/source identity; excludes VictoPress-owned XMP writeback. */
+  sourceFingerprint?: string;
 }
 
 export interface PhotoTranslation {
@@ -144,6 +252,9 @@ export interface GalleryMetadata {
   
   /** Include photos from nested galleries (default: true) */
   includeNestedPhotos?: boolean;
+
+  /** Thumbnail crop used by the public gallery grid (default: uniform 3:2) */
+  thumbnailAspectRatio?: GalleryThumbnailAspectRatio;
 }
 
 export interface GalleryTranslation {
@@ -387,6 +498,16 @@ export interface StorageAdapter {
   
   /** Upload file contents */
   put(key: string, data: ArrayBuffer | string, contentType?: string): Promise<void>;
+
+  /**
+   * Replace an existing object's bytes while retaining provider-level HTTP and
+   * custom metadata when the storage backend supports it.
+   */
+  putPreservingMetadata?(
+    key: string,
+    data: ArrayBuffer | string,
+    contentType?: string,
+  ): Promise<void>;
   
   /** Delete a file */
   delete(key: string): Promise<void>;

@@ -65,6 +65,21 @@ interface AiMutationResponse extends Partial<AiDashboardData> {
   };
 }
 
+interface MetadataWritebackStatus {
+  queued: number;
+  failed: number;
+}
+
+interface MetadataBackfillResponse {
+  success?: boolean;
+  queued?: number;
+  offset?: number;
+  nextOffset?: number;
+  total?: number;
+  done?: boolean;
+  error?: string;
+}
+
 type StatusFilter = "all" | "pending" | "completed" | "failed";
 type ViewMode = "map" | "review";
 
@@ -209,7 +224,7 @@ export default function AdminAi() {
               </span>
             </div>
             <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
-              Generate searchable descriptions and review which existing galleries may suit each photo.
+              Generate searchable AI descriptions and tags without changing the editorial metadata shown in galleries.
             </p>
           </div>
           <Link
@@ -251,6 +266,7 @@ export default function AdminAi() {
             />
 
             <SummaryPanel summary={dashboard.summary} isProcessing={isProcessing} />
+            <MetadataWritebackPanel onNotice={setNotice} />
           </>
         ) : null}
 
@@ -316,6 +332,129 @@ export default function AdminAi() {
   );
 }
 
+function MetadataWritebackPanel({
+  onNotice,
+}: {
+  onNotice: (notice: { type: "success" | "error"; text: string }) => void;
+}) {
+  const statusFetcher = useFetcher<MetadataWritebackStatus | { error: string }>();
+  const batchFetcher = useFetcher<MetadataBackfillResponse>();
+  const [isRunning, setIsRunning] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const initialStatusRequested = useRef(false);
+  const handledBatchResponse = useRef<MetadataBackfillResponse | null>(null);
+
+  const refreshStatus = useCallback(() => {
+    statusFetcher.load("/api/admin/metadata-writeback");
+  }, [statusFetcher]);
+
+  const submitBatch = useCallback((offset: number) => {
+    const formData = new FormData();
+    formData.append("action", "backfill-batch");
+    formData.append("offset", String(offset));
+    batchFetcher.submit(formData, {
+      method: "POST",
+      action: "/api/admin/metadata-writeback",
+    });
+  }, [batchFetcher]);
+
+  useEffect(() => {
+    if (!initialStatusRequested.current) {
+      initialStatusRequested.current = true;
+      refreshStatus();
+    }
+  }, [refreshStatus]);
+
+  useEffect(() => {
+    const response = batchFetcher.data;
+    if (batchFetcher.state !== "idle" || !response || handledBatchResponse.current === response) return;
+    handledBatchResponse.current = response;
+    if (response.error || response.success === false) {
+      setIsRunning(false);
+      onNotice({ type: "error", text: response.error || "Could not embed photo metadata." });
+      refreshStatus();
+      return;
+    }
+
+    const nextOffset = response.nextOffset ?? 0;
+    const total = response.total ?? 0;
+    setProgress({ current: nextOffset, total });
+    if (response.done) {
+      setIsRunning(false);
+      onNotice({
+        type: "success",
+        text: `Queued metadata writeback for ${total} source photos. Background batches will finish any pending files.`,
+      });
+      refreshStatus();
+      return;
+    }
+    if (isRunning) {
+      const timer = window.setTimeout(() => submitBatch(nextOffset), 750);
+      return () => window.clearTimeout(timer);
+    }
+  }, [batchFetcher.data, batchFetcher.state, isRunning, onNotice, refreshStatus, submitBatch]);
+
+  const begin = () => {
+    handledBatchResponse.current = null;
+    setProgress({ current: 0, total: 0 });
+    setIsRunning(true);
+    submitBatch(0);
+  };
+  const status = statusFetcher.data && "queued" in statusFetcher.data
+    ? statusFetcher.data
+    : null;
+  const percent = progress.total > 0
+    ? Math.round((progress.current / progress.total) * 100)
+    : 0;
+
+  return (
+    <section className="mt-5 rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-950">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="font-semibold text-gray-900 dark:text-white">Metadata inside originals</h2>
+          <p className="mt-1 max-w-3xl text-sm text-gray-500 dark:text-gray-400">
+            Losslessly embeds gallery membership, ordering, independent editorial and AI fields, and rebuildable search/vector indexes in JPEG and PNG XMP.
+          </p>
+          {status && (
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Pending: {status.queued} · Unsupported or failed: {status.failed}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={refreshStatus}
+            disabled={statusFetcher.state !== "idle"}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+          >
+            Refresh status
+          </button>
+          <button
+            type="button"
+            onClick={isRunning ? () => setIsRunning(false) : begin}
+            disabled={batchFetcher.state !== "idle" && !isRunning}
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+          >
+            {isRunning ? "Pause queueing" : "Embed metadata in originals"}
+          </button>
+        </div>
+      </div>
+      {(isRunning || progress.total > 0) && (
+        <div className="mt-4">
+          <div className="mb-1 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span>{isRunning ? "Queueing source photos" : "Source photos queued"}</span>
+            <span>{progress.current}/{progress.total || "…"} ({percent}%)</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            <div className="h-full bg-violet-500 transition-all" style={{ width: `${percent}%` }} />
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ConfigurationPanel({
   dashboard,
   isProcessing,
@@ -361,7 +500,12 @@ function ConfigurationPanel({
           </dl>
           {!dashboard.configured && (
             <p className="mt-4 text-sm text-amber-700 dark:text-amber-300">
-              Configure the Gemini API secret and vector index binding before starting analysis.
+              Add <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/40">GEMINI_API_KEY</code> as a server-side secret.
+              The files-first vector index is ready; Cloudflare Vectorize is optional.{" "}
+              <Link to="/admin/settings#photo-ai-setup" className="font-medium underline underline-offset-2">
+                Open secure setup instructions
+              </Link>
+              .
             </p>
           )}
         </div>
@@ -566,11 +710,13 @@ function AiPhotoCard({
           </div>
 
           {record.caption && (
-            <p className="mt-3 text-sm leading-5 text-gray-700 dark:text-gray-300">{record.caption}</p>
+            <p className="mt-3 text-sm leading-5 text-gray-700 dark:text-gray-300">
+              <span className="sr-only">AI description: </span>{record.caption}
+            </p>
           )}
 
           {record.tags?.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Suggested tags">
+            <div className="mt-3 flex flex-wrap gap-1.5" aria-label="AI-generated tags">
               {record.tags.map((tag) => (
                 <span key={tag} className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300">
                   {tag}

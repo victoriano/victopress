@@ -1,4 +1,4 @@
-import { parse } from "yaml";
+import { parse, stringify } from "yaml";
 import type { StorageAdapter } from "./types";
 
 export const GALLERY_ORDERS_KEY = "gallery-orders.yaml";
@@ -45,6 +45,40 @@ export async function readGalleryOrders(
       `Could not read ${GALLERY_ORDERS_KEY}: ${error instanceof Error ? error.message : "invalid YAML"}`,
     );
   }
+}
+
+async function writeGalleryOrders(
+  storage: StorageAdapter,
+  orders: Record<string, string[]>,
+): Promise<void> {
+  const normalized = Object.fromEntries(
+    Object.entries(normalizeOrders(orders)).sort(([left], [right]) => left.localeCompare(right)),
+  );
+  const file: GalleryOrdersFile = {
+    version: GALLERY_ORDERS_VERSION,
+    updatedAt: new Date().toISOString(),
+    orders: normalized,
+  };
+  await storage.put(GALLERY_ORDERS_KEY, stringify(file), "text/yaml");
+}
+
+/** Keeps cross-gallery order references valid when physical photo paths move. */
+export async function moveGalleryOrderPaths(
+  storage: StorageAdapter,
+  moves: ReadonlyArray<{ from: string; to: string }>,
+): Promise<void> {
+  if (moves.length === 0) return;
+  const replacements = new Map(moves.map((move) => [move.from, move.to]));
+  const orders = await readGalleryOrders(storage);
+  let changed = false;
+  for (const [slug, paths] of Object.entries(orders)) {
+    orders[slug] = paths.map((path) => {
+      const replacement = replacements.get(path);
+      if (replacement) changed = true;
+      return replacement ?? path;
+    });
+  }
+  if (changed) await writeGalleryOrders(storage, orders);
 }
 
 /**

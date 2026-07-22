@@ -17,6 +17,7 @@ import {
   CopyObjectCommand,
   HeadObjectCommand,
 } from "@aws-sdk/client-s3";
+import type { HeadObjectCommandOutput } from "@aws-sdk/client-s3";
 import type { StorageAdapter, FileInfo } from "../types";
 
 export interface R2ApiConfig {
@@ -137,7 +138,7 @@ export class R2ApiAdapter implements StorageAdapter {
       const bytes = await response.Body?.transformToByteArray();
       
       if (!bytes) return null;
-      return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      return Uint8Array.from(bytes).buffer;
     } catch (error: unknown) {
       if ((error as { name?: string })?.name === "NoSuchKey") {
         return null;
@@ -198,6 +199,40 @@ export class R2ApiAdapter implements StorageAdapter {
     });
 
     await this.client.send(command);
+  }
+
+  async putPreservingMetadata(
+    key: string,
+    data: ArrayBuffer | string,
+    contentType?: string,
+  ): Promise<void> {
+    let existing: HeadObjectCommandOutput | null = null;
+    try {
+      existing = await this.client.send(new HeadObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+      }));
+    } catch (error) {
+      const status = (error as { $metadata?: { httpStatusCode?: number } })
+        .$metadata?.httpStatusCode;
+      if (status !== 404) throw error;
+    }
+
+    const body = typeof data === "string" ? data : new Uint8Array(data);
+    const size = typeof data === "string" ? data.length : data.byteLength;
+    console.log(`[R2Api] ☁️  PUT ${key} (${(size / 1024).toFixed(1)} KB, preserving metadata)`);
+    await this.client.send(new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      Body: body,
+      ContentType: contentType || existing?.ContentType,
+      CacheControl: existing?.CacheControl,
+      ContentDisposition: existing?.ContentDisposition,
+      ContentEncoding: existing?.ContentEncoding,
+      ContentLanguage: existing?.ContentLanguage,
+      Expires: existing?.Expires,
+      Metadata: existing?.Metadata,
+    }));
   }
 
   async delete(key: string): Promise<void> {

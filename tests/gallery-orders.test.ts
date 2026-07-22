@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   GALLERY_ORDERS_KEY,
+  moveGalleryOrderPaths,
   readGalleryOrders,
   sortPhotosByGalleryOrder,
 } from "../app/lib/content-engine/gallery-orders";
@@ -62,5 +63,38 @@ describe("gallery orders", () => {
       "galleries/urban/extra-1.jpg",
       "galleries/urban/extra-2.jpg",
     ]);
+  });
+
+  test("keeps persisted orders valid when a source photo moves", async () => {
+    await storage.put(
+      GALLERY_ORDERS_KEY,
+      [
+        "version: 1",
+        "updatedAt: 2026-07-18T20:00:00.000Z",
+        "orders:",
+        "  spaces/urban:",
+        "    - galleries/source/a.jpg",
+        "    - galleries/source/b.jpg",
+        "  geographies/spain:",
+        "    - galleries/source/b.jpg",
+        "",
+      ].join("\n"),
+      "text/yaml",
+    );
+
+    await moveGalleryOrderPaths(storage, [
+      {
+        from: "galleries/source/b.jpg",
+        to: "galleries/archive/b.jpg",
+      },
+    ]);
+
+    expect(await readGalleryOrders(storage)).toEqual({
+      "geographies/spain": ["galleries/archive/b.jpg"],
+      "spaces/urban": [
+        "galleries/source/a.jpg",
+        "galleries/archive/b.jpg",
+      ],
+    });
   });
 });

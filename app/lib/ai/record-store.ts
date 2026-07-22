@@ -332,32 +332,46 @@ export class AiRecordStore {
     gallerySlug: string,
     record: PhotoAiRecord,
   ): Promise<PhotoAiRecord> {
-    validatePhotoAiRecord(record);
+    const [stored] = await this.upsertRecords(gallerySlug, [record]);
+    return stored;
+  }
+
+  async upsertRecords(
+    gallerySlug: string,
+    records: readonly PhotoAiRecord[],
+  ): Promise<PhotoAiRecord[]> {
+    if (records.length === 0) return [];
     const normalized = gallerySlug.trim();
-    if (record.asset.gallerySlug !== normalized) {
-      throw new AiDataValidationError(
-        "Record source gallery does not match destination sidecar",
-        "record.asset.gallerySlug",
-      );
+    for (const record of records) {
+      validatePhotoAiRecord(record);
+      if (record.asset.gallerySlug !== normalized) {
+        throw new AiDataValidationError(
+          "Record source gallery does not match destination sidecar",
+          "record.asset.gallerySlug",
+        );
+      }
     }
 
     return this.withGalleryLock(normalized, async () => {
       const file = await this.readGallery(normalized);
-      const existing = file.records[record.asset.assetId];
-      const now = this.now();
-      const merged = mergeRecordReviewState(existing, record);
-      const stored: PhotoAiRecord = {
-        ...merged,
-        schemaVersion: AI_RECORD_SCHEMA_VERSION,
-        revision: existing ? existing.revision + 1 : Math.max(1, record.revision),
-        createdAt: existing?.createdAt ?? record.createdAt,
-        updatedAt: now,
-      };
-      validatePhotoAiRecord(stored);
-      file.records[stored.asset.assetId] = stored;
-      file.updatedAt = now;
+      const storedRecords = records.map((record) => {
+        const existing = file.records[record.asset.assetId];
+        const now = this.now();
+        const merged = mergeRecordReviewState(existing, record);
+        const stored: PhotoAiRecord = {
+          ...merged,
+          schemaVersion: AI_RECORD_SCHEMA_VERSION,
+          revision: existing ? existing.revision + 1 : Math.max(1, record.revision),
+          createdAt: existing?.createdAt ?? record.createdAt,
+          updatedAt: now,
+        };
+        validatePhotoAiRecord(stored);
+        file.records[stored.asset.assetId] = stored;
+        file.updatedAt = now;
+        return stored;
+      });
       await this.writeGallery(file);
-      return stored;
+      return storedRecords;
     });
   }
 

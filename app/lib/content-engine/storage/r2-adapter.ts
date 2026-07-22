@@ -142,6 +142,25 @@ export class R2StorageAdapter implements StorageAdapter {
     await this.bucket.put(key, data, options);
   }
 
+  async putPreservingMetadata(
+    key: string,
+    data: ArrayBuffer | string,
+    contentType?: string,
+  ): Promise<void> {
+    const existing = await this.bucket.head(key);
+    const httpMetadata = existing?.httpMetadata
+      ? { ...existing.httpMetadata }
+      : {};
+    if (contentType) httpMetadata.contentType = contentType;
+
+    const size = typeof data === "string" ? data.length : data.byteLength;
+    console.log(`[R2Storage] ☁️  PUT ${key} (${(size / 1024).toFixed(1)} KB, preserving metadata)`);
+    await this.bucket.put(key, data, {
+      httpMetadata,
+      customMetadata: existing?.customMetadata,
+    });
+  }
+
   async delete(key: string): Promise<void> {
     console.log(`[R2Storage] ☁️  DELETE ${key}`);
     await this.bucket.delete(key);

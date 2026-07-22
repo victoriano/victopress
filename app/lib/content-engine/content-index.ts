@@ -17,6 +17,7 @@ import type {
   PhotoTranslation,
   BlogPostTranslation,
   PageTranslation,
+  ImageMetadataSummary,
 } from "./types";
 import { scanGalleries, scanParentMetadata, type PhotoCache, type CachedPhotoData } from "./gallery-scanner";
 import { scanBlog } from "./blog-scanner";
@@ -31,9 +32,13 @@ import {
   type Locale,
   type TranslationMap,
 } from "~/lib/i18n";
+import { extractImageMetadata, toImageMetadataSummary } from "./exif";
+import { writePhotoMetadata } from "./photo-metadata-store";
+import { createCanonicalImageSourceFingerprint } from "./victopress-xmp";
+import type { GalleryThumbnailAspectRatio } from "./gallery-layout";
 
 const INDEX_FILE = "_content-index.json";
-const INDEX_VERSION = 10; // Bilingual metadata and edition status
+const INDEX_VERSION = 10; // Bilingual metadata; embedded/layout fields remain optional
 
 /** Number of photos to store per gallery for home page */
 const PHOTOS_PER_GALLERY = 6;
@@ -80,6 +85,9 @@ export interface PhotoIndexEntry {
   hidden?: boolean;
   /** Year the photo was taken (from EXIF or filename) */
   year?: number;
+  /** Intrinsic dimensions used to reserve grid space before the image loads. */
+  width?: number;
+  height?: number;
 }
 
 /**
@@ -105,6 +113,8 @@ export interface GalleryDataEntry {
   hasChildren: boolean;
   childCount: number;
   includeNestedPhotos?: boolean;
+  /** Uniform 3:2 crop by default; `original` preserves each source frame. */
+  thumbnailAspectRatio?: GalleryThumbnailAspectRatio;
   /** Whether this is a parent/container gallery (has config but no direct photos) */
   isParentGallery?: boolean;
   /** All photos in this gallery */
@@ -126,6 +136,8 @@ export interface GalleryPhotoEntry {
   hidden?: boolean;
   order?: number;
   year?: number;
+  /** Normalized capture/editorial date from embedded metadata or photos.yaml. */
+  dateTaken?: string;
   tags?: string[];
   /** True when this gallery membership points at a photo stored in another gallery. */
   isReference?: boolean;
@@ -133,19 +145,10 @@ export interface GalleryPhotoEntry {
   sourceGallerySlug?: string;
   /** File modification time - used to invalidate EXIF cache */
   lastModified?: string;
-  /** Cached EXIF data */
-  exif?: {
-    dateTaken?: string;
-    camera?: string;
-    lens?: string;
-    focalLength?: number;
-    aperture?: number;
-    shutterSpeed?: string;
-    iso?: number;
-    width?: number;
-    height?: number;
-    gps?: { lat: number; lng: number };
-  };
+  /** Stable image identity that excludes VictoPress-owned XMP metadata. */
+  sourceFingerprint?: string;
+  /** Compact normalized EXIF/IPTC/XMP projection used by the CMS. */
+  exif?: ImageMetadataSummary;
 }
 
 /**
@@ -217,6 +220,41 @@ function applyGalleryMembershipsToEntries(
   for (const gallery of galleries) {
     gallery.photoCount = gallery.photos.filter((photo) => !photo.hidden).length;
   }
+}
+
+function recoverEmbeddedGalleryOrganization(galleries: readonly Gallery[]): {
+  memberships: Record<string, string[]>;
+  orders: Record<string, string[]>;
+} {
+  const memberships: Record<string, string[]> = {};
+  const orderEntries = new Map<string, Array<{ path: string; order: number }>>();
+
+  for (const gallery of galleries) {
+    for (const photo of gallery.photos) {
+      const embedded = photo.victopressMetadata;
+      if (!embedded) continue;
+      for (const membership of embedded.galleries) {
+        if (!membership.physicalSource) {
+          memberships[photo.path] = Array.from(
+            new Set([...(memberships[photo.path] ?? []), membership.slug]),
+          ).sort();
+        }
+        const entries = orderEntries.get(membership.slug) ?? [];
+        if (!entries.some((entry) => entry.path === photo.path)) {
+          entries.push({ path: photo.path, order: membership.order });
+        }
+        orderEntries.set(membership.slug, entries);
+      }
+    }
+  }
+
+  const orders = Object.fromEntries(Array.from(orderEntries, ([slug, entries]) => [
+    slug,
+    entries
+      .sort((left, right) => left.order - right.order || left.path.localeCompare(right.path))
+      .map((entry) => entry.path),
+  ]));
+  return { memberships, orders };
 }
 
 /**
@@ -368,10 +406,23 @@ function buildPhotoCacheFromIndex(existingIndex: ContentIndex | null): PhotoCach
     
     for (const photo of gallery.photos) {
       if (photo.lastModified) {
+        // Older indexes stored title/description/tags only on the photo entry,
+        // not in the EXIF cache. Fold them in so a fast rebuild does not erase
+        // metadata that originally came from IPTC/XMP.
+        const preservedMetadata = photo.exif || photo.title || photo.description || photo.tags
+          ? {
+              ...photo.exif,
+              dateTaken: photo.exif?.dateTaken || photo.dateTaken,
+              title: photo.exif?.title || photo.title,
+              description: photo.exif?.description || photo.description,
+              keywords: photo.exif?.keywords || photo.tags,
+            }
+          : undefined;
         galleryCache.set(photo.filename, {
           filename: photo.filename,
           lastModified: photo.lastModified,
-          exif: photo.exif,
+          exif: preservedMetadata,
+          sourceFingerprint: photo.sourceFingerprint,
         });
       }
     }
@@ -382,6 +433,42 @@ function buildPhotoCacheFromIndex(existingIndex: ContentIndex | null): PhotoCach
   }
   
   return cache;
+}
+
+async function persistExtractedPhotoMetadata(
+  storage: StorageAdapter,
+  galleries: Gallery[],
+): Promise<void> {
+  const extractedPhotos = galleries.flatMap((gallery) =>
+    gallery.photos
+      .filter((photo) => photo.exif && photo.embeddedMetadata !== undefined)
+      .map((photo) => photo),
+  );
+  if (extractedPhotos.length === 0) return;
+
+  let failures = 0;
+  const concurrency = 4;
+  for (let offset = 0; offset < extractedPhotos.length; offset += concurrency) {
+    const batch = extractedPhotos.slice(offset, offset + concurrency);
+    await Promise.all(batch.map(async (photo) => {
+      try {
+        await writePhotoMetadata(
+          storage,
+          photo.path,
+          photo.exif!,
+          photo.embeddedMetadata!,
+          { size: photo.size, lastModified: photo.lastModified },
+        );
+      } catch (error) {
+        failures += 1;
+        console.error(`[Metadata] Failed to persist sidecar for ${photo.path}:`, error);
+      }
+    }));
+  }
+
+  console.log(
+    `[Metadata] Persisted ${extractedPhotos.length - failures}/${extractedPhotos.length} private sidecars`,
+  );
 }
 
 /**
@@ -416,6 +503,13 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
     readGalleryMemberships(storage),
     readGalleryOrders(storage),
   ]);
+  const embeddedOrganization = recoverEmbeddedGalleryOrganization(galleries);
+  const effectiveGalleryMemberships = Object.keys(galleryMemberships).length > 0
+    ? galleryMemberships
+    : embeddedOrganization.memberships;
+  const effectiveGalleryOrders = Object.keys(galleryOrders).length > 0
+    ? galleryOrders
+    : embeddedOrganization.orders;
   
   // Convert to index entries (light version for navigation)
   const galleryEntries: GalleryIndexEntry[] = galleries.map(g => ({
@@ -450,22 +544,12 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
         if (!isNaN(d.getTime())) year = d.getFullYear();
       }
       
-      // Build EXIF cache data for next rebuild
-      const exifCache = p.exif ? {
-        dateTaken: p.exif.dateTimeOriginal?.toISOString?.() || 
-                   (p.exif.dateTimeOriginal ? String(p.exif.dateTimeOriginal) : undefined),
-        camera: [p.exif.make, p.exif.model].filter(Boolean).join(' ') || undefined,
-        lens: p.exif.lensModel,
-        focalLength: p.exif.focalLength,
-        aperture: p.exif.aperture,
-        shutterSpeed: p.exif.shutterSpeed,
-        iso: p.exif.iso,
-        width: p.exif.imageWidth,
-        height: p.exif.imageHeight,
-        gps: (p.exif.latitude && p.exif.longitude) 
-          ? { lat: p.exif.latitude, lng: p.exif.longitude } 
-          : undefined,
-      } : undefined;
+      // Keep a compact normalized projection in the public index. The complete
+      // namespaced payload is persisted separately below.
+      const exifCache = p.exif ? toImageMetadataSummary(p.exif) : undefined;
+      const dateTaken = p.dateTaken && !Number.isNaN(new Date(p.dateTaken).getTime())
+        ? new Date(p.dateTaken).toISOString()
+        : exifCache?.dateTaken;
       
       return {
         id: p.id,
@@ -478,8 +562,10 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
         hidden: p.hidden,
         order: p.order,
         year,
+        dateTaken,
         tags: p.tags,
         lastModified: p.lastModified,
+        sourceFingerprint: p.sourceFingerprint,
         exif: exifCache,
       };
     });
@@ -502,14 +588,17 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
       hasChildren: (g.children?.length ?? 0) > 0,
       childCount: g.children?.length ?? 0,
       includeNestedPhotos: g.includeNestedPhotos,
+      thumbnailAspectRatio: g.thumbnailAspectRatio,
       isParentGallery: g.isParentGallery,
       photos,
     };
   });
 
-  applyGalleryMembershipsToEntries(galleryDataEntries, galleryMemberships);
+  await persistExtractedPhotoMetadata(storage, galleries);
+
+  applyGalleryMembershipsToEntries(galleryDataEntries, effectiveGalleryMemberships);
   for (const gallery of galleryDataEntries) {
-    const orderedPaths = galleryOrders[gallery.slug];
+    const orderedPaths = effectiveGalleryOrders[gallery.slug];
     if (orderedPaths?.length) {
       gallery.photos = sortPhotosByGalleryOrder(gallery.photos, orderedPaths);
     }
@@ -591,6 +680,8 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
         galleryTranslations: gallery.translations,
         hidden: photo.hidden,
         year,
+        width: photo.exif?.imageWidth,
+        height: photo.exif?.imageHeight,
       });
     }
   }
@@ -718,6 +809,7 @@ export async function updateGalleryMetadataInIndex(
     includeNestedPhotos?: boolean;
     locale?: Locale;
     translations?: TranslationMap<GalleryTranslation>;
+    thumbnailAspectRatio?: GalleryThumbnailAspectRatio;
   }
 ): Promise<{ success: boolean; message: string }> {
   const startTime = Date.now();
@@ -753,6 +845,9 @@ export async function updateGalleryMetadataInIndex(
     if (updates.includeNestedPhotos !== undefined) gallery.includeNestedPhotos = updates.includeNestedPhotos;
     if (updates.locale !== undefined) gallery.locale = updates.locale;
     if (updates.translations !== undefined) gallery.translations = updates.translations;
+    if (updates.thumbnailAspectRatio !== undefined) {
+      gallery.thumbnailAspectRatio = updates.thumbnailAspectRatio;
+    }
     
     // Also update the light gallery entry (for navigation)
     const lightIdx = index.galleries.findIndex(g => g.path === galleryPath);
@@ -971,10 +1066,8 @@ export async function addPhotosToGalleryIndex(
     
     const gallery = index.galleryData[galleryIdx];
     
-    // Import extractExif dynamically
-    const { extractExif } = await import("./exif");
-    
     // Process only the new photos
+    let addedPhotos = 0;
     for (const photoPath of newPhotoPaths) {
       const filename = photoPath.split('/').pop() || photoPath;
       
@@ -983,40 +1076,44 @@ export async function addPhotosToGalleryIndex(
         continue;
       }
       
-      // Extract EXIF from new photo
+      // Extract normalized fields plus the complete EXIF/IPTC/XMP/ICC payload.
       let exifCache: GalleryPhotoEntry['exif'] = undefined;
       let year: number | undefined;
+      let sourceFingerprint: string | undefined;
+      const lastModified = new Date().toISOString();
       
-      if (filename.toLowerCase().match(/\.jpe?g$/)) {
-        try {
-          const buffer = await storage.get(photoPath);
-          if (buffer) {
-            const exif = await extractExif(buffer);
-            if (exif) {
-              if (exif.dateTimeOriginal) {
-                const d = new Date(exif.dateTimeOriginal);
-                if (!isNaN(d.getTime())) year = d.getFullYear();
-              }
-              exifCache = {
-                dateTaken: exif.dateTimeOriginal?.toISOString?.() || 
-                           (exif.dateTimeOriginal ? String(exif.dateTimeOriginal) : undefined),
-                camera: [exif.make, exif.model].filter(Boolean).join(' ') || undefined,
-                lens: exif.lensModel,
-                focalLength: exif.focalLength,
-                aperture: exif.aperture,
-                shutterSpeed: exif.shutterSpeed,
-                iso: exif.iso,
-                width: exif.imageWidth,
-                height: exif.imageHeight,
-                gps: (exif.latitude && exif.longitude) 
-                  ? { lat: exif.latitude, lng: exif.longitude } 
-                  : undefined,
-              };
+      try {
+        const buffer = await storage.get(photoPath);
+        if (buffer) {
+          const [extracted, fingerprint] = await Promise.all([
+            extractImageMetadata(buffer),
+            createCanonicalImageSourceFingerprint(buffer),
+          ]);
+          sourceFingerprint = fingerprint;
+          if (extracted) {
+            exifCache = toImageMetadataSummary(extracted.exif);
+            if (exifCache.dateTaken) {
+              const date = new Date(exifCache.dateTaken);
+              if (!Number.isNaN(date.getTime())) year = date.getFullYear();
+            }
+
+            try {
+              await writePhotoMetadata(
+                storage,
+                photoPath,
+                extracted.exif,
+                extracted.embedded,
+                { size: buffer.byteLength, lastModified },
+              );
+            } catch (error) {
+              // The source image and compact index projection still preserve
+              // the data; a full metadata rebuild can retry later.
+              console.error(`[Metadata] Failed to persist sidecar for ${photoPath}:`, error);
             }
           }
-        } catch (error) {
-          console.warn(`Failed to extract EXIF from ${photoPath}:`, error);
         }
+      } catch (error) {
+        console.warn(`Failed to extract embedded metadata from ${photoPath}:`, error);
       }
       
       // Add the new photo
@@ -1024,10 +1121,16 @@ export async function addPhotosToGalleryIndex(
         id: filename.replace(/\.[^.]+$/, ''),
         path: photoPath,
         filename,
+        title: exifCache?.title || exifCache?.description,
+        description: exifCache?.description,
+        tags: exifCache?.keywords,
         year,
+        dateTaken: exifCache?.dateTaken,
         exif: exifCache,
-        lastModified: new Date().toISOString(),
+        lastModified,
+        sourceFingerprint,
       });
+      addedPhotos += 1;
     }
     
     // Update counts
@@ -1046,9 +1149,9 @@ export async function addPhotosToGalleryIndex(
     await writeContentIndex(storage, index);
     
     const elapsed = Date.now() - startTime;
-    console.log(`[Index] Added ${newPhotoPaths.length} photos to ${galleryPath} in ${elapsed}ms`);
+    console.log(`[Index] Added ${addedPhotos} photos to ${galleryPath} in ${elapsed}ms`);
     
-    return { success: true, message: `Added ${newPhotoPaths.length} photos in ${elapsed}ms` };
+    return { success: true, message: `Added ${addedPhotos} photos in ${elapsed}ms` };
   } catch (error) {
     console.error("Failed to add photos to index:", error);
     await rebuildContentIndex(storage);
@@ -1153,6 +1256,19 @@ export async function getHomePhotosFromIndex(
   locale?: Locale,
 ): Promise<HomePhoto[]> {
   const index = await getContentIndex(storage);
+
+  // Older indexes may lack dimensions on featuredPhotos while the same values
+  // already live in galleryData. Enrich at read time so the home grid is stable
+  // immediately, without forcing an expensive R2 index rebuild.
+  const dimensionsByPath = new Map<string, { width?: number; height?: number }>();
+  for (const gallery of index.galleryData) {
+    for (const photo of gallery.photos) {
+      if (dimensionsByPath.has(photo.path)) continue;
+      const width = photo.exif?.width;
+      const height = photo.exif?.height;
+      if (width || height) dimensionsByPath.set(photo.path, { width, height });
+    }
+  }
   
   if (homeConfig?.photos && homeConfig.photos.length > 0) {
     // Use handpicked photos from config
@@ -1176,6 +1292,8 @@ export async function getHomePhotosFromIndex(
           translations: photo.translations,
           hidden: photo.hidden,
           year: photo.year,
+          width: photo.exif?.width,
+          height: photo.exif?.height,
           homeIndex: idx,
         };
         homePhotos.push(locale ? localizePhotoIndexEntry(homePhoto, locale) as HomePhoto : homePhoto);
@@ -1187,7 +1305,12 @@ export async function getHomePhotosFromIndex(
   // Default: use all featured photos in order
   const photos = index.featuredPhotos
     .filter(p => !p.hidden)
-    .map((photo, idx) => ({ ...photo, homeIndex: idx }));
+    .map((photo, idx) => ({
+      ...photo,
+      width: photo.width ?? dimensionsByPath.get(photo.path)?.width,
+      height: photo.height ?? dimensionsByPath.get(photo.path)?.height,
+      homeIndex: idx,
+    }));
   return locale
     ? photos.map((photo) => localizePhotoIndexEntry(photo, locale) as HomePhoto)
     : photos;

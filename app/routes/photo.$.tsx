@@ -22,6 +22,7 @@ import {
 import { Layout } from "~/components/Layout";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { SimilarPhotos } from "~/components/SimilarPhotos";
+import { CrossfadePhoto } from "~/components/CrossfadePhoto";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { useEffect, useCallback, useMemo, useState } from "react";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
@@ -29,6 +30,7 @@ import {
   generateSrcSet,
   getOptimizedImageUrl,
   getOriginalImageUrl,
+  type ImagePreloadSource,
 } from "~/utils/image-optimization";
 import { localizedPath, photoMessages } from "~/lib/i18n";
 import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
@@ -207,12 +209,26 @@ export default function PhotoPage() {
         })
       : undefined;
 
-  // Preload adjacent photos for instant navigation (no delay for faster nav)
-  const adjacentPhotoPaths = useMemo(
-    () => [prevPhoto?.path, nextPhoto?.path],
-    [prevPhoto?.path, nextPhoto?.path]
+  // Warm adjacent photos at low priority once the current image has a head start.
+  const adjacentPhotoSources = useMemo(
+    () =>
+      [prevPhoto, nextPhoto]
+        .filter((adjacentPhoto): adjacentPhoto is NonNullable<typeof adjacentPhoto> =>
+          adjacentPhoto !== null
+        )
+        .map(
+          (adjacentPhoto): ImagePreloadSource => ({
+            src: getOptimizedImageUrl(adjacentPhoto.path, { width: 1600 }),
+            srcSet: generateSrcSet(adjacentPhoto.path, undefined, {
+              originalWidth: adjacentPhoto.exif?.width,
+              includeOriginal: adjacentPhoto.exif?.width !== undefined,
+            }),
+            sizes: PHOTO_SIZES,
+          })
+        ),
+    [prevPhoto, nextPhoto]
   );
-  usePhotoPreloading(adjacentPhotoPaths);
+  usePhotoPreloading(adjacentPhotoSources);
   
   // Reset fallback state when photo changes
   useEffect(() => {
@@ -322,20 +338,19 @@ export default function PhotoPage() {
         )}
 
         {/* Photo with invisible tap zones for navigation */}
-        <div className="relative bg-white dark:bg-black min-h-[40vh]">
+        <div className="photo-transition-stage relative bg-white dark:bg-black min-h-[40vh]">
           {/* Remount when the source mode changes so a failed request retries cleanly. */}
-          <img
-            key={`${photo.path}:${photoSourceMode}`}
+          <CrossfadePhoto
+            photoKey={photo.path}
             src={currentPhotoUrl}
             srcSet={currentPhotoSrcSet}
-            sizes={currentPhotoSrcSet ? PHOTO_SIZES : undefined}
+            sizes={PHOTO_SIZES}
             alt={photo.title || photo.filename}
             width={photo.exif?.width}
             height={photo.exif?.height}
             loading="eager"
-            decoding="async"
-            // @ts-expect-error React 18's DOM types use a different casing.
-            fetchpriority="high"
+            priority
+            containerClassName="w-full"
             className="w-full object-contain select-none"
             onError={handlePhotoError}
           />
@@ -344,12 +359,14 @@ export default function PhotoPage() {
             <Link
               to={prevPhoto ? localizedPath(locale, `/photo/${gallerySlug}/${prevPhoto.filename}`) : "#"}
               onClick={(e) => !prevPhoto && e.preventDefault()}
+              prefetch={prevPhoto ? "render" : "none"}
               className={`w-1/2 h-full focus:outline-none ${!prevPhoto ? "pointer-events-none" : ""}`}
               aria-label={messages.previousPhoto}
             />
             <Link
               to={nextPhoto ? localizedPath(locale, `/photo/${gallerySlug}/${nextPhoto.filename}`) : "#"}
               onClick={(e) => !nextPhoto && e.preventDefault()}
+              prefetch={nextPhoto ? "render" : "none"}
               className={`w-1/2 h-full focus:outline-none ${!nextPhoto ? "pointer-events-none" : ""}`}
               aria-label={messages.nextPhoto}
             />
@@ -382,6 +399,7 @@ export default function PhotoPage() {
             {prevPhoto ? (
               <Link
                 to={localizedPath(locale, `/photo/${gallerySlug}/${prevPhoto.filename}`)}
+                prefetch="render"
                 className="hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide"
               >
                 {locale === "es" ? "ANT" : "PREV"}
@@ -393,6 +411,7 @@ export default function PhotoPage() {
             {nextPhoto ? (
               <Link
                 to={localizedPath(locale, `/photo/${gallerySlug}/${nextPhoto.filename}`)}
+                prefetch="render"
                 className="hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide"
               >
                 {locale === "es" ? "SIG" : "NEXT"}
@@ -407,20 +426,19 @@ export default function PhotoPage() {
 
       {/* Desktop layout - centered with clickable zones */}
       <div className="hidden lg:flex lg:flex-col lg:h-screen">
-        <div className="flex-1 flex items-center justify-center overflow-hidden pt-8 pb-8 px-8 relative bg-white dark:bg-black">
+        <div className="photo-transition-stage flex-1 flex items-center justify-center overflow-hidden pt-8 pb-8 px-8 relative bg-white dark:bg-black">
           {/* Remount when the source mode changes so a failed request retries cleanly. */}
-          <img
-            key={`${photo.path}:${photoSourceMode}`}
+          <CrossfadePhoto
+            photoKey={photo.path}
             src={currentPhotoUrl}
             srcSet={currentPhotoSrcSet}
-            sizes={currentPhotoSrcSet ? PHOTO_SIZES : undefined}
+            sizes={PHOTO_SIZES}
             alt={photo.title || photo.filename}
             width={photo.exif?.width}
             height={photo.exif?.height}
             loading="eager"
-            decoding="async"
-            // @ts-expect-error React 18's DOM types use a different casing.
-            fetchpriority="high"
+            priority
+            containerClassName="h-full w-full"
             className="max-h-full max-w-full object-contain pointer-events-none select-none"
             onError={handlePhotoError}
           />
@@ -431,6 +449,7 @@ export default function PhotoPage() {
             {prevPhoto ? (
               <Link
                 to={localizedPath(locale, `/photo/${gallerySlug}/${prevPhoto.filename}`)}
+                prefetch="render"
                 className="w-1/3 h-full cursor-prev focus:outline-none"
                 aria-label={messages.previousPhoto}
               />
@@ -449,6 +468,7 @@ export default function PhotoPage() {
             {nextPhoto ? (
               <Link
                 to={localizedPath(locale, `/photo/${gallerySlug}/${nextPhoto.filename}`)}
+                prefetch="render"
                 className="w-1/3 h-full cursor-next focus:outline-none"
                 aria-label={messages.nextPhoto}
               />

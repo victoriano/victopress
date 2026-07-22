@@ -60,6 +60,7 @@ export function OptimizedImage({
   onClick,
 }: OptimizedImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isRevealPending, setIsRevealPending] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [useOriginal, setUseOriginal] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -67,15 +68,24 @@ export function OptimizedImage({
   // Reset state when src changes
   useEffect(() => {
     setIsLoaded(false);
+    setIsRevealPending(false);
     setHasError(false);
     setUseOriginal(false);
 
-    // The resource can finish between SSR and hydration. A single check is
-    // enough; polling every 50ms created one timer per gallery image.
-    if (imgRef.current?.complete && imgRef.current.naturalHeight > 0) {
+    const image = imgRef.current;
+
+    // Preserve immediate SSR paint: cached, priority, or already-decoding
+    // images remain visible. Only a lazy image with no decodable pixels yet is
+    // hidden, so its eventual reveal cannot introduce a flash or extra wait.
+    if (image?.complete && image.naturalHeight > 0) {
       setIsLoaded(true);
+      return;
     }
-  }, [src]);
+
+    if (!priority && image?.naturalWidth === 0) {
+      setIsRevealPending(true);
+    }
+  }, [priority, src]);
 
   const availableVariantWidths = useMemo(
     () => getResponsiveVariantWidths(width),
@@ -104,11 +114,18 @@ export function OptimizedImage({
     if (!useOriginal) {
       // WebP variant failed, fall back to original
       console.log(`[OptimizedImage] Variant not found, falling back to original: ${src}`);
+      setIsLoaded(false);
+      setIsRevealPending(!priority);
       setUseOriginal(true);
     } else {
       // Original also failed
       setHasError(true);
     }
+  };
+
+  const handleLoad = () => {
+    setIsLoaded(true);
+    setIsRevealPending(false);
   };
 
   if (hasError) {
@@ -141,8 +158,13 @@ export function OptimizedImage({
         decoding="async"
         // @ts-expect-error - React types use fetchPriority but DOM expects lowercase
         fetchpriority={priority ? "high" : undefined}
-        className="relative block w-full h-full object-cover"
-        onLoad={() => setIsLoaded(true)}
+        data-image-state={isRevealPending ? "waiting" : "visible"}
+        className={`relative block w-full h-full object-cover ${
+          isRevealPending
+            ? "opacity-0 scale-[1.012]"
+            : "opacity-100 scale-100 transition-[opacity,transform] duration-[480ms] ease-[cubic-bezier(0.22,0.61,0.36,1)] motion-reduce:transition-none motion-reduce:transform-none"
+        }`}
+        onLoad={handleLoad}
         onError={handleError}
         onClick={onClick}
       />

@@ -12,7 +12,8 @@ import { json } from "@remix-run/cloudflare";
 import { getStorage, getNavigationFromIndex, getHomePhotosFromIndex } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
-import { useEffect, useCallback, useState } from "react";
+import { CrossfadePhoto } from "~/components/CrossfadePhoto";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import yaml from "js-yaml";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
 import { getOptimizedImageUrl, getOriginalImageUrl } from "~/utils/image-optimization";
@@ -147,7 +148,11 @@ export default function FeaturedPhotoPage() {
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   
   // Preload adjacent photos for instant navigation
-  usePhotoPreloading([prevPhotoUrl, nextPhotoUrl]);
+  const adjacentPhotoUrls = useMemo(
+    () => [prevPhotoUrl, nextPhotoUrl],
+    [prevPhotoUrl, nextPhotoUrl]
+  );
+  usePhotoPreloading(adjacentPhotoUrls);
   
   // Reset fallback when photo changes
   useEffect(() => {
@@ -240,11 +245,13 @@ export default function FeaturedPhotoPage() {
         )}
 
         {/* Photo with invisible tap zones for navigation */}
-        <div className="relative bg-white dark:bg-black min-h-[40vh]">
-          <img
-            key={displayUrl}
+        <div className="photo-transition-stage relative bg-white dark:bg-black min-h-[40vh]">
+          <CrossfadePhoto
+            photoKey={photo.path}
             src={displayUrl}
             alt={photo.title || photo.filename}
+            priority
+            containerClassName="w-full"
             className="w-full object-contain select-none"
             onError={() => {
               if (!useOriginal) {
@@ -257,12 +264,14 @@ export default function FeaturedPhotoPage() {
             <Link
               to={prevIndex !== null ? localizedPath(locale, `/featured/${prevIndex}`) : "#"}
               onClick={(e) => prevIndex === null && e.preventDefault()}
+              prefetch={prevIndex !== null ? "render" : "none"}
               className={`w-1/2 h-full focus:outline-none ${prevIndex === null ? "pointer-events-none" : ""}`}
               aria-label={messages.previousPhoto}
             />
             <Link
               to={nextIndex !== null ? localizedPath(locale, `/featured/${nextIndex}`) : "#"}
               onClick={(e) => nextIndex === null && e.preventDefault()}
+              prefetch={nextIndex !== null ? "render" : "none"}
               className={`w-1/2 h-full focus:outline-none ${nextIndex === null ? "pointer-events-none" : ""}`}
               aria-label={messages.nextPhoto}
             />
@@ -295,6 +304,7 @@ export default function FeaturedPhotoPage() {
             {prevIndex !== null ? (
               <Link
                 to={localizedPath(locale, `/featured/${prevIndex}`)}
+                prefetch="render"
                 className="hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide"
               >
                 {locale === "es" ? "ANT" : "PREV"}
@@ -306,6 +316,7 @@ export default function FeaturedPhotoPage() {
             {nextIndex !== null ? (
               <Link
                 to={localizedPath(locale, `/featured/${nextIndex}`)}
+                prefetch="render"
                 className="hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide"
               >
                 {locale === "es" ? "SIG" : "NEXT"}
@@ -320,11 +331,13 @@ export default function FeaturedPhotoPage() {
 
       {/* Desktop layout - centered with clickable zones */}
       <div className="hidden lg:flex lg:flex-col lg:h-screen">
-        <div className="flex-1 flex items-center justify-center overflow-hidden pt-8 pb-8 px-8 relative bg-white dark:bg-black">
-          <img
-            key={displayUrl}
+        <div className="photo-transition-stage flex-1 flex items-center justify-center overflow-hidden pt-8 pb-8 px-8 relative bg-white dark:bg-black">
+          <CrossfadePhoto
+            photoKey={photo.path}
             src={displayUrl}
             alt={photo.title || photo.filename}
+            priority
+            containerClassName="h-full w-full"
             className="max-h-full max-w-full object-contain pointer-events-none select-none"
             onError={() => {
               if (!useOriginal) {
@@ -339,6 +352,7 @@ export default function FeaturedPhotoPage() {
             {prevIndex !== null ? (
               <Link
                 to={localizedPath(locale, `/featured/${prevIndex}`)}
+                prefetch="render"
                 className="w-1/3 h-full cursor-prev focus:outline-none"
                 aria-label={messages.previousPhoto}
               />
@@ -357,6 +371,7 @@ export default function FeaturedPhotoPage() {
             {nextIndex !== null ? (
               <Link
                 to={localizedPath(locale, `/featured/${nextIndex}`)}
+                prefetch="render"
                 className="w-1/3 h-full cursor-next focus:outline-none"
                 aria-label={messages.nextPhoto}
               />

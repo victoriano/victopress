@@ -10,6 +10,7 @@ dist/
 .wrangler/
 /content/_content-index.json
 /content/.victopress/
+/content/_photo-metadata/
 
 # Environment
 .env

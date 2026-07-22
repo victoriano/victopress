@@ -14,6 +14,7 @@ import {
   getStorage, 
   getNavigationFromIndex, 
   getAllGalleriesFromIndex,
+  normalizeGalleryThumbnailAspectRatio,
   type GalleryDataEntry,
   type GalleryPhotoEntry,
 } from "~/lib/content-engine";
@@ -123,6 +124,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     photoCount: number;
     tags?: string[];
     password?: string;
+    thumbnailAspectRatio: "3:2" | "original";
   };
   
   if (gallery) {
@@ -155,6 +157,9 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       photoCount: allPhotos.length,
       tags: gallery.tags,
       password: gallery.password,
+      thumbnailAspectRatio: normalizeGalleryThumbnailAspectRatio(
+        gallery.thumbnailAspectRatio,
+      ),
     };
   } else if (childGalleries.length > 0) {
     // No exact match but has children - create virtual gallery
@@ -173,6 +178,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       cover: allPhotos[0]?.path || "",
       photoCount: allPhotos.length,
       tags: [],
+      thumbnailAspectRatio: "3:2",
     };
   } else {
     throw new Response(messages.galleryNotFound, { status: 404 });
@@ -266,7 +272,7 @@ export default function GalleryPage() {
       {/* Mobile Breadcrumb Navigation */}
       <GalleryBreadcrumb currentSlug={gallery.slug} navigation={navigation} locale={locale} />
       
-      <PhotoGrid>
+      <PhotoGrid layout={gallery.thumbnailAspectRatio}>
         {gallery.photos.map((photo, index) => (
           <PhotoItem
             key={photo.path}
@@ -275,7 +281,7 @@ export default function GalleryPage() {
             width={photo.exif?.width}
             height={photo.exif?.height}
             href={localizedPath(locale, `/photo/${(photo as any).gallerySlug}/${photo.filename}`)}
-            aspectRatio="auto"
+            aspectRatio={gallery.thumbnailAspectRatio}
             priority={index === 0}
           />
         ))}

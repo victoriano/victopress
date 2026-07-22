@@ -12,7 +12,11 @@ import {
   DEFAULT_EMBEDDING_DIMENSIONS,
   DEFAULT_EMBEDDING_MODEL,
   GeminiPhotoAiProvider,
+  type GalleryTaxonomyCatalog,
+  type PhotoAnalysis,
   type PhotoAiRecord,
+  type PhotoAssetIdentity,
+  type PhotoEmbeddingReference,
 } from "./index";
 import {
   createPhotoAiJob,
@@ -36,8 +40,10 @@ import {
   createPhotoVectorIndex,
   type PhotoVectorEnv,
   type VectorIndex,
+  type VectorUpsertInput,
 } from "./vector-index";
 import { projectEmbeddingMap } from "./embedding-map";
+import { enqueuePhotoMetadataWritebacks } from "./photo-metadata-writeback.server";
 
 export interface PhotoAiEnv extends PhotoVectorEnv {
   PHOTO_AI_ENABLED?: string | boolean;
@@ -48,7 +54,10 @@ export interface PhotoAiEnv extends PhotoVectorEnv {
 }
 
 export interface PhotoAiContext {
-  cloudflare?: { env?: unknown };
+  cloudflare?: {
+    env?: unknown;
+    ctx?: { waitUntil?: (promise: Promise<unknown>) => void };
+  };
 }
 
 interface IndexedPhotoSource {
@@ -63,6 +72,17 @@ interface PhotoAiRuntime {
   vectorIndex: VectorIndex;
   provider: GeminiPhotoAiProvider;
 }
+
+interface PreparedPhotoAnalysis {
+  source: IndexedPhotoSource;
+  identity: PhotoAssetIdentity;
+  analysis: PhotoAnalysis;
+  embeddingReference: PhotoEmbeddingReference;
+  vector?: VectorUpsertInput;
+  taxonomyVersion: string;
+}
+
+const PHOTO_AI_PREPARE_CONCURRENCY = 3;
 
 export interface PhotoAiDashboardRecord {
   assetId: string;
@@ -259,9 +279,12 @@ function isCurrentRecord(
   promptVersion: string,
 ): boolean {
   if (!record?.analysis || !record.embedding) return false;
+  const sourceIdentityIsCurrent = source.photo.sourceFingerprint
+    ? record.asset.sourceFingerprint === source.photo.sourceFingerprint
+    : !source.photo.lastModified || record.asset.lastModified === source.photo.lastModified;
   return (
     record.asset.sourcePath === source.photo.path &&
-    (!source.photo.lastModified || record.asset.lastModified === source.photo.lastModified) &&
+    sourceIdentityIsCurrent &&
     record.analysis.model === config.analysisModel &&
     record.analysis.promptVersion === promptVersion &&
     record.analysis.taxonomyVersion === taxonomyVersion &&
@@ -314,11 +337,12 @@ export async function startPhotoAiJob(context: PhotoAiContext): Promise<{
   return { job, done: stale.length === 0, remaining: stale.length };
 }
 
-async function analyzePhotoSource(
+async function preparePhotoSourceAnalysis(
   runtime: PhotoAiRuntime,
   source: IndexedPhotoSource,
   galleries: readonly GalleryDataEntry[],
-): Promise<{ record: PhotoAiRecord; document: PhotoAiSearchDocument }> {
+  taxonomy: GalleryTaxonomyCatalog,
+): Promise<PreparedPhotoAnalysis> {
   if (source.gallery.isProtected) throw new Error("Protected galleries are not analyzed by default");
   const bytes = await runtime.storage.get(source.photo.path);
   if (!bytes) throw new Error(`Photo could not be read: ${source.photo.path}`);
@@ -334,7 +358,6 @@ async function analyzePhotoSource(
     source.gallery.slug,
     identity.assetId,
   );
-  const taxonomy = await buildGalleryTaxonomyCatalog(galleries);
   const currentGallerySlugs = galleries
     .filter((gallery) => gallery.photos.some((photo) => photo.path === source.photo.path))
     .map((gallery) => gallery.slug);
@@ -357,22 +380,6 @@ async function analyzePhotoSource(
       : runtime.provider.embedImage({ image: bytes, mimeType }),
   ]);
 
-  if (embedding) {
-    await runtime.vectorIndex.upsert([
-      {
-        id: identity.assetId,
-        values: embedding.values,
-        modelSpace: `${embedding.model}:${embedding.dimensions}`,
-        namespace: "photos",
-        metadata: {
-          gallerySlug: source.gallery.slug,
-          hidden: source.photo.hidden === true,
-          protected: source.gallery.isProtected,
-        },
-      },
-    ]);
-  }
-
   const embeddingReference = embedding
     ? {
         status: "ready" as const,
@@ -384,13 +391,44 @@ async function analyzePhotoSource(
       }
     : existingRecord!.embedding!;
 
-  const candidate = createPhotoAiRecord({
-    asset: identity,
+  return {
+    source,
+    identity,
     analysis,
-    embedding: embeddingReference,
+    embeddingReference,
+    taxonomyVersion: taxonomy.version,
+    vector: embedding
+      ? {
+          id: identity.assetId,
+          values: embedding.values,
+          modelSpace: `${embedding.model}:${embedding.dimensions}`,
+          namespace: "photos",
+          metadata: {
+            gallerySlug: source.gallery.slug,
+            hidden: source.photo.hidden === true,
+            protected: source.gallery.isProtected,
+          },
+        }
+      : undefined,
+  };
+}
+
+function createPreparedPhotoRecord(
+  prepared: PreparedPhotoAnalysis,
+): PhotoAiRecord {
+  return createPhotoAiRecord({
+    asset: prepared.identity,
+    analysis: prepared.analysis,
+    embedding: prepared.embeddingReference,
   });
-  const record = await runtime.recordStore.upsertRecord(source.gallery.slug, candidate);
-  const document: PhotoAiSearchDocument = {
+}
+
+function createPreparedSearchDocument(
+  prepared: PreparedPhotoAnalysis,
+  record: PhotoAiRecord,
+): PhotoAiSearchDocument {
+  const { source, identity, embeddingReference, taxonomyVersion } = prepared;
+  return {
     assetId: identity.assetId,
     path: source.photo.path,
     filename: source.photo.filename,
@@ -398,7 +436,10 @@ async function analyzePhotoSource(
     galleryTitle: source.gallery.title,
     title: source.photo.title,
     description: source.photo.description,
+    aiDescription: record.analysis?.caption ?? "",
     caption: record.analysis?.caption ?? "",
+    editorialTags: [...(source.photo.tags ?? [])],
+    aiTags: [...(record.analysis?.tags ?? [])],
     tags: mergeSearchTags(source.photo.tags, record.analysis?.tags),
     year: source.photo.year,
     hidden: source.photo.hidden === true,
@@ -406,7 +447,7 @@ async function analyzePhotoSource(
     vectorId: identity.assetId,
     sourceFingerprint: identity.sourceFingerprint,
     model: embeddingReference.model,
-    taxonomyVersion: taxonomy.version,
+    taxonomyVersion,
     gallerySuggestions: (record.analysis?.gallerySuggestions ?? []).map((suggestion) => ({
       slug: suggestion.gallerySlug,
       confidence: suggestion.confidence,
@@ -415,8 +456,33 @@ async function analyzePhotoSource(
     })),
     updatedAt: new Date().toISOString(),
   };
-  await upsertPhotoAiSearchDocument(runtime.storage, document);
-  return { record, document };
+}
+
+async function storePreparedPhotoAnalysis(
+  runtime: PhotoAiRuntime,
+  prepared: PreparedPhotoAnalysis,
+): Promise<{ record: PhotoAiRecord; document: PhotoAiSearchDocument }> {
+  const record = await runtime.recordStore.upsertRecord(
+    prepared.source.gallery.slug,
+    createPreparedPhotoRecord(prepared),
+  );
+  return {
+    record,
+    document: createPreparedSearchDocument(prepared, record),
+  };
+}
+
+async function analyzePhotoSource(
+  runtime: PhotoAiRuntime,
+  source: IndexedPhotoSource,
+  galleries: readonly GalleryDataEntry[],
+): Promise<{ record: PhotoAiRecord; document: PhotoAiSearchDocument }> {
+  const taxonomy = await buildGalleryTaxonomyCatalog(galleries);
+  const prepared = await preparePhotoSourceAnalysis(runtime, source, galleries, taxonomy);
+  if (prepared.vector) await runtime.vectorIndex.upsert([prepared.vector]);
+  const stored = await storePreparedPhotoAnalysis(runtime, prepared);
+  await upsertPhotoAiSearchDocument(runtime.storage, stored.document);
+  return stored;
 }
 
 export async function processPhotoAiJobBatch(
@@ -442,22 +508,119 @@ export async function processPhotoAiJobBatch(
   for (const item of items) {
     item.attempts += 1;
     item.updatedAt = new Date().toISOString();
+  }
+
+  const preparedResults: Array<{
+    item: PhotoAiJobItem;
+    prepared?: PreparedPhotoAnalysis;
+    error?: unknown;
+  }> = [];
+
+  for (let offset = 0; offset < items.length; offset += PHOTO_AI_PREPARE_CONCURRENCY) {
+    const chunk = items.slice(offset, offset + PHOTO_AI_PREPARE_CONCURRENCY);
+    preparedResults.push(...await Promise.all(chunk.map(async (item) => {
+      try {
+        const source = findPhotoSource(content.galleryData, item.path);
+        if (!source) {
+          throw new Error(`Photo is no longer present in the content index: ${item.path}`);
+        }
+        return {
+          item,
+          prepared: await preparePhotoSourceAnalysis(
+            runtime,
+            source,
+            content.galleryData,
+            taxonomy,
+          ),
+        };
+      } catch (error) {
+        return { item, error };
+      }
+    })));
+  }
+
+  const vectorResults = preparedResults.filter((result) => result.prepared?.vector);
+  if (vectorResults.length > 0) {
     try {
-      const source = findPhotoSource(content.galleryData, item.path);
-      if (!source) throw new Error(`Photo is no longer present in the content index: ${item.path}`);
-      const { record } = await analyzePhotoSource(runtime, source, content.galleryData);
-      item.assetId = record.asset.assetId;
-      item.status = "completed";
-      item.error = undefined;
+      await runtime.vectorIndex.upsert(
+        vectorResults.map((result) => result.prepared!.vector!),
+      );
     } catch (error) {
-      item.status = "failed";
-      item.error = error instanceof Error ? error.message : "Photo analysis failed";
+      for (const result of vectorResults) result.error = error;
+    }
+  }
+
+  const storedResults: Array<{
+    item: PhotoAiJobItem;
+    record: PhotoAiRecord;
+    document: PhotoAiSearchDocument;
+  }> = [];
+  const preparedByGallery = new Map<string, typeof preparedResults>();
+  for (const result of preparedResults) {
+    if (!result.prepared || result.error) continue;
+    const gallerySlug = result.prepared.source.gallery.slug;
+    const galleryResults = preparedByGallery.get(gallerySlug) ?? [];
+    galleryResults.push(result);
+    preparedByGallery.set(gallerySlug, galleryResults);
+  }
+
+  for (const [gallerySlug, galleryResults] of preparedByGallery) {
+    try {
+      const records = await runtime.recordStore.upsertRecords(
+        gallerySlug,
+        galleryResults.map((result) => createPreparedPhotoRecord(result.prepared!)),
+      );
+      for (let index = 0; index < records.length; index += 1) {
+        const result = galleryResults[index];
+        const record = records[index];
+        result.item.assetId = record.asset.assetId;
+        storedResults.push({
+          item: result.item,
+          record,
+          document: createPreparedSearchDocument(result.prepared!, record),
+        });
+      }
+    } catch (error) {
+      for (const result of galleryResults) result.error = error;
+    }
+  }
+
+  if (storedResults.length > 0) {
+    try {
+      const searchIndex = await readPhotoAiSearchIndex(runtime.storage);
+      for (const result of storedResults) {
+        searchIndex.documents[result.document.assetId] = result.document;
+      }
+      await writePhotoAiSearchIndex(runtime.storage, searchIndex);
+      for (const result of storedResults) {
+        result.item.status = "completed";
+        result.item.error = undefined;
+      }
+    } catch (error) {
+      for (const result of preparedResults) {
+        if (storedResults.some((stored) => stored.item === result.item)) result.error = error;
+      }
+    }
+  }
+
+  for (const result of preparedResults) {
+    if (result.error) {
+      result.item.status = "failed";
+      result.item.error = result.error instanceof Error
+        ? result.error.message
+        : "Photo analysis failed";
     }
   }
 
   const summary = summarizePhotoAiJob(job);
   job.status = summary.done ? "completed" : "running";
   await writePhotoAiJob(runtime.storage, job);
+  const completedPaths = storedResults
+    .filter((result) => result.item.status === "completed")
+    .map((result) => result.item.path);
+  if (completedPaths.length > 0) {
+    await enqueuePhotoMetadataWritebacks(context, completedPaths, "ai-analysis");
+  }
   return {
     job,
     processed: items.length,
@@ -474,7 +637,9 @@ export async function analyzePhotoByPath(
   const content = await getContentIndex(runtime.storage);
   const source = findPhotoSource(content.galleryData, path);
   if (!source) throw new Error("Photo was not found");
-  return (await analyzePhotoSource(runtime, source, content.galleryData)).record;
+  const record = (await analyzePhotoSource(runtime, source, content.galleryData)).record;
+  await enqueuePhotoMetadataWritebacks(context, [path], "ai-analysis");
+  return record;
 }
 
 export async function retryPhotoAiAsset(
@@ -516,6 +681,7 @@ export async function reviewPhotoGallerySuggestion(
     alreadyCurrent: suggestion.alreadyCurrent,
   }));
   await writePhotoAiSearchIndex(runtime.storage, index);
+  await enqueuePhotoMetadataWritebacks(context, [document.path], "ai-review");
   return record;
 }
 
