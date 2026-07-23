@@ -41,6 +41,15 @@ import {
 import { GALLERY_ORDERS_KEY } from "../app/lib/content-engine/gallery-orders";
 import { R2ApiAdapter } from "../app/lib/content-engine/storage/r2-api-adapter";
 import { toSlug } from "../app/lib/content-engine/utils";
+import {
+  SQUARESPACE_FILENAME_ALIASES_BY_ROUTE,
+  SQUARESPACE_GALLERY_SOURCES,
+  applySquarespaceDisplayOrder,
+  fetchSquarespaceGallerySnapshot,
+  normalizePhotoFilename,
+  resolveSquarespacePhotoOrder,
+  type SquarespaceGallerySnapshot,
+} from "./lib/squarespace-gallery-order";
 
 const DEFAULT_SOURCE = "/Users/victoriano/Desktop/squarespace_photos";
 const CONTENT_ROOT = join(process.cwd(), "content");
@@ -219,12 +228,98 @@ interface R2Environment {
   bucketName: string;
 }
 
-function parseArguments(): { apply: boolean; sourceRoot: string } {
+function parseArguments(): {
+  apply: boolean;
+  sourceRoot: string;
+  sourceOrder: "live" | "csv";
+  squarespaceBaseUrl: string;
+} {
   const args = process.argv.slice(2);
   const sourceIndex = args.indexOf("--source");
   const sourceRoot = sourceIndex >= 0 ? args[sourceIndex + 1] : DEFAULT_SOURCE;
   if (!sourceRoot) throw new Error("--source requires a directory path");
-  return { apply: args.includes("--apply"), sourceRoot };
+  const sourceOrderIndex = args.indexOf("--source-order");
+  const sourceOrder = sourceOrderIndex >= 0 ? args[sourceOrderIndex + 1] : "live";
+  if (sourceOrder !== "live" && sourceOrder !== "csv") {
+    throw new Error("--source-order must be live or csv");
+  }
+  const baseUrlIndex = args.indexOf("--squarespace-base-url");
+  const squarespaceBaseUrl =
+    baseUrlIndex >= 0
+      ? args[baseUrlIndex + 1]
+      : "https://victoriano.me";
+  if (!squarespaceBaseUrl) {
+    throw new Error("--squarespace-base-url requires a URL");
+  }
+  return {
+    apply: args.includes("--apply"),
+    sourceRoot,
+    sourceOrder,
+    squarespaceBaseUrl: new URL(squarespaceBaseUrl).toString(),
+  };
+}
+
+async function applyLiveSquarespaceOrder(
+  photos: readonly SourcePhoto[],
+  baseUrl: string,
+): Promise<SourcePhoto[]> {
+  const snapshots = await Promise.all(
+    SQUARESPACE_GALLERY_SOURCES.map(async (source) => [
+      source.album,
+      await fetchSquarespaceGallerySnapshot(baseUrl, source.route),
+    ] as const),
+  );
+  const snapshotsByAlbum = new Map<string, SquarespaceGallerySnapshot>(snapshots);
+
+  for (const source of SQUARESPACE_GALLERY_SOURCES) {
+    const albumPhotos = photos.filter((photo) => photo.album === source.album);
+    const snapshot = snapshotsByAlbum.get(source.album);
+    if (!snapshot) throw new Error(`Missing live order for ${source.album}`);
+    const uniqueSnapshotFilenames = snapshot.filenames.filter(
+      (filename, index, filenames) =>
+        filenames.findIndex(
+          (candidate) =>
+            normalizePhotoFilename(candidate) ===
+            normalizePhotoFilename(filename),
+        ) === index,
+    );
+    const resolution = resolveSquarespacePhotoOrder(
+      uniqueSnapshotFilenames,
+      albumPhotos.map((photo) => ({
+        path: photo.relativePath,
+        filename: photo.filename,
+      })),
+      SQUARESPACE_FILENAME_ALIASES_BY_ROUTE[source.route],
+    );
+    if (
+      resolution.missing.length > 0 ||
+      resolution.ambiguous.length > 0 ||
+      resolution.orderedPaths.length !== uniqueSnapshotFilenames.length ||
+      albumPhotos.length !== uniqueSnapshotFilenames.length
+    ) {
+      throw new Error(
+        `Live Squarespace order for ${source.album} does not exactly match the export: ` +
+        `${resolution.orderedPaths.length}/${uniqueSnapshotFilenames.length} resolved, ` +
+        `${albumPhotos.length} exported, ${resolution.missing.length} missing, ` +
+        `${resolution.ambiguous.length} ambiguous`,
+      );
+    }
+  }
+
+  console.log(
+    `[scan] Using live Squarespace displayIndex order from ${baseUrl} (not CSV attachment chronology)`,
+  );
+  const aliasesByAlbum = Object.fromEntries(
+    SQUARESPACE_GALLERY_SOURCES.map((source) => [
+      source.album,
+      SQUARESPACE_FILENAME_ALIASES_BY_ROUTE[source.route] ?? {},
+    ]),
+  );
+  return applySquarespaceDisplayOrder(
+    photos,
+    snapshotsByAlbum,
+    aliasesByAlbum,
+  );
 }
 
 async function loadEnvironment(): Promise<R2Environment> {
@@ -1237,12 +1332,27 @@ async function applyPlan(
 }
 
 async function main(): Promise<void> {
-  const { apply, sourceRoot } = parseArguments();
+  const {
+    apply,
+    sourceRoot,
+    sourceOrder,
+    squarespaceBaseUrl,
+  } = parseArguments();
   const env = await loadEnvironment();
   const client = makeClient(env);
 
   console.log(`[scan] Reading Squarespace export from ${sourceRoot}`);
-  const sourcePhotos = await scanSource(sourceRoot);
+  let sourcePhotos = await scanSource(sourceRoot);
+  if (sourceOrder === "live") {
+    sourcePhotos = await applyLiveSquarespaceOrder(
+      sourcePhotos,
+      squarespaceBaseUrl,
+    );
+  } else {
+    console.warn(
+      "[scan] Using CSV attachment chronology by explicit request; this does not reproduce the live gallery display order",
+    );
+  }
   console.log(`[scan] Reading production R2 bucket ${env.bucketName}`);
   const objects = await listAllObjects(client, env.bucketName);
   const existingOriginals = await hashExistingOriginals(client, env.bucketName, objects);
