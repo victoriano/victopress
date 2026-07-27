@@ -1036,17 +1036,100 @@ export async function getSimilarPhotoDocuments(
     .slice(0, limit);
 }
 
+const PHOTO_SEARCH_ALIASES = [
+  ["hat", "hats", "sombrero", "sombreros", "montera"],
+  ["man", "men", "hombre", "hombres"],
+  ["woman", "women", "mujer", "mujeres"],
+  ["child", "children", "kid", "kids", "nino", "nina", "ninos", "ninas"],
+  ["street", "streets", "calle", "calles"],
+  ["city", "cities", "ciudad", "ciudades"],
+  ["night", "nights", "noche", "noches"],
+  ["sunset", "sunsets", "atardecer", "atardeceres"],
+  ["wedding", "weddings", "boda", "bodas"],
+  ["portrait", "portraits", "retrato", "retratos"],
+] as const;
+
+const PHOTO_SEARCH_ALIAS_LOOKUP: ReadonlyMap<string, readonly string[]> = new Map(
+  PHOTO_SEARCH_ALIASES.flatMap((group) => group.map((token) => [token, group] as const)),
+);
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase();
+}
+
+function searchTokens(value: string): string[] {
+  return normalizeSearchText(value).match(/[\p{L}\p{N}]+/gu) ?? [];
+}
+
 function lexicalScore(document: PhotoAiSearchDocument, query: string): number {
-  const tokens = query.toLocaleLowerCase().split(/\s+/).filter((token) => token.length > 1);
-  if (tokens.length === 0) return 0;
-  const haystack = [
+  const queryTokens = searchTokens(query).filter((token) => token.length > 1);
+  if (queryTokens.length === 0) return 0;
+  const haystack = new Set(searchTokens([
     document.title,
     document.description,
+    document.aiDescription,
     document.caption,
     document.galleryTitle,
     ...document.tags,
-  ].filter(Boolean).join(" ").toLocaleLowerCase();
-  return tokens.filter((token) => haystack.includes(token)).length / tokens.length;
+  ].filter(Boolean).join(" ")));
+  const matchedTokens = queryTokens.filter((token) => {
+    const aliases = PHOTO_SEARCH_ALIAS_LOOKUP.get(token) ?? [token];
+    return aliases.some((alias) => haystack.has(alias));
+  });
+  return matchedTokens.length / queryTokens.length;
+}
+
+function matchesSearchGallery(
+  document: PhotoAiSearchDocument,
+  gallerySlug: string | undefined,
+): boolean {
+  if (!gallerySlug) return true;
+  return (
+    document.gallerySlug === gallerySlug ||
+    document.gallerySuggestions.some(
+      (suggestion) => suggestion.slug === gallerySlug && suggestion.status === "accepted",
+    )
+  );
+}
+
+export function rankPhotoDocumentsLexically(
+  documents: readonly PhotoAiSearchDocument[],
+  query: string,
+  options: { gallerySlug?: string; limit?: number } = {},
+): Array<{ document: PhotoAiSearchDocument; score: number }> {
+  const gallerySlug = options.gallerySlug?.trim();
+  const limit = Math.min(50, Math.max(1, options.limit ?? 40));
+  return documents
+    .filter((document) =>
+      !document.hidden &&
+      !document.protected &&
+      matchesSearchGallery(document, gallerySlug),
+    )
+    .map((document) => ({ document, score: lexicalScore(document, query) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.document.path.localeCompare(b.document.path))
+    .slice(0, limit);
+}
+
+function searchableErrorDetails(error: unknown): Record<string, unknown> {
+  const cause = error instanceof Error ? error.cause : undefined;
+  return {
+    name: error instanceof Error ? error.name : typeof error,
+    message: error instanceof Error ? error.message : String(error),
+    code:
+      error && typeof error === "object" && "code" in error
+        ? String(error.code)
+        : undefined,
+    status:
+      error && typeof error === "object" && "status" in error
+        ? Number(error.status)
+        : undefined,
+    causeName: cause instanceof Error ? cause.name : undefined,
+    causeMessage: cause instanceof Error ? cause.message : cause ? String(cause) : undefined,
+  };
 }
 
 export async function searchPhotoDocuments(
@@ -1055,36 +1138,49 @@ export async function searchPhotoDocuments(
   options: { gallerySlug?: string; limit?: number } = {},
 ) {
   const normalizedQuery = query.trim().slice(0, 500);
-  if (!normalizedQuery) return { photos: [], galleries: [] };
+  if (!normalizedQuery) return { photos: [], galleries: [], mode: "lexical" as const };
   const runtime = createRuntime(context);
   const index = await readPhotoAiSearchIndex(runtime.storage);
-  const embedding = await runtime.provider.embedText({ text: normalizedQuery });
-  const result = await runtime.vectorIndex.query(embedding.values, {
-    topK: 50,
-    modelSpace: `${embedding.model}:${embedding.dimensions}`,
-    namespace: "photos",
-    filter: { hidden: false, protected: false },
-  });
-
   const gallerySlug = options.gallerySlug?.trim();
-  const photos = result.matches
-    .map((match) => ({ document: index.documents[match.id], vectorScore: match.score }))
-    .filter((item): item is { document: PhotoAiSearchDocument; vectorScore: number } => {
-      if (!item.document || item.document.hidden || item.document.protected) return false;
-      if (!gallerySlug) return true;
-      return (
-        item.document.gallerySlug === gallerySlug ||
-        item.document.gallerySuggestions.some(
-          (suggestion) => suggestion.slug === gallerySlug && suggestion.status === "accepted",
-        )
-      );
-    })
-    .map(({ document, vectorScore }) => ({
-      document,
-      score: vectorScore * 0.85 + lexicalScore(document, normalizedQuery) * 0.15,
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, Math.min(50, Math.max(1, options.limit ?? 40)));
+  let mode: "semantic" | "lexical" = "semantic";
+  let photos: Array<{ document: PhotoAiSearchDocument; score: number }>;
+  try {
+    const embedding = await runtime.provider.embedText({ text: normalizedQuery });
+    const result = await runtime.vectorIndex.query(embedding.values, {
+      topK: 50,
+      modelSpace: `${embedding.model}:${embedding.dimensions}`,
+      namespace: "photos",
+      filter: { hidden: false, protected: false },
+    });
+
+    photos = result.matches
+      .map((match) => ({ document: index.documents[match.id], vectorScore: match.score }))
+      .filter((item): item is { document: PhotoAiSearchDocument; vectorScore: number } =>
+        Boolean(
+          item.document &&
+          !item.document.hidden &&
+          !item.document.protected &&
+          matchesSearchGallery(item.document, gallerySlug),
+        ),
+      )
+      .map(({ document, vectorScore }) => ({
+        document,
+        score: vectorScore * 0.85 + lexicalScore(document, normalizedQuery) * 0.15,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Math.min(50, Math.max(1, options.limit ?? 40)));
+  } catch (error) {
+    mode = "lexical";
+    console.warn(
+      "[Photo AI] Semantic search unavailable; using lexical fallback",
+      searchableErrorDetails(error),
+    );
+    photos = rankPhotoDocumentsLexically(
+      Object.values(index.documents),
+      normalizedQuery,
+      options,
+    );
+  }
 
   const galleryCounts = new Map<string, { slug: string; title: string; count: number }>();
   for (const document of Object.values(index.documents)) {
@@ -1100,5 +1196,6 @@ export async function searchPhotoDocuments(
   return {
     photos,
     galleries: Array.from(galleryCounts.values()).sort((a, b) => a.title.localeCompare(b.title)),
+    mode,
   };
 }
