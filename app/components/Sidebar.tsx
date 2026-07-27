@@ -6,6 +6,7 @@
 
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useState, useEffect, useMemo } from "react";
+import { SiteIdentity } from "./SiteIdentity";
 import { SitePreferenceControls } from "./SitePreferenceControls";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
@@ -45,7 +46,7 @@ interface SidebarProps {
   locale: Locale;
 }
 
-export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEnabled = false, multilingual = false, locale }: SidebarProps) {
+export function Sidebar({ navigation, socialLinks, photoNav, photoAiEnabled = false, multilingual = false, locale }: SidebarProps) {
   const location = useLocation();
   const messages = photoMessages[locale];
   
@@ -137,15 +138,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
     <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 flex-col justify-between px-12 py-12 bg-white dark:bg-gray-950 z-50">
       {/* Site Name */}
       <div>
-        <Link to={localizedPath(locale, "/")} className="block mb-12">
-          <h1 className="text-[27px] font-bold leading-[1.2] tracking-normal text-black dark:text-white">
-            {siteName.split(" ").map((word, i) => (
-              <span key={i} className="block">
-                {word}
-              </span>
-            ))}
-          </h1>
-        </Link>
+        <SiteIdentity locale={locale} layout="desktop" />
 
         {/* Gallery Navigation */}
         <nav className="space-y-2">
