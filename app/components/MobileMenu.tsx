@@ -7,6 +7,7 @@
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useEffect, useState, useMemo } from "react";
 import type { NavItem } from "./Sidebar";
+import { SiteIdentity } from "./SiteIdentity";
 import { SitePreferenceControls } from "./SitePreferenceControls";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
@@ -24,7 +25,7 @@ interface MobileMenuProps {
   locale: Locale;
 }
 
-export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled = false, multilingual = false, locale }: MobileMenuProps) {
+export function MobileMenu({ navigation, socialLinks, photoAiEnabled = false, multilingual = false, locale }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const messages = photoMessages[locale];
@@ -118,9 +119,7 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
     <>
       {/* Mobile Header */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-900 z-50 flex items-center justify-between px-6 lg:hidden">
-        <Link to={localizedPath(locale, "/")} className="font-bold text-lg">
-          {siteName}
-        </Link>
+        <SiteIdentity locale={locale} layout="mobile" />
         <button
           onClick={() => setIsOpen(true)}
           className="p-2 -mr-2"
@@ -135,13 +134,11 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
         <div className="fixed inset-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm z-[100] lg:hidden overflow-y-auto">
           {/* Header - matches the mobile header exactly */}
           <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800">
-            <Link
-              to={localizedPath(locale, "/")}
-              className="font-bold text-lg"
-              onClick={() => setIsOpen(false)}
-            >
-              {siteName}
-            </Link>
+            <SiteIdentity
+              locale={locale}
+              layout="mobile"
+              onNavigate={() => setIsOpen(false)}
+            />
             <button
               onClick={() => setIsOpen(false)}
               className="p-2 -mr-2"
