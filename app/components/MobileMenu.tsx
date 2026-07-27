@@ -7,6 +7,7 @@
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useEffect, useState, useMemo } from "react";
 import type { NavItem } from "./Sidebar";
+import { PersonalSiteNavLinks } from "./PersonalSiteNavLinks";
 import { SiteIdentity } from "./SiteIdentity";
 import { SitePreferenceControls } from "./SitePreferenceControls";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
@@ -175,12 +176,10 @@ export function MobileMenu({ navigation, socialLinks, photoAiEnabled = false, mu
               <MobileNavLink href={localizedPath(locale, "/blog")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
                 {messages.blog}
               </MobileNavLink>
-              <MobileNavLink href={localizedPath(locale, "/about")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
-                {messages.about}
-              </MobileNavLink>
-              <MobileNavLink href={localizedPath(locale, "/contact")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
-                {messages.contact}
-              </MobileNavLink>
+              <PersonalSiteNavLinks
+                locale={locale}
+                onNavigate={() => setIsOpen(false)}
+              />
             </div>
           </nav>
 

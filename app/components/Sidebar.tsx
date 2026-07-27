@@ -7,6 +7,7 @@
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useState, useEffect, useMemo } from "react";
 import { SiteIdentity } from "./SiteIdentity";
+import { PersonalSiteNavLinks } from "./PersonalSiteNavLinks";
 import { SitePreferenceControls } from "./SitePreferenceControls";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
@@ -165,12 +166,7 @@ export function Sidebar({ navigation, socialLinks, photoNav, photoAiEnabled = fa
             <StaticNavLink href={localizedPath(locale, "/blog")} currentPath={location.pathname}>
               {messages.blog}
             </StaticNavLink>
-            <StaticNavLink href={localizedPath(locale, "/about")} currentPath={location.pathname}>
-              {messages.about}
-            </StaticNavLink>
-            <StaticNavLink href={localizedPath(locale, "/contact")} currentPath={location.pathname}>
-              {messages.contact}
-            </StaticNavLink>
+            <PersonalSiteNavLinks locale={locale} />
           </div>
 
           {/* Language edition + theme */}
