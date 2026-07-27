@@ -19,6 +19,10 @@ import {
   DEFAULT_SITE_LANGUAGE_SETTINGS,
   readSiteLanguageSettings,
 } from "~/lib/site-languages.server";
+import {
+  THEME_FAVICONS,
+  THEME_STORAGE_KEY,
+} from "~/lib/theme";
 
 import stylesheet from "./tailwind.css?url";
 
@@ -49,19 +53,34 @@ export const headers: HeadersFunction = ({ loaderHeaders }) => loaderHeaders;
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: resilientStylesheet },
-  { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
 ];
 
 // Script to detect and apply dark mode preference before hydration (prevents flash)
 const darkModeScript = `
   (function() {
-    const stored = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (stored === 'dark' || (!stored && prefersDark)) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    var storedTheme = null;
+    try {
+      storedTheme = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
+    } catch (_) {}
+
+    var theme =
+      storedTheme === "dark" || storedTheme === "light"
+        ? storedTheme
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+    var root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    root.style.colorScheme = theme;
+
+    var favicon = document.querySelector('link[data-theme-favicon="true"]');
+    if (favicon) {
+      favicon.setAttribute(
+        "href",
+        theme === "dark"
+          ? ${JSON.stringify(THEME_FAVICONS.dark)}
+          : ${JSON.stringify(THEME_FAVICONS.light)}
+      );
     }
   })();
 `;
@@ -233,12 +252,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link
+          rel="icon"
+          type="image/svg+xml"
+          href={THEME_FAVICONS.light}
+          data-theme-favicon="true"
+          suppressHydrationWarning
+        />
+        {/* Inline script to prevent flash of the wrong theme and favicon. */}
+        <script dangerouslySetInnerHTML={{ __html: darkModeScript }} />
         <style dangerouslySetInnerHTML={{ __html: styleGuardCss }} />
         <script dangerouslySetInnerHTML={{ __html: styleGuardBootstrapScript }} />
         <Meta />
         <Links />
-        {/* Inline script to prevent flash of wrong theme */}
-        <script dangerouslySetInnerHTML={{ __html: darkModeScript }} />
         <script dangerouslySetInnerHTML={{ __html: styleRecoveryScript }} />
       </head>
       <body
