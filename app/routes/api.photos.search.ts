@@ -44,6 +44,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     );
     return json({
       query,
+      mode: results.mode,
       galleries: results.galleries.map((gallery) => ({
         ...gallery,
         title: galleryTitles.get(gallery.slug) || gallery.title,
@@ -66,8 +67,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       }),
     }, {
       headers: {
-        "Cache-Control": "public, max-age=60, s-maxage=3600",
+        "Cache-Control": results.mode === "semantic"
+          ? "public, max-age=60, s-maxage=3600"
+          : "public, max-age=15, s-maxage=60",
         "Content-Language": locale,
+        "X-Photo-Search-Mode": results.mode,
         Vary: "Accept-Language",
       },
     });

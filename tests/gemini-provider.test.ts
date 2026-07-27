@@ -167,6 +167,27 @@ describe("GeminiPhotoAiProvider", () => {
     expect((bodies[1] as any).taskType).toBeUndefined();
   });
 
+  test("does not invoke a supplied fetch implementation as a provider method", async () => {
+    let receiver: unknown = "not-called";
+    const receiverSensitiveFetch = (function (
+      this: unknown,
+      _url: string | URL | Request,
+      _init?: RequestInit,
+    ) {
+      receiver = this;
+      return Promise.resolve(jsonResponse({ embedding: { values: [0.1, 0.2, 0.3] } }));
+    }) as typeof fetch;
+    const provider = new GeminiPhotoAiProvider({
+      apiKey: "key",
+      fetch: receiverSensitiveFetch,
+      embeddingDimensions: 3,
+    });
+
+    await provider.embedText({ text: "hat" });
+
+    expect(receiver).toBeUndefined();
+  });
+
   test("rejects wrong vector dimensions and exposes retryable HTTP errors", async () => {
     const invalidVectorProvider = new GeminiPhotoAiProvider({
       apiKey: "key",
