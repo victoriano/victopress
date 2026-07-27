@@ -20,7 +20,7 @@ export function SitePreferenceControls({
       data-site-preference-controls
     >
       {multilingual && <LanguageEditionSwitch locale={locale} />}
-      <ThemeToggle locale={locale} />
+      <ThemeToggle locale={locale} size="compact" />
     </div>
   );
 }
