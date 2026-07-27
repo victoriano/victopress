@@ -4,6 +4,11 @@ import { StaticRouter } from "react-router-dom/server";
 
 import { SitePreferenceControls } from "../app/components/SitePreferenceControls";
 import { ThemeToggle } from "../app/components/ThemeToggle";
+import {
+  isTheme,
+  resolveTheme,
+  THEME_FAVICONS,
+} from "../app/lib/theme";
 
 function renderControls(multilingual: boolean) {
   return renderToStaticMarkup(
@@ -17,6 +22,21 @@ function renderControls(multilingual: boolean) {
 }
 
 describe("site preference controls", () => {
+  test("uses a manual theme before the system preference", () => {
+    expect(resolveTheme("light", true)).toBe("light");
+    expect(resolveTheme("dark", false)).toBe("dark");
+    expect(resolveTheme(null, true)).toBe("dark");
+    expect(resolveTheme(null, false)).toBe("light");
+    expect(isTheme("unsupported")).toBe(false);
+  });
+
+  test("maps each theme to its matching favicon asset", () => {
+    expect(THEME_FAVICONS).toEqual({
+      dark: "/favicon-dark.svg",
+      light: "/favicon-light.svg",
+    });
+  });
+
   test("groups the language edition and theme switcher together", () => {
     const markup = renderControls(true);
     const controls = markup.match(/<div[^>]*data-site-preference-controls[^>]*>([\s\S]*)<\/div>/)?.[1];
