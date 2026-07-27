@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
 
 import { SitePreferenceControls } from "../app/components/SitePreferenceControls";
+import { ThemeToggle } from "../app/components/ThemeToggle";
 
 function renderControls(multilingual: boolean) {
   return renderToStaticMarkup(
@@ -24,6 +25,9 @@ describe("site preference controls", () => {
     expect(controls).toContain("EN");
     expect(controls).toContain("<button");
     expect(controls?.indexOf("EN")).toBeLessThan(controls?.indexOf("<button") ?? -1);
+    expect(controls).toContain('data-theme-toggle-size="compact"');
+    expect(controls).toContain("p-1");
+    expect(controls).toContain("w-4 h-4");
   });
 
   test("keeps the theme switcher available on single-language sites", () => {
@@ -33,5 +37,13 @@ describe("site preference controls", () => {
     expect(markup).toContain("<button");
     expect(markup).not.toContain(">ES<");
     expect(markup).not.toContain(">EN<");
+  });
+
+  test("keeps the default theme switcher size available for the admin", () => {
+    const markup = renderToStaticMarkup(<ThemeToggle />);
+
+    expect(markup).toContain('data-theme-toggle-size="default"');
+    expect(markup).toContain("p-2");
+    expect(markup).toContain("w-5 h-5");
   });
 });

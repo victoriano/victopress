@@ -7,10 +7,20 @@
 import { useEffect, useState } from "react";
 import { photoMessages, type Locale } from "~/lib/i18n";
 
-export function ThemeToggle({ locale = "en" }: { locale?: Locale }) {
+interface ThemeToggleProps {
+  locale?: Locale;
+  size?: "default" | "compact";
+}
+
+export function ThemeToggle({
+  locale = "en",
+  size = "default",
+}: ThemeToggleProps) {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const messages = photoMessages[locale];
+  const buttonSizeClasses = size === "compact" ? "p-1 rounded-md" : "p-2 rounded-lg";
+  const iconSizeClasses = size === "compact" ? "w-4 h-4" : "w-5 h-5";
 
   // Only run on client
   useEffect(() => {
@@ -53,10 +63,11 @@ export function ThemeToggle({ locale = "en" }: { locale?: Locale }) {
   if (!mounted) {
     return (
       <button
-        className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+        className={`${buttonSizeClasses} bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400`}
+        data-theme-toggle-size={size}
         aria-label={messages.toggleTheme}
       >
-        <span className="w-5 h-5 block" />
+        <span className={`${iconSizeClasses} block`} />
       </button>
     );
   }
@@ -64,13 +75,14 @@ export function ThemeToggle({ locale = "en" }: { locale?: Locale }) {
   return (
     <button
       onClick={toggle}
-      className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+      className={`${buttonSizeClasses} bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors`}
+      data-theme-toggle-size={size}
       aria-label={isDark ? messages.switchToLight : messages.switchToDark}
       title={isDark ? messages.switchToLight : messages.switchToDark}
     >
       {isDark ? (
         // Sun icon for light mode
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className={iconSizeClasses} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -80,7 +92,7 @@ export function ThemeToggle({ locale = "en" }: { locale?: Locale }) {
         </svg>
       ) : (
         // Moon icon for dark mode
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className={iconSizeClasses} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
