@@ -6,8 +6,7 @@
 
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useState, useEffect, useMemo } from "react";
-import { ThemeToggle } from "./ThemeToggle";
-import { LanguageEditionSwitch } from "./LanguageEditionSwitch";
+import { SitePreferenceControls } from "./SitePreferenceControls";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
 export interface NavItem {
@@ -181,51 +180,51 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
             </StaticNavLink>
           </div>
 
-          {/* Language edition */}
-          {multilingual && (
-            <div className="pt-5">
-              <LanguageEditionSwitch locale={locale} />
+          {/* Language edition + theme */}
+          <SitePreferenceControls
+            multilingual={multilingual}
+            locale={locale}
+            className="pt-5"
+          />
+
+          {/* Social Links */}
+          {(socialLinks?.instagram || socialLinks?.twitter || socialLinks?.linkedin) && (
+            <div className="flex items-center gap-4 pt-4">
+              {socialLinks?.instagram && (
+                <a
+                  href={socialLinks.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                  aria-label="Instagram"
+                >
+                  <InstagramIcon />
+                </a>
+              )}
+              {socialLinks?.twitter && (
+                <a
+                  href={socialLinks.twitter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                  aria-label="Twitter"
+                >
+                  <TwitterIcon />
+                </a>
+              )}
+              {socialLinks?.linkedin && (
+                <a
+                  href={socialLinks.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                  aria-label="LinkedIn"
+                >
+                  <LinkedInIcon />
+                </a>
+              )}
             </div>
           )}
-
-          {/* Social Links + Theme Toggle */}
-          <div className="flex items-center gap-4 pt-4">
-            {socialLinks?.instagram && (
-              <a
-                href={socialLinks.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
-                aria-label="Instagram"
-              >
-                <InstagramIcon />
-              </a>
-            )}
-            {socialLinks?.twitter && (
-              <a
-                href={socialLinks.twitter}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
-                aria-label="Twitter"
-              >
-                <TwitterIcon />
-              </a>
-            )}
-            {socialLinks?.linkedin && (
-              <a
-                href={socialLinks.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
-                aria-label="LinkedIn"
-              >
-                <LinkedInIcon />
-              </a>
-            )}
-            {/* Theme Toggle */}
-            <ThemeToggle locale={locale} />
-          </div>
         </nav>
       </div>
 

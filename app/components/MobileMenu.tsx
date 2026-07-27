@@ -7,8 +7,7 @@
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useEffect, useState, useMemo } from "react";
 import type { NavItem } from "./Sidebar";
-import { ThemeToggle } from "./ThemeToggle";
-import { LanguageEditionSwitch } from "./LanguageEditionSwitch";
+import { SitePreferenceControls } from "./SitePreferenceControls";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
 interface MobileMenuProps {
@@ -188,46 +187,46 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
             </div>
           </nav>
 
-          {/* Social Links + Theme Toggle */}
+          {/* Language edition + theme, followed by social links */}
           <div className="px-6 py-8 border-t border-gray-100 dark:border-gray-800">
-            {multilingual && <LanguageEditionSwitch locale={locale} />}
-            <div className={`flex items-center gap-6 ${multilingual ? "mt-6" : ""}`}>
-              {socialLinks?.instagram && (
-                <a
-                  href={socialLinks.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 dark:text-gray-400"
-                  aria-label="Instagram"
-                >
-                  <InstagramIcon />
-                </a>
-              )}
-              {socialLinks?.twitter && (
-                <a
-                  href={socialLinks.twitter}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 dark:text-gray-400"
-                  aria-label="Twitter"
-                >
-                  <TwitterIcon />
-                </a>
-              )}
-              {socialLinks?.linkedin && (
-                <a
-                  href={socialLinks.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 dark:text-gray-400"
-                  aria-label="LinkedIn"
-                >
-                  <LinkedInIcon />
-                </a>
-              )}
-              {/* Theme Toggle */}
-              <ThemeToggle locale={locale} />
-            </div>
+            <SitePreferenceControls multilingual={multilingual} locale={locale} />
+            {(socialLinks?.instagram || socialLinks?.twitter || socialLinks?.linkedin) && (
+              <div className="flex items-center gap-6 mt-6">
+                {socialLinks?.instagram && (
+                  <a
+                    href={socialLinks.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-600 dark:text-gray-400"
+                    aria-label="Instagram"
+                  >
+                    <InstagramIcon />
+                  </a>
+                )}
+                {socialLinks?.twitter && (
+                  <a
+                    href={socialLinks.twitter}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-600 dark:text-gray-400"
+                    aria-label="Twitter"
+                  >
+                    <TwitterIcon />
+                  </a>
+                )}
+                {socialLinks?.linkedin && (
+                  <a
+                    href={socialLinks.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-600 dark:text-gray-400"
+                    aria-label="LinkedIn"
+                  >
+                    <LinkedInIcon />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
