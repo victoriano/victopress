@@ -12,7 +12,7 @@ function readThemeColor(block: string, property: string): string {
   );
 
   if (!match) {
-    throw new Error(`Missing ${property} in the Markdown dark theme`);
+    throw new Error(`Missing ${property} in the dark theme`);
   }
 
   return match[1];
@@ -39,6 +39,17 @@ function contrastRatio(first: string, second: string): number {
 }
 
 describe("Markdown dark mode", () => {
+  test("keeps article titles readable on the dark surface", () => {
+    const darkTitle = stylesheetSource.match(
+      /\.dark \.blog-entry-title\s*\{([^}]+)\}/,
+    )?.[1];
+
+    expect(darkTitle).toBeDefined();
+
+    const color = readThemeColor(darkTitle!, "color");
+    expect(contrastRatio(color, DARK_SURFACE)).toBeGreaterThanOrEqual(4.5);
+  });
+
   test("keeps body text, emphasis, and links readable on the dark surface", () => {
     const darkTheme = stylesheetSource.match(
       /\.dark \.markdown-blog-content\s*\{([^}]+)\}/,

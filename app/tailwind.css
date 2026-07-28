@@ -122,6 +122,10 @@
   letter-spacing: 0.01em;
 }
 
+.dark .blog-entry-title {
+  color: #f3f4f6;
+}
+
 .blog-entry-title:hover {
   text-decoration: none;
 }
