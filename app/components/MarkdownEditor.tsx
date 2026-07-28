@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { MarkdownContent } from "~/components/BlogPostContent";
 import {
   findMarkdownImages,
@@ -16,11 +23,58 @@ interface MarkdownEditorProps {
   imagePathHint?: string;
 }
 
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+export function resizeTextareaToContent(textarea: HTMLTextAreaElement): void {
+  textarea.style.height = "auto";
+  textarea.style.height = `${textarea.scrollHeight}px`;
+}
+
 export function MarkdownEditor({ value, onChange, imagePathHint }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [mode, setMode] = useState<EditorMode>("split");
   const [showImageLayouts, setShowImageLayouts] = useState(false);
   const images = useMemo(() => findMarkdownImages(value), [value]);
+  const showEditor = mode !== "preview";
+  const showPreview = mode !== "write";
+
+  const resizeEditor = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (textarea) resizeTextareaToContent(textarea);
+  }, []);
+
+  useIsomorphicLayoutEffect(() => {
+    if (showEditor) resizeEditor();
+  }, [resizeEditor, showEditor, value]);
+
+  useIsomorphicLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!showEditor || !textarea) return;
+
+    let previousWidth = textarea.clientWidth;
+
+    if (typeof ResizeObserver === "undefined") {
+      const handleWindowResize = () => {
+        if (textarea.clientWidth === previousWidth) return;
+        previousWidth = textarea.clientWidth;
+        resizeEditor();
+      };
+
+      window.addEventListener("resize", handleWindowResize);
+      return () => window.removeEventListener("resize", handleWindowResize);
+    }
+
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      const nextWidth = entry?.contentRect.width ?? textarea.clientWidth;
+      if (nextWidth === previousWidth) return;
+      previousWidth = nextWidth;
+      resizeEditor();
+    });
+
+    resizeObserver.observe(textarea);
+    return () => resizeObserver.disconnect();
+  }, [resizeEditor, showEditor]);
 
   const replaceSelection = useCallback((
     before: string,
@@ -114,8 +168,6 @@ export function MarkdownEditor({ value, onChange, imagePathHint }: MarkdownEdito
     }
   }, [insertLink, replaceSelection]);
 
-  const showEditor = mode !== "preview";
-  const showPreview = mode !== "write";
   const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
 
   return (
@@ -170,7 +222,7 @@ export function MarkdownEditor({ value, onChange, imagePathHint }: MarkdownEdito
 
       <div className={mode === "split" ? "grid lg:grid-cols-2" : "block"}>
         {showEditor && (
-          <div className={mode === "split" ? "border-b border-gray-200 lg:border-b-0 lg:border-r dark:border-gray-700" : ""}>
+          <div className={`flex min-w-0 flex-col ${mode === "split" ? "border-b border-gray-200 lg:border-b-0 lg:border-r dark:border-gray-700" : ""}`}>
             <div className="border-b border-gray-100 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-gray-400 dark:border-gray-800">
               Markdown
             </div>
@@ -181,7 +233,8 @@ export function MarkdownEditor({ value, onChange, imagePathHint }: MarkdownEdito
               onKeyDown={handleKeyDown}
               placeholder="# Start writing…"
               spellCheck
-              className="min-h-[34rem] w-full resize-y bg-transparent px-5 py-5 font-sans text-[16px] leading-7 text-gray-900 outline-none placeholder:text-gray-300 dark:text-white dark:placeholder:text-gray-600"
+              data-autosize="true"
+              className="min-h-[34rem] w-full grow shrink-0 resize-none overflow-hidden bg-transparent px-5 py-5 font-sans text-[16px] leading-7 text-gray-900 outline-none placeholder:text-gray-300 dark:text-white dark:placeholder:text-gray-600"
             />
           </div>
         )}
