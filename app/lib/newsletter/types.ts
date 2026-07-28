@@ -7,13 +7,50 @@ export type NewsletterSubscriberStatus =
   | "active"
   | "unsubscribed";
 
+export interface NewsletterSubscriberInteractions {
+  emailsReceived6Months: number;
+  emailsDropped6Months: number;
+  emailsOpenedTotal: number;
+  emailsOpened6Months: number;
+  emailsOpened7Days: number;
+  emailsOpened30Days: number;
+  lastEmailOpenedAt?: string;
+  linksClicked: number;
+  lastClickedAt?: string;
+  uniqueEmailsSeen6Months: number;
+  uniqueEmailsSeen7Days: number;
+  uniqueEmailsSeen30Days: number;
+  postViews: number;
+  postViews7Days: number;
+  postViews30Days: number;
+  uniquePostsSeen: number;
+  uniquePostsSeen7Days: number;
+  uniquePostsSeen30Days: number;
+  comments: number;
+  comments7Days: number;
+  comments30Days: number;
+  shares: number;
+  shares7Days: number;
+  shares30Days: number;
+  daysActive30Days: number;
+  activity: number;
+}
+
 export interface NewsletterSubscriber {
   version: 1;
   id: string;
   email: string;
+  name?: string;
   status: NewsletterSubscriberStatus;
   locale: Locale;
   source: string;
+  subscriptionSource?: string;
+  signupAt?: string;
+  importedAt?: string;
+  importedFrom?: "substack";
+  country?: string;
+  region?: string;
+  interactions?: NewsletterSubscriberInteractions;
   consentVersion: typeof NEWSLETTER_CONSENT_VERSION;
   consentedAt: string;
   createdAt: string;

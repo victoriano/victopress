@@ -495,9 +495,28 @@ export interface StorageAdapter {
   
   /** Get file as text */
   getText(key: string): Promise<string | null>;
+
+  /**
+   * Read text together with a provider version that can be used for a
+   * compare-and-swap update.
+   */
+  getVersionedText?(
+    key: string,
+  ): Promise<{ text: string | null; version: string | null }>;
   
   /** Upload file contents */
   put(key: string, data: ArrayBuffer | string, contentType?: string): Promise<void>;
+
+  /**
+   * Write text only when the current provider version still matches. A null
+   * version means that the object must not exist.
+   */
+  putTextIfVersion?(
+    key: string,
+    data: string,
+    version: string | null,
+    contentType?: string,
+  ): Promise<boolean>;
 
   /**
    * Replace an existing object's bytes while retaining provider-level HTTP and

@@ -5,15 +5,30 @@ import {
   type NewsletterCampaign,
   type NewsletterOpenRecord,
   type NewsletterSubscriber,
+  type NewsletterSubscriberInteractions,
   type NewsletterSubscriberStats,
 } from "./types";
 
 const SUBSCRIBER_PREFIX = ".victopress/newsletter/subscribers";
+const SUBSCRIBER_INDEX_PATH =
+  ".victopress/newsletter/indexes/subscribers.json";
 const CAMPAIGN_PREFIX = ".victopress/newsletter/campaigns";
 const OPEN_PREFIX = ".victopress/newsletter/opens";
 const CONFIRMATION_COOLDOWN_MS = 10 * 60 * 1000;
 const OPEN_DETECTION_COOLDOWN_MS = 60 * 60 * 1000;
 const MAX_OPEN_DETECTIONS = 100;
+const INDEX_CAS_ATTEMPTS = 8;
+
+interface NewsletterSubscriberIndex {
+  version: 1;
+  updatedAt: string;
+  subscribers: NewsletterSubscriber[];
+}
+
+const subscriberIndexQueues = new WeakMap<
+  StorageAdapter,
+  Promise<void>
+>();
 
 function requireNewsletterId(value: string, label: string): string {
   if (!/^[a-f0-9]{64}$/.test(value)) {
@@ -36,6 +51,50 @@ function openPath(campaignId: string, subscriberId: string): string {
   }.json`;
 }
 
+function isOptionalDate(value: unknown): boolean {
+  return value === undefined ||
+    (typeof value === "string" && Number.isFinite(Date.parse(value)));
+}
+
+function isInteractions(
+  value: unknown,
+): value is NewsletterSubscriberInteractions {
+  if (!value || typeof value !== "object") return false;
+  const interactions = value as Record<string, unknown>;
+  const numericFields: Array<keyof NewsletterSubscriberInteractions> = [
+    "emailsReceived6Months",
+    "emailsDropped6Months",
+    "emailsOpenedTotal",
+    "emailsOpened6Months",
+    "emailsOpened7Days",
+    "emailsOpened30Days",
+    "linksClicked",
+    "uniqueEmailsSeen6Months",
+    "uniqueEmailsSeen7Days",
+    "uniqueEmailsSeen30Days",
+    "postViews",
+    "postViews7Days",
+    "postViews30Days",
+    "uniquePostsSeen",
+    "uniquePostsSeen7Days",
+    "uniquePostsSeen30Days",
+    "comments",
+    "comments7Days",
+    "comments30Days",
+    "shares",
+    "shares7Days",
+    "shares30Days",
+    "daysActive30Days",
+    "activity",
+  ];
+  return numericFields.every((field) =>
+    Number.isInteger(interactions[field]) &&
+    Number(interactions[field]) >= 0
+  ) &&
+    isOptionalDate(interactions.lastEmailOpenedAt) &&
+    isOptionalDate(interactions.lastClickedAt);
+}
+
 function parseSubscriber(raw: string | null): NewsletterSubscriber | null {
   if (!raw) return null;
   try {
@@ -45,11 +104,52 @@ function parseSubscriber(raw: string | null): NewsletterSubscriber | null {
       !/^[a-f0-9]{64}$/.test(value.id) ||
       typeof value.email !== "string" ||
       !["pending", "active", "unsubscribed"].includes(value.status) ||
-      !["es", "en"].includes(value.locale)
+      !["es", "en"].includes(value.locale) ||
+      (value.name !== undefined &&
+        (typeof value.name !== "string" || value.name.length > 200)) ||
+      (value.subscriptionSource !== undefined &&
+        (typeof value.subscriptionSource !== "string" ||
+          value.subscriptionSource.length > 100)) ||
+      !isOptionalDate(value.signupAt) ||
+      !isOptionalDate(value.importedAt) ||
+      (value.importedFrom !== undefined && value.importedFrom !== "substack") ||
+      (value.country !== undefined &&
+        (typeof value.country !== "string" || value.country.length > 100)) ||
+      (value.region !== undefined &&
+        (typeof value.region !== "string" || value.region.length > 100)) ||
+      (value.interactions !== undefined && !isInteractions(value.interactions))
     ) {
       return null;
     }
     return value;
+  } catch {
+    return null;
+  }
+}
+
+function parseSubscriberIndex(
+  raw: string | null,
+): NewsletterSubscriberIndex | null {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as NewsletterSubscriberIndex;
+    if (
+      value.version !== 1 ||
+      typeof value.updatedAt !== "string" ||
+      !Number.isFinite(Date.parse(value.updatedAt)) ||
+      !Array.isArray(value.subscribers)
+    ) {
+      return null;
+    }
+    const subscribers = value.subscribers.map((subscriber) =>
+      parseSubscriber(JSON.stringify(subscriber))
+    );
+    if (subscribers.some((subscriber) => !subscriber)) return null;
+    const records = subscribers as NewsletterSubscriber[];
+    if (new Set(records.map((subscriber) => subscriber.id)).size !== records.length) {
+      return null;
+    }
+    return { ...value, subscribers: records };
   } catch {
     return null;
   }
@@ -127,6 +227,128 @@ async function mapInChunks<T, R>(
   return results;
 }
 
+function sortSubscribers(
+  subscribers: readonly NewsletterSubscriber[],
+): NewsletterSubscriber[] {
+  return [...subscribers].sort((left, right) =>
+    right.updatedAt.localeCompare(left.updatedAt)
+  );
+}
+
+function serializeSubscriberIndex(
+  subscribers: readonly NewsletterSubscriber[],
+): string {
+  return JSON.stringify({
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    subscribers: sortSubscribers(subscribers),
+  } satisfies NewsletterSubscriberIndex);
+}
+
+async function scanNewsletterSubscribers(
+  storage: StorageAdapter,
+): Promise<NewsletterSubscriber[]> {
+  const files = (await storage.listRecursive(SUBSCRIBER_PREFIX))
+    .filter((file) => !file.isDirectory && file.name.endsWith(".json"))
+    .sort((left, right) => left.path.localeCompare(right.path));
+  const records = await mapInChunks(files, async (file) =>
+    parseSubscriber(await storage.getText(file.path)),
+  );
+  return sortSubscribers(
+    records.filter(
+      (record): record is NewsletterSubscriber => Boolean(record),
+    ),
+  );
+}
+
+async function withSubscriberIndexQueue<T>(
+  storage: StorageAdapter,
+  action: () => Promise<T>,
+): Promise<T> {
+  const previous = subscriberIndexQueues.get(storage) || Promise.resolve();
+  let release = () => {};
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  subscriberIndexQueues.set(storage, previous.then(() => current));
+  await previous;
+  try {
+    return await action();
+  } finally {
+    release();
+  }
+}
+
+function mergeSubscribers(
+  current: readonly NewsletterSubscriber[],
+  incoming: readonly NewsletterSubscriber[],
+  preserveNewerCurrent: boolean,
+): NewsletterSubscriber[] {
+  const subscribers = new Map(
+    current.map((subscriber) => [subscriber.id, subscriber]),
+  );
+  for (const subscriber of incoming) {
+    const existing = subscribers.get(subscriber.id);
+    if (
+      preserveNewerCurrent &&
+      existing &&
+      existing.updatedAt.localeCompare(subscriber.updatedAt) > 0
+    ) {
+      continue;
+    }
+    subscribers.set(subscriber.id, subscriber);
+  }
+  return sortSubscribers([...subscribers.values()]);
+}
+
+async function updateSubscriberIndex(
+  storage: StorageAdapter,
+  incoming: readonly NewsletterSubscriber[],
+  preserveNewerCurrent = false,
+): Promise<void> {
+  if (storage.getVersionedText && storage.putTextIfVersion) {
+    for (let attempt = 0; attempt < INDEX_CAS_ATTEMPTS; attempt += 1) {
+      const snapshot = await storage.getVersionedText(SUBSCRIBER_INDEX_PATH);
+      const currentIndex = parseSubscriberIndex(snapshot.text);
+      const current = currentIndex?.subscribers ||
+        await scanNewsletterSubscribers(storage);
+      const subscribers = mergeSubscribers(
+        current,
+        incoming,
+        preserveNewerCurrent,
+      );
+      if (await storage.putTextIfVersion(
+        SUBSCRIBER_INDEX_PATH,
+        serializeSubscriberIndex(subscribers),
+        snapshot.version,
+        "application/json",
+      )) {
+        return;
+      }
+    }
+    await storage.delete(SUBSCRIBER_INDEX_PATH);
+    return;
+  }
+
+  await withSubscriberIndexQueue(storage, async () => {
+    const currentIndex = parseSubscriberIndex(
+      await storage.getText(SUBSCRIBER_INDEX_PATH),
+    );
+    const current = currentIndex?.subscribers ||
+      await scanNewsletterSubscribers(storage);
+    const subscribers = mergeSubscribers(
+      current,
+      incoming,
+      preserveNewerCurrent,
+    );
+    await storage.put(
+      SUBSCRIBER_INDEX_PATH,
+      serializeSubscriberIndex(subscribers),
+      "application/json",
+    );
+  });
+}
+
 export function normalizeNewsletterEmail(value: string): string | null {
   const email = value.trim().toLowerCase();
   if (
@@ -165,12 +387,44 @@ export async function getNewsletterSubscriber(
 export async function saveNewsletterSubscriber(
   storage: StorageAdapter,
   subscriber: NewsletterSubscriber,
+  options: { skipIndex?: boolean } = {},
 ): Promise<void> {
   await storage.put(
     subscriberPath(subscriber.id),
     JSON.stringify(subscriber, null, 2),
     "application/json",
   );
+  if (!options.skipIndex) {
+    await updateSubscriberIndex(storage, [subscriber]);
+  }
+}
+
+export async function mergeNewsletterSubscriberIndex(
+  storage: StorageAdapter,
+  subscribers: readonly NewsletterSubscriber[],
+): Promise<void> {
+  await updateSubscriberIndex(storage, subscribers, true);
+}
+
+export async function updateNewsletterSubscriberName(options: {
+  storage: StorageAdapter;
+  id: string;
+  name: string;
+  now?: Date;
+}): Promise<NewsletterSubscriber | null> {
+  const existing = await getNewsletterSubscriber(options.storage, options.id);
+  if (!existing) return null;
+  const name = options.name.trim().replace(/\s+/g, " ");
+  if (name.length > 200) {
+    throw new Error("Subscriber name is longer than 200 characters.");
+  }
+  const subscriber: NewsletterSubscriber = {
+    ...existing,
+    name: name || undefined,
+    updatedAt: (options.now || new Date()).toISOString(),
+  };
+  await saveNewsletterSubscriber(options.storage, subscriber);
+  return subscriber;
 }
 
 export async function prepareNewsletterSubscription(options: {
@@ -201,12 +455,16 @@ export async function prepareNewsletterSubscription(options: {
   }
 
   const subscriber: NewsletterSubscriber = {
+    ...existing,
     version: 1,
     id: options.id,
     email: options.email,
     status: "pending",
     locale: options.locale,
     source: options.source.slice(0, 100),
+    subscriptionSource:
+      existing?.subscriptionSource || options.source.slice(0, 100),
+    signupAt: existing?.signupAt || existing?.createdAt || nowIso,
     consentVersion: NEWSLETTER_CONSENT_VERSION,
     consentedAt: nowIso,
     createdAt: existing?.createdAt || nowIso,
@@ -289,15 +547,42 @@ export async function unsubscribeNewsletterSubscriber(options: {
 export async function listNewsletterSubscribers(
   storage: StorageAdapter,
 ): Promise<NewsletterSubscriber[]> {
-  const files = (await storage.listRecursive(SUBSCRIBER_PREFIX))
-    .filter((file) => !file.isDirectory && file.name.endsWith(".json"))
-    .sort((left, right) => left.path.localeCompare(right.path));
-  const records = await mapInChunks(files, async (file) =>
-    parseSubscriber(await storage.getText(file.path)),
+  const indexed = parseSubscriberIndex(
+    await storage.getText(SUBSCRIBER_INDEX_PATH),
   );
-  return records
-    .filter((record): record is NewsletterSubscriber => Boolean(record))
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  if (indexed) return sortSubscribers(indexed.subscribers);
+
+  if (storage.getVersionedText && storage.putTextIfVersion) {
+    for (let attempt = 0; attempt < INDEX_CAS_ATTEMPTS; attempt += 1) {
+      const snapshot = await storage.getVersionedText(SUBSCRIBER_INDEX_PATH);
+      const currentIndex = parseSubscriberIndex(snapshot.text);
+      if (currentIndex) return sortSubscribers(currentIndex.subscribers);
+      const subscribers = await scanNewsletterSubscribers(storage);
+      if (await storage.putTextIfVersion(
+        SUBSCRIBER_INDEX_PATH,
+        serializeSubscriberIndex(subscribers),
+        snapshot.version,
+        "application/json",
+      )) {
+        return subscribers;
+      }
+    }
+    return scanNewsletterSubscribers(storage);
+  }
+
+  return withSubscriberIndexQueue(storage, async () => {
+    const currentIndex = parseSubscriberIndex(
+      await storage.getText(SUBSCRIBER_INDEX_PATH),
+    );
+    if (currentIndex) return sortSubscribers(currentIndex.subscribers);
+    const subscribers = await scanNewsletterSubscribers(storage);
+    await storage.put(
+      SUBSCRIBER_INDEX_PATH,
+      serializeSubscriberIndex(subscribers),
+      "application/json",
+    );
+    return subscribers;
+  });
 }
 
 export function newsletterSubscriberStats(

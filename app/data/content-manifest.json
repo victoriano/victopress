@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-07-28T14:32:47.662Z",
+  "generatedAt": "2026-07-28T14:40:59.860Z",
   "repo": "victoriano/victopress",
   "branch": "main",
   "contentPath": "content",
@@ -777,7 +777,7 @@
     },
     {
       "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/index.md",
-      "size": 10309,
+      "size": 10343,
       "type": "text"
     },
     {
@@ -847,7 +847,7 @@
     },
     {
       "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/index.es.md",
-      "size": 10291,
+      "size": 10335,
       "type": "text"
     },
     {
@@ -1097,7 +1097,7 @@
     },
     {
       "path": "blog/2025/6/30/tiny-teams-cook-the-best-software-in-the-ai-era/index.md",
-      "size": 4617,
+      "size": 4567,
       "type": "text"
     },
     {
@@ -2626,6 +2626,6 @@
       "type": "text"
     }
   ],
-  "totalSize": 514181018,
+  "totalSize": 514181046,
   "totalFiles": 524
 }

@@ -108,6 +108,19 @@ export class R2StorageAdapter implements StorageAdapter {
     return object.text();
   }
 
+  async getVersionedText(
+    key: string,
+  ): Promise<{ text: string | null; version: string | null }> {
+    const object = await this.bucket.get(key);
+    if (!object) {
+      return { text: null, version: null };
+    }
+    return {
+      text: await object.text(),
+      version: object.etag,
+    };
+  }
+
   async put(key: string, data: ArrayBuffer | string, contentType?: string): Promise<void> {
     const options: R2PutOptions = {};
     
@@ -141,6 +154,27 @@ export class R2StorageAdapter implements StorageAdapter {
     const size = typeof data === "string" ? data.length : data.byteLength;
     console.log(`[R2Storage] ☁️  PUT ${key} (${(size / 1024).toFixed(1)} KB)`);
     await this.bucket.put(key, data, options);
+  }
+
+  async putTextIfVersion(
+    key: string,
+    data: string,
+    version: string | null,
+    contentType?: string,
+  ): Promise<boolean> {
+    const options: R2PutOptions = {
+      onlyIf: version
+        ? { etagMatches: version }
+        : new Headers({ "If-None-Match": "*" }),
+    };
+    if (contentType) {
+      options.httpMetadata = { contentType };
+    }
+    const size = data.length;
+    console.log(
+      `[R2Storage] ☁️  CAS PUT ${key} (${(size / 1024).toFixed(1)} KB)`,
+    );
+    return Boolean(await this.bucket.put(key, data, options));
   }
 
   async putPreservingMetadata(

@@ -21,6 +21,10 @@ newsletter campaigns, but it is not the source of truth for consent.
 7. Campaign emails include a signed, recipient-specific one-pixel image.
    VictoPress records approximate open detections and exposes both campaign
    totals and a per-recipient report in **Admin → Newsletter**.
+8. The owner can import an existing Substack subscriber CSV from the same
+   screen. New records become active in the selected language without sending
+   confirmation messages; previously unsubscribed VictoPress records remain
+   unsubscribed.
 
 Unsubscribed records are retained as a suppression/consent trail and are never
 included in future sends. Subscribing again starts a new double-opt-in flow.
@@ -33,6 +37,8 @@ The newsletter uses the same `StorageAdapter` as the rest of VictoPress:
 .victopress/newsletter/
 ├── subscribers/
 │   └── <sha256-normalized-email>.json
+├── indexes/
+│   └── subscribers.json
 ├── campaigns/
 │   └── <sha256-language-and-post-slug>.json
 └── opens/
@@ -43,10 +49,26 @@ The newsletter uses the same `StorageAdapter` as the rest of VictoPress:
 The paths are under `content/.victopress/` in local development (already
 ignored by Git) and inside the private `CONTENT_BUCKET` in production.
 
-Each subscriber has its own object. This avoids a single shared JSON list where
-two simultaneous signups could overwrite one another. Campaign records retain
-batch progress and Resend message IDs so a failed send can resume without
-repeating completed batches.
+Each subscriber has its own source-of-truth object. A derived subscriber index
+makes admin pages and campaign preparation a single read; R2 updates that index
+with compare-and-swap writes so simultaneous signups cannot overwrite one
+another. If the index is absent or invalid, VictoPress rebuilds it from the
+individual records. Campaign records retain batch progress and Resend message
+IDs so a failed send can resume without repeating completed batches.
+
+Subscriber records can also retain a name, country/region, the original signup
+timestamp, free subscription source, import audit timestamp, and historical
+interaction counters. `signupAt` and `createdAt` use Substack's `Start date`;
+`importedAt` is separate and is never displayed as the signup date. Imported
+interaction fields cover delivery, open, click, post-view, comment, share and
+activity counters plus the last open/click timestamps. Stripe plans, paid
+upgrade dates, revenue, paid subscription sources and other payment fields are
+neither parsed nor stored.
+
+The admin subscriber table is paginated, can be filtered by status, and allows
+the owner to add or correct a subscriber name. CSV imports are capped at 5 MB
+and 10,000 rows, validate the complete file before writing, merge duplicate
+email addresses, and are safe to repeat.
 
 Open records retain first/last detection timestamps and a throttled request
 count, but no IP address or user agent. They indicate that a mail client
