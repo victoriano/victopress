@@ -118,5 +118,7 @@ describe("Notion blog rendering", () => {
     expect(html.match(/<img\b/g)).toHaveLength(44);
     expect(imagesPerRow(html)).toHaveLength(44);
     expect(imagesPerRow(html).every((count) => count === 1)).toBe(true);
+    expect(html).not.toContain("blog-image-link");
+    expect(html).not.toContain("<a ");
   });
 });
