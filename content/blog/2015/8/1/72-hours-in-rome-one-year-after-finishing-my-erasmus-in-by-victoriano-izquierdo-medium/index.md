@@ -1,5 +1,5 @@
 ---
-title: "72 hours in Rome. One year after finishing my Erasmus in… | by Victoriano Izquierdo | Medium"
+title: "72 hours in Rome"
 slug: "2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium"
 date: 2015-08-01
 author: "Victoriano Izquierdo"
@@ -7,10 +7,13 @@ locale: en
 draft: false
 format: markdown
 tags: ["Photography","Traveling"]
+description: "One year after finishing my Erasmus in Rome, I came back to rediscover the city"
 sourceUrl: "https://app.notion.com/p/451adeb9b057406684db24bf11c425a7"
 cover: "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-01.png"
 coverInBody: true
 ---
+
+One year after finishing my Erasmus in Rome, I came back to rediscover the city
 
 ![](/api/images/blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-01.png)
 

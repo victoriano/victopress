@@ -107,9 +107,14 @@ describe("Notion blog rendering", () => {
   test("renders the Rome photo essay as 44 full block images", async () => {
     const path =
       "content/blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/index.md";
-    const { content } = matter(await readFile(path, "utf8"));
+    const { data, content } = matter(await readFile(path, "utf8"));
     const html = renderMarkdown(content);
+    const intro =
+      "One year after finishing my Erasmus in Rome, I came back to rediscover the city";
 
+    expect(data.title).toBe("72 hours in Rome");
+    expect(data.description).toBe(intro);
+    expect(html).toStartWith(`<p>${intro}</p>\n`);
     expect(html.match(/<img\b/g)).toHaveLength(44);
     expect(imagesPerRow(html)).toHaveLength(44);
     expect(imagesPerRow(html).every((count) => count === 1)).toBe(true);

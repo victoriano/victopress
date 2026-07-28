@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-07-28T10:43:00.324Z",
+  "generatedAt": "2026-07-28T12:12:18.643Z",
   "repo": "victoriano/victopress",
   "branch": "main",
   "contentPath": "content",
@@ -17,7 +17,7 @@
     },
     {
       "path": "blog/_notion-posted-import-manifest.json",
-      "size": 59740,
+      "size": 59662,
       "type": "text"
     },
     {
@@ -262,7 +262,7 @@
     },
     {
       "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/index.md",
-      "size": 6359,
+      "size": 6457,
       "type": "text"
     },
     {
@@ -2511,6 +2511,6 @@
       "type": "text"
     }
   ],
-  "totalSize": 514030815,
+  "totalSize": 514030835,
   "totalFiles": 501
 }
