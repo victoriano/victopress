@@ -26,6 +26,13 @@ PUBLIC_BLOG_URL = "https://victoriano.me/blog"
 # PUBLIC_MEDIA_URL is optional. When omitted, API image URLs use the request
 # origin, which becomes https://photos.victoriano.me after the domain move.
 
+# Newsletter
+# Set RESEND_API_KEY and NEWSLETTER_TOKEN_SECRET as encrypted Pages secrets.
+# NEWSLETTER_FROM_EMAIL must use a sender/domain already verified in Resend.
+# NEWSLETTER_FROM_EMAIL = "Victoriano Izquierdo <newsletter@victoriano.me>"
+# NEWSLETTER_REPLY_TO = "victoriano@victoriano.me"
+# PUBLIC_NEWSLETTER_URL = "https://photos.victoriano.me"
+
 # R2 Configuration
 R2_BUCKET_NAME = "victopress-content"
 # R2_PUBLIC_URL = "https://content.victoriano.me"  # Set if using custom domain

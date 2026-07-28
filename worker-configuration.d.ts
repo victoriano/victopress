@@ -9,6 +9,16 @@ interface Env {
   
   // Site Configuration
   SITE_NAME: string;
+  BLOG_SITE_NAME?: string;
+  PUBLIC_BLOG_URL?: string;
+  PUBLIC_MEDIA_URL?: string;
+
+  // Newsletter (secrets are configured through Cloudflare Pages)
+  RESEND_API_KEY?: string;
+  NEWSLETTER_FROM_EMAIL?: string;
+  NEWSLETTER_REPLY_TO?: string;
+  NEWSLETTER_TOKEN_SECRET?: string;
+  PUBLIC_NEWSLETTER_URL?: string;
   
   // R2 Configuration (for display/external access)
   R2_BUCKET_NAME?: string;

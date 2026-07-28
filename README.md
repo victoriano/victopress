@@ -186,6 +186,19 @@ cover: "cover.jpg"
 Your markdown content here...
 ```
 
+### Email newsletter
+
+VictoPress can show a Substack-style subscription form at the bottom of the
+blog and send a published post from **Admin → Newsletter**. Subscribers remain
+in the existing private storage adapter—local files in development and R2 in
+production—while Resend is used only for delivery.
+
+The flow uses double opt-in. Every newsletter contains both a visible
+unsubscribe link and one-click `List-Unsubscribe` headers. Configure
+`RESEND_API_KEY`, `NEWSLETTER_FROM_EMAIL`, and `NEWSLETTER_TOKEN_SECRET` before
+the public form appears. See [Newsletter subscriptions and delivery](docs/newsletter.md)
+for setup, storage paths, and operational details.
+
 ## 🛠️ Tech Stack
 
 - **Framework:** Remix + TypeScript
@@ -350,6 +363,7 @@ This will bring in new features and bug fixes while preserving your customizatio
 ## 📖 Documentation
 
 - [Gallery Taxonomy and Editorial Hierarchy](docs/gallery-taxonomy.md)
+- [Newsletter subscriptions and delivery](docs/newsletter.md)
 - [Project Home](https://www.notion.so/2dc358038bc5806e8d7bdd5649e4cef2) on Notion
 
 ## License

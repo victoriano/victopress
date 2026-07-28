@@ -11,9 +11,11 @@ import { json } from "@remix-run/cloudflare";
 import { getPostBySlug, getStorage, getNavigationFromIndex, localizeBlogPost } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { BlogPostContent } from "~/components/BlogPostContent";
+import { NewsletterSignup } from "~/components/NewsletterSignup";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
 import { photoMessages } from "~/lib/i18n";
 import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
+import { isNewsletterConfigured } from "~/lib/newsletter/config.server";
 import { readSiteLanguageSettings } from "~/lib/site-languages.server";
 
 export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
@@ -83,6 +85,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     ogImage,
     locale,
     alternates,
+    newsletterEnabled: isNewsletterConfigured(context, request),
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",
@@ -113,7 +116,14 @@ function ShareIcon({ className }: { className?: string }) {
 }
 
 export default function BlogPostPage() {
-  const { post, navigation, siteName, socialLinks, locale } = useLoaderData<typeof loader>();
+  const {
+    post,
+    navigation,
+    siteName,
+    socialLinks,
+    locale,
+    newsletterEnabled,
+  } = useLoaderData<typeof loader>();
   const messages = photoMessages[locale];
 
   const handleShare = async () => {
@@ -203,6 +213,13 @@ export default function BlogPostPage() {
             </button>
           </div>
         </footer>}
+
+        <NewsletterSignup
+          locale={locale}
+          enabled={newsletterEnabled}
+          source="blog-post-footer"
+          className="mt-16"
+        />
       </article>
     </Layout>
   );
