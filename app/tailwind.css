@@ -138,13 +138,28 @@
 
 /* Markdown posts and the admin preview share this exact editorial surface. */
 .markdown-blog-content {
+  --blog-copy: #666;
+  --blog-heading: #121212;
+  --blog-link: #000;
+  --blog-code-background: #f1f1f1;
+  --blog-code-text: #333;
+  --blog-rule: #ddd;
   margin: 15px 0;
-  color: #666;
+  color: var(--blog-copy);
   font-size: 15px;
   font-weight: 400;
   line-height: 24px;
   letter-spacing: 0.02em;
   overflow-wrap: break-word;
+}
+
+.dark .markdown-blog-content {
+  --blog-copy: #9ca3af;
+  --blog-heading: #f3f4f6;
+  --blog-link: #e5e7eb;
+  --blog-code-background: #111827;
+  --blog-code-text: #e5e7eb;
+  --blog-rule: #374151;
 }
 
 .markdown-blog-content,
@@ -196,12 +211,12 @@
 }
 
 .markdown-blog-content strong {
-  color: #121212;
+  color: var(--blog-heading);
   font-weight: 700;
 }
 
 .markdown-blog-content a {
-  color: #000;
+  color: var(--blog-link);
   text-decoration: none;
 }
 
@@ -214,7 +229,7 @@
 .markdown-blog-content h3,
 .markdown-blog-content h4 {
   margin: 1.6em 0 0.6em;
-  color: #121212;
+  color: var(--blog-heading);
   font-family: 'Proxima Nova Title', 'Proxima Nova', sans-serif;
   font-weight: 500;
   line-height: 1.25;
@@ -283,8 +298,8 @@
 .markdown-blog-content code {
   padding: 0.12em 0.35em;
   border-radius: 4px;
-  background: #f1f1f1;
-  color: #333;
+  background: var(--blog-code-background);
+  color: var(--blog-code-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.9em;
   letter-spacing: 0;
@@ -295,7 +310,7 @@
   padding: 16px;
   overflow-x: auto;
   border-radius: 6px;
-  background: #f1f1f1;
+  background: var(--blog-code-background);
 }
 
 .markdown-blog-content pre code {
@@ -306,7 +321,7 @@
 .markdown-blog-content hr {
   margin: 32px 0;
   border: 0;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--blog-rule);
 }
 
 .markdown-blog-content table {
@@ -318,7 +333,7 @@
 .markdown-blog-content th,
 .markdown-blog-content td {
   padding: 8px 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--blog-rule);
   text-align: left;
 }
 
