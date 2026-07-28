@@ -27,6 +27,7 @@ import {
 } from "~/lib/newsletter/subscriber-import.server";
 import {
   getNewsletterSubscriber,
+  listNewsletterSubscribers,
   listNewsletterOpens,
   normalizeNewsletterEmail,
   saveNewsletterSubscriber,
@@ -39,12 +40,17 @@ import {
 
 class MemoryStorage implements StorageAdapter {
   private files = new Map<string, string | ArrayBuffer>();
+  private versions = new Map<string, string>();
+  private nextVersion = 1;
+  getTextCalls = 0;
+  listRecursiveCalls = 0;
 
   async list(prefix: string): Promise<FileInfo[]> {
     return this.listRecursive(prefix);
   }
 
   async listRecursive(prefix: string): Promise<FileInfo[]> {
+    this.listRecursiveCalls += 1;
     return [...this.files.entries()]
       .filter(([key]) => key.startsWith(prefix))
       .map(([key, value]) => ({
@@ -64,6 +70,7 @@ class MemoryStorage implements StorageAdapter {
   }
 
   async getText(key: string): Promise<string | null> {
+    this.getTextCalls += 1;
     const value = this.files.get(key);
     if (value === undefined) return null;
     return typeof value === "string"
@@ -73,15 +80,39 @@ class MemoryStorage implements StorageAdapter {
 
   async put(key: string, data: ArrayBuffer | string): Promise<void> {
     this.files.set(key, data);
+    this.versions.set(key, String(this.nextVersion));
+    this.nextVersion += 1;
+  }
+
+  async getVersionedText(
+    key: string,
+  ): Promise<{ text: string | null; version: string | null }> {
+    const version = this.versions.get(key) || null;
+    return {
+      text: await this.getText(key),
+      version,
+    };
+  }
+
+  async putTextIfVersion(
+    key: string,
+    data: string,
+    version: string | null,
+  ): Promise<boolean> {
+    if ((this.versions.get(key) || null) !== version) return false;
+    await this.put(key, data);
+    return true;
   }
 
   async delete(key: string): Promise<void> {
     this.files.delete(key);
+    this.versions.delete(key);
   }
 
   async deleteDirectory(prefix: string): Promise<{ deleted: number }> {
     const keys = [...this.files.keys()].filter((key) => key.startsWith(prefix));
     for (const key of keys) this.files.delete(key);
+    for (const key of keys) this.versions.delete(key);
     return { deleted: keys.length };
   }
 
@@ -94,12 +125,17 @@ class MemoryStorage implements StorageAdapter {
     if (value === undefined) throw new Error("Missing source.");
     this.files.set(to, value);
     this.files.delete(from);
+    this.versions.set(to, String(this.nextVersion));
+    this.nextVersion += 1;
+    this.versions.delete(from);
   }
 
   async copy(from: string, to: string): Promise<void> {
     const value = this.files.get(from);
     if (value === undefined) throw new Error("Missing source.");
     this.files.set(to, value);
+    this.versions.set(to, String(this.nextVersion));
+    this.nextVersion += 1;
   }
 
   async getSignedUrl(key: string): Promise<string> {
@@ -537,6 +573,32 @@ describe("newsletter subscriber CSV imports", () => {
       name: "",
       now: new Date("2026-07-28T12:01:00.000Z"),
     }))?.name).toBeUndefined();
+  });
+
+  test("maintains a concurrent-safe subscriber index for single-read listings", async () => {
+    const storage = new MemoryStorage();
+    const firstEmail = "first@example.com";
+    const secondEmail = "second@example.com";
+    await Promise.all([
+      saveNewsletterSubscriber(storage, subscriber({
+        id: await newsletterSubscriberId(firstEmail),
+        email: firstEmail,
+      })),
+      saveNewsletterSubscriber(storage, subscriber({
+        id: await newsletterSubscriberId(secondEmail),
+        email: secondEmail,
+      })),
+    ]);
+
+    const readsBefore = storage.getTextCalls;
+    const listsBefore = storage.listRecursiveCalls;
+    const subscribers = await listNewsletterSubscribers(storage);
+    expect(subscribers.map((record) => record.email).sort()).toEqual([
+      firstEmail,
+      secondEmail,
+    ]);
+    expect(storage.getTextCalls - readsBefore).toBe(1);
+    expect(storage.listRecursiveCalls).toBe(listsBefore);
   });
 });
 

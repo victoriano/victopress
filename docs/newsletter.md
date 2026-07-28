@@ -37,6 +37,8 @@ The newsletter uses the same `StorageAdapter` as the rest of VictoPress:
 .victopress/newsletter/
 ├── subscribers/
 │   └── <sha256-normalized-email>.json
+├── indexes/
+│   └── subscribers.json
 ├── campaigns/
 │   └── <sha256-language-and-post-slug>.json
 └── opens/
@@ -47,10 +49,12 @@ The newsletter uses the same `StorageAdapter` as the rest of VictoPress:
 The paths are under `content/.victopress/` in local development (already
 ignored by Git) and inside the private `CONTENT_BUCKET` in production.
 
-Each subscriber has its own object. This avoids a single shared JSON list where
-two simultaneous signups could overwrite one another. Campaign records retain
-batch progress and Resend message IDs so a failed send can resume without
-repeating completed batches.
+Each subscriber has its own source-of-truth object. A derived subscriber index
+makes admin pages and campaign preparation a single read; R2 updates that index
+with compare-and-swap writes so simultaneous signups cannot overwrite one
+another. If the index is absent or invalid, VictoPress rebuilds it from the
+individual records. Campaign records retain batch progress and Resend message
+IDs so a failed send can resume without repeating completed batches.
 
 Subscriber records can also retain a name, country/region, the original signup
 timestamp, free subscription source, import audit timestamp, and historical

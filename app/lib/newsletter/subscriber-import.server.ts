@@ -3,6 +3,7 @@ import type { StorageAdapter } from "~/lib/content-engine";
 import { newsletterSubscriberId } from "./crypto.server";
 import {
   listNewsletterSubscribers,
+  mergeNewsletterSubscriberIndex,
   normalizeNewsletterEmail,
   saveNewsletterSubscriber,
 } from "./subscriber-store.server";
@@ -367,57 +368,78 @@ export async function importNewsletterSubscriberCsv(options: {
       subscriber,
     ]),
   );
-  const results = await inChunks(parsed.subscribers, async (imported) => {
-    const id = await newsletterSubscriberId(imported.email);
-    const existing = existingSubscribers.get(id) || null;
-    const signupAt = earliestSignupAt(existing, imported.signupAt);
-    const status = existing?.status === "unsubscribed"
-      ? "unsubscribed"
-      : "active";
-    const source = existing?.source || imported.subscriptionSource;
-    const subscriber: NewsletterSubscriber = {
-      ...existing,
-      version: 1,
-      id,
-      email: imported.email,
-      name: existing?.name || imported.name,
-      status,
-      locale: existing?.locale || options.locale,
-      source,
-      subscriptionSource: imported.subscriptionSource,
-      signupAt,
-      importedAt: existing?.importedAt || importedAt,
-      importedFrom: "substack",
-      country: existing?.country || imported.country,
-      region: existing?.region || imported.region,
-      interactions: imported.interactions,
-      consentVersion: existing?.consentVersion || NEWSLETTER_CONSENT_VERSION,
-      consentedAt: existing?.consentedAt || signupAt,
-      createdAt: signupAt,
-      updatedAt: existing?.updatedAt || importedAt,
-      confirmationSentAt:
-        status === "active" && existing?.status === "pending"
-          ? undefined
-          : existing?.confirmationSentAt,
-      confirmedAt:
-        status === "active"
-          ? existing?.confirmedAt || signupAt
-          : existing?.confirmedAt,
-    };
-    const changed = !existing ||
-      JSON.stringify(subscriber) !== JSON.stringify(existing);
-    if (changed) {
-      await saveNewsletterSubscriber(options.storage, {
-        ...subscriber,
-        updatedAt: importedAt,
-      });
-    }
-    return {
-      created: !existing,
-      changed,
-      preservedUnsubscribed: existing?.status === "unsubscribed",
-    };
-  });
+  let results: Array<{
+    created: boolean;
+    changed: boolean;
+    preservedUnsubscribed: boolean;
+  }>;
+  try {
+    results = await inChunks(parsed.subscribers, async (imported) => {
+      const id = await newsletterSubscriberId(imported.email);
+      const existing = existingSubscribers.get(id) || null;
+      const signupAt = earliestSignupAt(existing, imported.signupAt);
+      const status = existing?.status === "unsubscribed"
+        ? "unsubscribed"
+        : "active";
+      const source = existing?.source || imported.subscriptionSource;
+      const subscriber: NewsletterSubscriber = {
+        ...existing,
+        version: 1,
+        id,
+        email: imported.email,
+        name: existing?.name || imported.name,
+        status,
+        locale: existing?.locale || options.locale,
+        source,
+        subscriptionSource: imported.subscriptionSource,
+        signupAt,
+        importedAt: existing?.importedAt || importedAt,
+        importedFrom: "substack",
+        country: existing?.country || imported.country,
+        region: existing?.region || imported.region,
+        interactions: imported.interactions,
+        consentVersion: existing?.consentVersion || NEWSLETTER_CONSENT_VERSION,
+        consentedAt: existing?.consentedAt || signupAt,
+        createdAt: signupAt,
+        updatedAt: existing?.updatedAt || importedAt,
+        confirmationSentAt:
+          status === "active" && existing?.status === "pending"
+            ? undefined
+            : existing?.confirmationSentAt,
+        confirmedAt:
+          status === "active"
+            ? existing?.confirmedAt || signupAt
+            : existing?.confirmedAt,
+      };
+      const changed = !existing ||
+        JSON.stringify(subscriber) !== JSON.stringify(existing);
+      const savedSubscriber = changed
+        ? { ...subscriber, updatedAt: importedAt }
+        : subscriber;
+      if (changed) {
+        await saveNewsletterSubscriber(
+          options.storage,
+          savedSubscriber,
+          { skipIndex: true },
+        );
+      }
+      existingSubscribers.set(id, savedSubscriber);
+      return {
+        created: !existing,
+        changed,
+        preservedUnsubscribed: existing?.status === "unsubscribed",
+      };
+    });
+    await mergeNewsletterSubscriberIndex(
+      options.storage,
+      [...existingSubscribers.values()],
+    );
+  } catch (error) {
+    await options.storage.delete(
+      ".victopress/newsletter/indexes/subscribers.json",
+    ).catch(() => {});
+    throw error;
+  }
 
   return {
     totalRows: parsed.totalRows,
