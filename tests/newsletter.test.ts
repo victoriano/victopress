@@ -5,6 +5,7 @@ import type {
 } from "~/lib/content-engine";
 import type { HeadlessBlogPost } from "~/lib/headless-blog";
 import type { NewsletterConfig } from "~/lib/newsletter/config.server";
+import { newsletterBlogUrl } from "~/lib/newsletter/config.server";
 import {
   createNewsletterToken,
   newsletterSubscriberId,
@@ -106,6 +107,7 @@ const newsletterConfig: NewsletterConfig = {
   replyTo: "victoriano@example.com",
   tokenSecret: "newsletter-test-secret-that-is-long-enough",
   baseUrl: "https://photos.example.com",
+  publicBlogUrl: "https://example.com/blog",
   siteName: "Victoriano Izquierdo",
 };
 
@@ -140,6 +142,15 @@ function subscriber(options: {
 }
 
 describe("newsletter identity and signed links", () => {
+  test("returns readers to the canonical language edition of the public blog", () => {
+    expect(newsletterBlogUrl(newsletterConfig, "en")).toBe(
+      "https://example.com/blog",
+    );
+    expect(newsletterBlogUrl(newsletterConfig, "es")).toBe(
+      "https://example.com/es/blog",
+    );
+  });
+
   test("normalizes valid addresses and rejects malformed input", () => {
     expect(normalizeNewsletterEmail("  Reader@Example.COM ")).toBe(
       "reader@example.com",

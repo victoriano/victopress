@@ -4,16 +4,18 @@ export function NewsletterStatusPage({
   title,
   description,
   action,
+  homePath = "/blog",
 }: {
   title: string;
   description: string;
   action?: React.ReactNode;
+  homePath?: string;
 }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f5f5f3] px-5 py-12 dark:bg-gray-950">
       <div className="w-full max-w-lg border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-12">
         <Link
-          to="/blog"
+          to={homePath}
           className="mb-8 inline-block text-sm font-semibold tracking-wide text-gray-900 dark:text-white"
         >
           Victoriano Izquierdo

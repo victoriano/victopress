@@ -1,3 +1,4 @@
+import { localizedPath, type Locale } from "~/lib/i18n";
 import { getBaseUrl } from "~/utils/seo";
 
 type EnvironmentRecord = Record<string, unknown>;
@@ -10,6 +11,7 @@ export interface NewsletterConfig {
   replyTo?: string;
   tokenSecret: string;
   baseUrl: string;
+  publicBlogUrl: string;
   siteName: string;
 }
 
@@ -44,6 +46,16 @@ function safeHttpOrigin(value: string, fallback: string): string {
   }
 }
 
+function safeHttpUrl(value: string, fallback: string): string {
+  try {
+    const url = new URL(value || fallback);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return fallback;
+    return url.toString();
+  } catch {
+    return fallback;
+  }
+}
+
 export function resolveNewsletterConfig(
   context: unknown,
   request: Request,
@@ -59,6 +71,10 @@ export function resolveNewsletterConfig(
   const baseUrl = safeHttpOrigin(
     readSetting(env, "PUBLIC_NEWSLETTER_URL"),
     requestBaseUrl,
+  );
+  const publicBlogUrl = safeHttpUrl(
+    readSetting(env, "PUBLIC_BLOG_URL"),
+    new URL("/blog", `${requestBaseUrl}/`).toString(),
   );
 
   const missing = [
@@ -80,8 +96,18 @@ export function resolveNewsletterConfig(
     replyTo,
     tokenSecret,
     baseUrl,
+    publicBlogUrl,
     siteName,
   };
+}
+
+export function newsletterBlogUrl(
+  config: NewsletterConfig,
+  locale: Locale,
+): string {
+  const url = new URL(config.publicBlogUrl);
+  url.pathname = localizedPath(locale, url.pathname);
+  return url.toString();
 }
 
 export function isNewsletterConfigured(

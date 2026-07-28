@@ -8,7 +8,10 @@ import { Link, useLoaderData } from "@remix-run/react";
 import { NewsletterStatusPage } from "~/components/NewsletterStatusPage";
 import { getStorage } from "~/lib/content-engine";
 import { localizedPath, normalizeLocale } from "~/lib/i18n";
-import { resolveNewsletterConfig } from "~/lib/newsletter/config.server";
+import {
+  newsletterBlogUrl,
+  resolveNewsletterConfig,
+} from "~/lib/newsletter/config.server";
 import {
   confirmNewsletterToken,
   NewsletterConfigurationError,
@@ -30,9 +33,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const fallbackLocale = normalizeLocale(url.searchParams.get("lang")) || "es";
 
   try {
+    const config = resolveNewsletterConfig(context, request);
     const result = await confirmNewsletterToken({
       storage: getStorage(context, request),
-      config: resolveNewsletterConfig(context, request),
+      config,
       token,
     });
     const locale = result.subscriber?.locale || fallbackLocale;
@@ -40,7 +44,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       {
         state: result.result,
         locale,
-        blogPath: localizedPath(locale, "/blog"),
+        blogPath: newsletterBlogUrl(config, locale),
       },
       { status: result.result === "invalid" ? 400 : 200 },
     );
@@ -98,6 +102,7 @@ export default function NewsletterConfirmPage() {
     <NewsletterStatusPage
       title={selected.title}
       description={selected.description}
+      homePath={data.blogPath}
       action={
         <Link
           to={data.blogPath}

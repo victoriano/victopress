@@ -9,7 +9,10 @@ import { Form, Link, useActionData, useLoaderData } from "@remix-run/react";
 import { NewsletterStatusPage } from "~/components/NewsletterStatusPage";
 import { getStorage } from "~/lib/content-engine";
 import { localizedPath, normalizeLocale } from "~/lib/i18n";
-import { resolveNewsletterConfig } from "~/lib/newsletter/config.server";
+import {
+  newsletterBlogUrl,
+  resolveNewsletterConfig,
+} from "~/lib/newsletter/config.server";
 import {
   inspectNewsletterUnsubscribeToken,
   NewsletterConfigurationError,
@@ -33,9 +36,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const fallbackLocale = normalizeLocale(url.searchParams.get("lang")) || "es";
 
   try {
+    const config = resolveNewsletterConfig(context, request);
     const subscriber = await inspectNewsletterUnsubscribeToken({
       storage: getStorage(context, request),
-      config: resolveNewsletterConfig(context, request),
+      config,
       token,
     });
     const locale = subscriber?.locale || fallbackLocale;
@@ -49,7 +53,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         locale,
         maskedEmail: subscriber ? maskNewsletterEmail(subscriber.email) : null,
         token,
-        blogPath: localizedPath(locale, "/blog"),
+        blogPath: newsletterBlogUrl(config, locale),
       },
       { status: subscriber ? 200 : 400 },
     );
@@ -112,6 +116,7 @@ export default function NewsletterUnsubscribePage() {
         description={spanish
           ? "No recibirás más artículos por correo."
           : "You will not receive any more posts by email."}
+        homePath={loaderData.blogPath}
         action={
           <Link
             to={loaderData.blogPath}
@@ -131,6 +136,7 @@ export default function NewsletterUnsubscribePage() {
         description={spanish
           ? `Dejarás de recibir los próximos artículos en ${loaderData.maskedEmail}.`
           : `You will stop receiving future posts at ${loaderData.maskedEmail}.`}
+        homePath={loaderData.blogPath}
         action={
           <Form
             method="post"
@@ -158,6 +164,7 @@ export default function NewsletterUnsubscribePage() {
         : spanish
           ? "Inténtalo de nuevo dentro de unos minutos."
           : "Please try again in a few minutes."}
+      homePath={loaderData.blogPath}
     />
   );
 }

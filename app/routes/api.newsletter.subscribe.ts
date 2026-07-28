@@ -19,6 +19,19 @@ const responseHeaders = {
 
 export const headers: HeadersFunction = () => responseHeaders;
 
+export function loader() {
+  return json(
+    { ok: false, message: "Method not allowed." },
+    {
+      status: 405,
+      headers: {
+        ...responseHeaders,
+        Allow: "POST",
+      },
+    },
+  );
+}
+
 function message(
   locale: "es" | "en",
   key: "accepted" | "invalid" | "unavailable",
