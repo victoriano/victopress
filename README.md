@@ -195,7 +195,9 @@ production—while Resend is used only for delivery.
 
 The flow uses double opt-in. Every newsletter contains both a visible
 unsubscribe link and one-click `List-Unsubscribe` headers. The admin can filter
-active subscribers and inspect approximate open detections for each campaign.
+active subscribers, edit subscriber names, import a Substack-format CSV while
+preserving original signup/source/interaction data, and inspect approximate
+open detections for each campaign. Payment-related CSV columns are ignored.
 Configure
 `RESEND_API_KEY`, `NEWSLETTER_FROM_EMAIL`, and `NEWSLETTER_TOKEN_SECRET` before
 the public form appears. See [Newsletter subscriptions and delivery](docs/newsletter.md)

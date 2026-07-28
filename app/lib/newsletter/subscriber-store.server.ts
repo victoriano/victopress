@@ -5,6 +5,7 @@ import {
   type NewsletterCampaign,
   type NewsletterOpenRecord,
   type NewsletterSubscriber,
+  type NewsletterSubscriberInteractions,
   type NewsletterSubscriberStats,
 } from "./types";
 
@@ -36,6 +37,50 @@ function openPath(campaignId: string, subscriberId: string): string {
   }.json`;
 }
 
+function isOptionalDate(value: unknown): boolean {
+  return value === undefined ||
+    (typeof value === "string" && Number.isFinite(Date.parse(value)));
+}
+
+function isInteractions(
+  value: unknown,
+): value is NewsletterSubscriberInteractions {
+  if (!value || typeof value !== "object") return false;
+  const interactions = value as Record<string, unknown>;
+  const numericFields: Array<keyof NewsletterSubscriberInteractions> = [
+    "emailsReceived6Months",
+    "emailsDropped6Months",
+    "emailsOpenedTotal",
+    "emailsOpened6Months",
+    "emailsOpened7Days",
+    "emailsOpened30Days",
+    "linksClicked",
+    "uniqueEmailsSeen6Months",
+    "uniqueEmailsSeen7Days",
+    "uniqueEmailsSeen30Days",
+    "postViews",
+    "postViews7Days",
+    "postViews30Days",
+    "uniquePostsSeen",
+    "uniquePostsSeen7Days",
+    "uniquePostsSeen30Days",
+    "comments",
+    "comments7Days",
+    "comments30Days",
+    "shares",
+    "shares7Days",
+    "shares30Days",
+    "daysActive30Days",
+    "activity",
+  ];
+  return numericFields.every((field) =>
+    Number.isInteger(interactions[field]) &&
+    Number(interactions[field]) >= 0
+  ) &&
+    isOptionalDate(interactions.lastEmailOpenedAt) &&
+    isOptionalDate(interactions.lastClickedAt);
+}
+
 function parseSubscriber(raw: string | null): NewsletterSubscriber | null {
   if (!raw) return null;
   try {
@@ -45,7 +90,20 @@ function parseSubscriber(raw: string | null): NewsletterSubscriber | null {
       !/^[a-f0-9]{64}$/.test(value.id) ||
       typeof value.email !== "string" ||
       !["pending", "active", "unsubscribed"].includes(value.status) ||
-      !["es", "en"].includes(value.locale)
+      !["es", "en"].includes(value.locale) ||
+      (value.name !== undefined &&
+        (typeof value.name !== "string" || value.name.length > 200)) ||
+      (value.subscriptionSource !== undefined &&
+        (typeof value.subscriptionSource !== "string" ||
+          value.subscriptionSource.length > 100)) ||
+      !isOptionalDate(value.signupAt) ||
+      !isOptionalDate(value.importedAt) ||
+      (value.importedFrom !== undefined && value.importedFrom !== "substack") ||
+      (value.country !== undefined &&
+        (typeof value.country !== "string" || value.country.length > 100)) ||
+      (value.region !== undefined &&
+        (typeof value.region !== "string" || value.region.length > 100)) ||
+      (value.interactions !== undefined && !isInteractions(value.interactions))
     ) {
       return null;
     }
@@ -173,6 +231,27 @@ export async function saveNewsletterSubscriber(
   );
 }
 
+export async function updateNewsletterSubscriberName(options: {
+  storage: StorageAdapter;
+  id: string;
+  name: string;
+  now?: Date;
+}): Promise<NewsletterSubscriber | null> {
+  const existing = await getNewsletterSubscriber(options.storage, options.id);
+  if (!existing) return null;
+  const name = options.name.trim().replace(/\s+/g, " ");
+  if (name.length > 200) {
+    throw new Error("Subscriber name is longer than 200 characters.");
+  }
+  const subscriber: NewsletterSubscriber = {
+    ...existing,
+    name: name || undefined,
+    updatedAt: (options.now || new Date()).toISOString(),
+  };
+  await saveNewsletterSubscriber(options.storage, subscriber);
+  return subscriber;
+}
+
 export async function prepareNewsletterSubscription(options: {
   storage: StorageAdapter;
   id: string;
@@ -201,12 +280,16 @@ export async function prepareNewsletterSubscription(options: {
   }
 
   const subscriber: NewsletterSubscriber = {
+    ...existing,
     version: 1,
     id: options.id,
     email: options.email,
     status: "pending",
     locale: options.locale,
     source: options.source.slice(0, 100),
+    subscriptionSource:
+      existing?.subscriptionSource || options.source.slice(0, 100),
+    signupAt: existing?.signupAt || existing?.createdAt || nowIso,
     consentVersion: NEWSLETTER_CONSENT_VERSION,
     consentedAt: nowIso,
     createdAt: existing?.createdAt || nowIso,

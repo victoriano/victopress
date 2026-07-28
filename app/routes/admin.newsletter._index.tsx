@@ -31,11 +31,17 @@ import {
   sendNewsletterCampaign,
 } from "~/lib/newsletter/newsletter-service.server";
 import {
+  importNewsletterSubscriberCsv,
+  NewsletterCsvImportError,
+} from "~/lib/newsletter/subscriber-import.server";
+import {
   listNewsletterCampaigns,
   listNewsletterOpens,
   listNewsletterSubscribers,
   newsletterSubscriberStats,
+  updateNewsletterSubscriberName,
 } from "~/lib/newsletter/subscriber-store.server";
+import type { NewsletterSubscriberInteractions } from "~/lib/newsletter/types";
 import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
 
 export const meta: MetaFunction = () => [
@@ -49,32 +55,81 @@ export const headers: HeadersFunction = () => ({
 
 const subscriberFilters = ["all", "active", "pending", "unsubscribed"] as const;
 type SubscriberFilter = typeof subscriberFilters[number];
+const SUBSCRIBERS_PER_PAGE = 100;
+const MAX_CSV_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   await checkAdminAuth(request, context);
   const storage = getStorage(context, request);
+  const url = new URL(request.url);
   const [username, allSubscribers, campaigns, contentIndex] = await Promise.all([
     getAdminUser(request, context),
     listNewsletterSubscribers(storage),
     listNewsletterCampaigns(storage),
     getContentIndex(storage),
   ]);
-  const requestedFilter = new URL(request.url).searchParams.get("status");
+  const requestedFilter = url.searchParams.get("status");
   const subscriberFilter: SubscriberFilter = subscriberFilters.includes(
       requestedFilter as SubscriberFilter,
     )
     ? requestedFilter as SubscriberFilter
     : "all";
-  const subscribers = subscriberFilter === "all"
+  const filteredSubscribers = subscriberFilter === "all"
     ? allSubscribers
     : allSubscribers.filter((subscriber) => subscriber.status === subscriberFilter);
+  const requestedPage = Number.parseInt(url.searchParams.get("page") || "1", 10);
+  const subscriberPageCount = Math.max(
+    1,
+    Math.ceil(filteredSubscribers.length / SUBSCRIBERS_PER_PAGE),
+  );
+  const subscriberPage = Math.min(
+    subscriberPageCount,
+    Math.max(1, Number.isFinite(requestedPage) ? requestedPage : 1),
+  );
+  const subscribers = filteredSubscribers.slice(
+    (subscriberPage - 1) * SUBSCRIBERS_PER_PAGE,
+    subscriberPage * SUBSCRIBERS_PER_PAGE,
+  );
+  const campaignOpenRecords = await Promise.all(
+    campaigns.map(async (campaign) => ({
+      campaignId: campaign.id,
+      records: await listNewsletterOpens(storage, campaign.id),
+    })),
+  );
   const campaignOpenCounts = Object.fromEntries(
-    await Promise.all(
-      campaigns.map(async (campaign) => [
-        campaign.id,
-        (await listNewsletterOpens(storage, campaign.id)).length,
-      ] as const),
-    ),
+    campaignOpenRecords.map(({ campaignId, records }) => [
+      campaignId,
+      records.length,
+    ]),
+  );
+  const allSubscriberOpenStats = campaignOpenRecords
+    .flatMap(({ records }) => records)
+    .reduce<Record<string, { openCount: number; lastOpenedAt: string | null }>>(
+      (stats, record) => {
+        const existing = stats[record.subscriberId] || {
+          openCount: 0,
+          lastOpenedAt: null,
+        };
+        stats[record.subscriberId] = {
+          openCount: existing.openCount + record.openCount,
+          lastOpenedAt:
+            !existing.lastOpenedAt ||
+              record.lastOpenedAt.localeCompare(existing.lastOpenedAt) > 0
+              ? record.lastOpenedAt
+              : existing.lastOpenedAt,
+        };
+        return stats;
+      },
+      {},
+    );
+  const subscriberOpenStats = Object.fromEntries(
+    subscribers.map((subscriber) => [
+      subscriber.id,
+      allSubscriberOpenStats[subscriber.id] || {
+        openCount: 0,
+        lastOpenedAt: null,
+      },
+    ]),
   );
   const config = resolveNewsletterConfig(context, request);
   const posts = contentIndex.posts
@@ -93,9 +148,16 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     subscribers,
     campaigns,
     campaignOpenCounts,
+    subscriberOpenStats,
     posts,
     stats: newsletterSubscriberStats(allSubscribers),
     subscriberFilter,
+    subscriberPagination: {
+      page: subscriberPage,
+      pageCount: subscriberPageCount,
+      total: filteredSubscribers.length,
+      perPage: SUBSCRIBERS_PER_PAGE,
+    },
     configuration: {
       configured: config.configured,
       missing: config.missing,
@@ -107,7 +169,98 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 export async function action({ request, context }: ActionFunctionArgs) {
   await checkAdminAuth(request, context);
   const formData = await request.formData();
-  if (formData.get("intent") !== "send") {
+  const intent = String(formData.get("intent") || "");
+
+  if (intent === "import-subscribers") {
+    if (formData.get("confirmImport") !== "yes") {
+      return json(
+        {
+          ok: false,
+          error: "Confirm that the CSV contains people who already subscribed.",
+        },
+        { status: 400 },
+      );
+    }
+    const locale = normalizeLocale(formData.get("locale"));
+    const upload = formData.get("csv");
+    if (
+      !locale ||
+      !upload ||
+      typeof upload === "string" ||
+      typeof upload.text !== "function"
+    ) {
+      return json(
+        { ok: false, error: "Choose a CSV file and subscriber language." },
+        { status: 400 },
+      );
+    }
+    if (upload.size > MAX_CSV_UPLOAD_BYTES) {
+      return json(
+        { ok: false, error: "The CSV must be no larger than 5 MB." },
+        { status: 413 },
+      );
+    }
+    try {
+      const result = await importNewsletterSubscriberCsv({
+        storage: getStorage(context, request),
+        csv: await upload.text(),
+        locale,
+      });
+      return json({
+        ok: true,
+        message:
+          `Imported ${result.importedSubscribers} subscribers ` +
+          `(${result.created} new, ${result.updated} updated, ` +
+          `${result.unchanged} unchanged). ` +
+          `${result.preservedUnsubscribed} existing unsubscribed records stayed unsubscribed.` +
+          (result.duplicateRows > 0
+            ? ` ${result.duplicateRows} duplicate CSV rows were merged.`
+            : ""),
+      });
+    } catch (error) {
+      if (error instanceof NewsletterCsvImportError) {
+        return json({ ok: false, error: error.message }, { status: 400 });
+      }
+      console.error("[Newsletter] Subscriber CSV import failed.", error);
+      return json(
+        {
+          ok: false,
+          error: "VictoPress could not complete the subscriber import.",
+        },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (intent === "update-subscriber-name") {
+    const subscriberId = String(formData.get("subscriberId") || "");
+    const name = String(formData.get("name") || "");
+    if (!/^[a-f0-9]{64}$/.test(subscriberId) || name.trim().length > 200) {
+      return json(
+        { ok: false, error: "The subscriber name is not valid." },
+        { status: 400 },
+      );
+    }
+    const subscriber = await updateNewsletterSubscriberName({
+      storage: getStorage(context, request),
+      id: subscriberId,
+      name,
+    });
+    if (!subscriber) {
+      return json(
+        { ok: false, error: "That subscriber no longer exists." },
+        { status: 404 },
+      );
+    }
+    return json({
+      ok: true,
+      message: subscriber.name
+        ? `Saved the name for ${subscriber.email}.`
+        : `Removed the saved name for ${subscriber.email}.`,
+    });
+  }
+
+  if (intent !== "send") {
     return json({ ok: false, error: "Unknown action." }, { status: 400 });
   }
   if (formData.get("confirmSend") !== "yes") {
@@ -204,14 +357,21 @@ export default function AdminNewsletter() {
     subscribers,
     campaigns,
     campaignOpenCounts,
+    subscriberOpenStats,
     posts,
     stats,
     subscriberFilter,
+    subscriberPagination,
     configuration,
   } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
-  const isSending = navigation.state === "submitting";
+  const submittingIntent = navigation.formData?.get("intent");
+  const isSending =
+    navigation.state === "submitting" && submittingIntent === "send";
+  const isImporting =
+    navigation.state === "submitting" &&
+    submittingIntent === "import-subscribers";
 
   return (
     <AdminLayout username={username || undefined}>
@@ -236,6 +396,21 @@ export default function AdminNewsletter() {
           </div>
         )}
 
+        {actionData && (
+          <div
+            className={`mb-6 rounded-lg border p-4 text-sm ${
+              actionData.ok
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+                : "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
+            }`}
+            role="status"
+          >
+            {"message" in actionData
+              ? actionData.message
+              : actionData.error}
+          </div>
+        )}
+
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard label="Active" value={stats.active} tone="green" />
           <StatCard label="Pending" value={stats.pending} tone="amber" />
@@ -253,21 +428,6 @@ export default function AdminNewsletter() {
                 The complete article is sent once per language, with a personal unsubscribe link.
               </p>
             </div>
-
-            {actionData && (
-              <div
-                className={`mb-5 rounded-lg border p-4 text-sm ${
-                  actionData.ok
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
-                    : "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
-                }`}
-                role="status"
-              >
-                {"message" in actionData
-                  ? actionData.message
-                  : actionData.error}
-              </div>
-            )}
 
             <Form method="post" className="space-y-5">
               <input type="hidden" name="intent" value="send" />
@@ -377,6 +537,91 @@ export default function AdminNewsletter() {
           </aside>
         </div>
 
+        <section className="mb-8 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-950">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,520px)]">
+            <div>
+              <h2 className="font-semibold text-gray-900 dark:text-white">
+                Import subscribers
+              </h2>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Upload a Substack subscriber CSV. VictoPress keeps the original
+                <strong className="font-medium text-gray-700 dark:text-gray-300">
+                  {" "}Start date
+                </strong>
+                , name, free subscription source and interaction history.
+              </p>
+              <ul className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                <li>Paid plans, Stripe, revenue and paid-source columns are ignored.</li>
+                <li>Existing unsubscribed readers are never reactivated by an import.</li>
+                <li>Imports are idempotent and merge duplicate email addresses.</li>
+              </ul>
+            </div>
+
+            <Form
+              method="post"
+              encType="multipart/form-data"
+              className="space-y-4"
+            >
+              <input type="hidden" name="intent" value="import-subscribers" />
+              <div>
+                <label
+                  htmlFor="subscriber-csv"
+                  className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Subscriber CSV
+                </label>
+                <input
+                  id="subscriber-csv"
+                  name="csv"
+                  type="file"
+                  accept=".csv,text/csv"
+                  required
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:file:bg-gray-800"
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  Maximum 5 MB and 10,000 rows.
+                </p>
+              </div>
+              <div>
+                <label
+                  htmlFor="subscriber-import-locale"
+                  className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Language for new subscribers
+                </label>
+                <select
+                  id="subscriber-import-locale"
+                  name="locale"
+                  defaultValue="es"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                >
+                  <option value="es">Español</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+              <label className="flex items-start gap-3 rounded-lg bg-gray-50 p-3 text-sm text-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  name="confirmImport"
+                  value="yes"
+                  required
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                />
+                <span>
+                  These people already consented to receive this newsletter.
+                </span>
+              </label>
+              <button
+                type="submit"
+                disabled={isImporting}
+                className="inline-flex rounded-lg bg-gray-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
+              >
+                {isImporting ? "Importing…" : "Import subscribers"}
+              </button>
+            </Form>
+          </div>
+        </section>
+
         <section className="mb-8 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
           <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
             <h2 className="font-semibold text-gray-900 dark:text-white">Campaigns</h2>
@@ -462,10 +707,12 @@ export default function AdminNewsletter() {
               <div>
                 <h2 className="font-semibold text-gray-900 dark:text-white">Subscribers</h2>
                 <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                  Double opt-in records stored privately in VictoPress.
+                  Consent records and interaction history stored privately in VictoPress.
                 </p>
               </div>
-              <span className="text-sm text-gray-500 dark:text-gray-400">{subscribers.length}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {subscriberPagination.total}
+              </span>
             </div>
             <nav className="mt-4 flex flex-wrap gap-2" aria-label="Subscriber status">
               {subscriberFilters.map((filter) => {
@@ -474,9 +721,7 @@ export default function AdminNewsletter() {
                 return (
                   <Link
                     key={filter}
-                    to={filter === "all"
-                      ? "/admin/newsletter#subscribers"
-                      : `/admin/newsletter?status=${filter}#subscribers`}
+                    to={subscriberPageUrl(filter, 1)}
                     className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                       selected
                         ? "bg-gray-950 text-white dark:bg-white dark:text-gray-950"
@@ -498,39 +743,148 @@ export default function AdminNewsletter() {
                 : `There are no ${subscriberFilter} subscribers.`}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-900 dark:text-gray-400">
-                  <tr>
-                    <th className="px-5 py-3">Email</th>
-                    <th className="px-5 py-3">Language</th>
-                    <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3">Updated</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {subscribers.slice(0, 250).map((subscriber) => (
-                    <tr key={subscriber.id}>
-                      <td className="px-5 py-4 text-gray-900 dark:text-white">
-                        {subscriber.email}
-                      </td>
-                      <td className="px-5 py-4 uppercase text-gray-600 dark:text-gray-300">
-                        {subscriber.locale}
-                      </td>
-                      <td className="px-5 py-4">
-                        <StatusBadge status={subscriber.status} />
-                      </td>
-                      <td className="px-5 py-4 text-gray-500 dark:text-gray-400">
-                        {formatDate(subscriber.updatedAt)}
-                      </td>
+            <div>
+              <div className="overflow-x-auto">
+                <table className="min-w-[1180px] w-full text-sm">
+                  <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+                    <tr>
+                      <th className="px-5 py-3">Name</th>
+                      <th className="px-5 py-3">Email</th>
+                      <th className="px-5 py-3">Signed up</th>
+                      <th className="px-5 py-3">Source</th>
+                      <th className="px-5 py-3">Open detections</th>
+                      <th className="px-5 py-3">Clicks</th>
+                      <th className="px-5 py-3">Post views</th>
+                      <th className="px-5 py-3">Last interaction</th>
+                      <th className="px-5 py-3">Language</th>
+                      <th className="px-5 py-3">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {subscribers.length > 250 && (
-                <p className="border-t border-gray-200 px-5 py-3 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
-                  Showing the 250 most recently updated records.
-                </p>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                    {subscribers.map((subscriber) => {
+                      const openStats = subscriberOpenStats[subscriber.id];
+                      return (
+                        <tr key={subscriber.id} className="align-top">
+                          <td className="min-w-56 px-5 py-4">
+                            <Form method="post" className="flex items-center gap-2">
+                              <input
+                                type="hidden"
+                                name="intent"
+                                value="update-subscriber-name"
+                              />
+                              <input
+                                type="hidden"
+                                name="subscriberId"
+                                value={subscriber.id}
+                              />
+                              <input
+                                name="name"
+                                defaultValue={subscriber.name || ""}
+                                maxLength={200}
+                                aria-label={`Name for ${subscriber.email}`}
+                                placeholder="Add a name"
+                                className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                              />
+                              <button
+                                type="submit"
+                                className="rounded border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-900"
+                              >
+                                Save
+                              </button>
+                            </Form>
+                          </td>
+                          <td className="px-5 py-4 text-gray-900 dark:text-white">
+                            {subscriber.email}
+                            {(subscriber.country || subscriber.region) && (
+                              <span className="mt-1 block text-xs text-gray-400">
+                                {[subscriber.country, subscriber.region]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-5 py-4 text-gray-600 dark:text-gray-300">
+                            {formatDate(subscriber.signupAt || subscriber.createdAt)}
+                          </td>
+                          <td className="max-w-52 px-5 py-4 text-gray-600 dark:text-gray-300">
+                            <span className="break-words">
+                              {subscriber.subscriptionSource || subscriber.source}
+                            </span>
+                            {subscriber.importedFrom && (
+                              <span className="mt-1 block text-xs text-gray-400">
+                                Imported from Substack
+                              </span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-5 py-4 text-gray-600 dark:text-gray-300">
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {openStats?.openCount || 0}
+                            </span>
+                            <span className="mt-1 block text-xs text-gray-400">
+                              VictoPress · {subscriber.interactions?.emailsOpenedTotal || 0} imported
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-gray-600 dark:text-gray-300">
+                            {subscriber.interactions?.linksClicked || 0}
+                          </td>
+                          <td className="px-5 py-4 text-gray-600 dark:text-gray-300">
+                            {subscriber.interactions?.postViews || 0}
+                          </td>
+                          <td className="whitespace-nowrap px-5 py-4 text-gray-500 dark:text-gray-400">
+                            {formatOptionalDate(
+                              latestSubscriberInteraction(
+                                subscriber.interactions,
+                                openStats?.lastOpenedAt,
+                              ),
+                            )}
+                          </td>
+                          <td className="px-5 py-4 uppercase text-gray-600 dark:text-gray-300">
+                            {subscriber.locale}
+                          </td>
+                          <td className="px-5 py-4">
+                            <StatusBadge status={subscriber.status} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {subscriberPagination.pageCount > 1 && (
+                <nav
+                  className="flex items-center justify-between gap-4 border-t border-gray-200 px-5 py-4 text-sm dark:border-gray-800"
+                  aria-label="Subscriber pages"
+                >
+                  {subscriberPagination.page > 1 ? (
+                    <Link
+                      to={subscriberPageUrl(
+                        subscriberFilter,
+                        subscriberPagination.page - 1,
+                      )}
+                      className="font-medium text-gray-700 hover:underline dark:text-gray-200"
+                    >
+                      ← Previous
+                    </Link>
+                  ) : (
+                    <span className="text-gray-300 dark:text-gray-700">← Previous</span>
+                  )}
+                  <span className="text-gray-500 dark:text-gray-400">
+                    Page {subscriberPagination.page} of {subscriberPagination.pageCount}
+                  </span>
+                  {subscriberPagination.page < subscriberPagination.pageCount ? (
+                    <Link
+                      to={subscriberPageUrl(
+                        subscriberFilter,
+                        subscriberPagination.page + 1,
+                      )}
+                      className="font-medium text-gray-700 hover:underline dark:text-gray-200"
+                    >
+                      Next →
+                    </Link>
+                  ) : (
+                    <span className="text-gray-300 dark:text-gray-700">Next →</span>
+                  )}
+                </nav>
               )}
             </div>
           )}
@@ -538,6 +892,34 @@ export default function AdminNewsletter() {
       </div>
     </AdminLayout>
   );
+}
+
+function subscriberPageUrl(
+  filter: SubscriberFilter,
+  page: number,
+): string {
+  const search = new URLSearchParams();
+  if (filter !== "all") search.set("status", filter);
+  if (page > 1) search.set("page", String(page));
+  const query = search.toString();
+  return `/admin/newsletter${query ? `?${query}` : ""}#subscribers`;
+}
+
+function latestSubscriberInteraction(
+  interactions: NewsletterSubscriberInteractions | undefined,
+  currentLastOpenedAt: string | null | undefined,
+): string | null {
+  return [
+    currentLastOpenedAt,
+    interactions?.lastEmailOpenedAt,
+    interactions?.lastClickedAt,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .sort((left, right) => right.localeCompare(left))[0] || null;
+}
+
+function formatOptionalDate(value: string | null): string {
+  return value ? formatDate(value) : "—";
 }
 
 function StatCard({
