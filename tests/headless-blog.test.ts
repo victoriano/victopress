@@ -14,6 +14,7 @@ import {
 } from "../app/lib/headless-blog";
 import { renderMarkdown } from "../app/lib/markdown";
 import { languageSwitchPath, localizedPath, parseAcceptLanguage } from "../app/lib/i18n";
+import { buildBlogPostIndexEntries } from "../scripts/lib/blog-index";
 
 const config: HeadlessBlogConfig = {
   siteName: "Victoriano Izquierdo",
@@ -317,11 +318,17 @@ describe("migrated blog through the headless contract", () => {
   test("has complete Spanish and English editions for every blog post", async () => {
     const storage = new LocalStorageAdapter(join(process.cwd(), "content"));
     const posts = await scanBlog(storage);
+    const indexedPosts = buildBlogPostIndexEntries(posts);
 
     expect(posts).toHaveLength(30);
+    expect(indexedPosts).toHaveLength(posts.length);
     for (const post of posts) {
       expect(post.translations?.es, `${post.slug} is missing Spanish`).toBeTruthy();
       expect(post.translations?.en, `${post.slug} is missing English`).toBeTruthy();
+    }
+    for (const post of indexedPosts) {
+      expect(post.translations?.es, `${post.slug} lost Spanish in the CMS index`).toBeTruthy();
+      expect(post.translations?.en, `${post.slug} lost English in the CMS index`).toBeTruthy();
     }
 
     for (const locale of ["es", "en"] as const) {

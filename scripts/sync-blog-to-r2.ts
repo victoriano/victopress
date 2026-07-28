@@ -11,7 +11,9 @@ import {
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import matter from "gray-matter";
+import { scanBlog } from "../app/lib/content-engine/blog-scanner";
+import { LocalStorageAdapter } from "../app/lib/content-engine/storage/local-adapter";
+import { buildBlogPostIndexEntries } from "./lib/blog-index";
 
 interface RemoteFile {
   key: string;
@@ -96,63 +98,10 @@ function md5(data: Buffer): string {
   return createHash("md5").update(data).digest("hex");
 }
 
-function toSlug(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function plainText(content: string): string {
-  return content
-    .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
-    .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function dateString(value: unknown): string | undefined {
-  if (!value) return undefined;
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  const parsed = new Date(String(value));
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString().slice(0, 10);
-}
-
-async function buildPostEntries(indexFiles: string[]) {
-  const posts = [];
-  for (const file of indexFiles.sort()) {
-    const raw = await readFile(file, "utf8");
-    const parsed = matter(raw);
-    const data = parsed.data as Record<string, unknown>;
-    const title = String(data.title || path.basename(path.dirname(file)));
-    const relativeDirectory = path
-      .relative(BLOG_ROOT, path.dirname(file))
-      .split(path.sep)
-      .join("/");
-    const text = plainText(parsed.content);
-    posts.push({
-      slug: String(data.slug || relativeDirectory || toSlug(title)),
-      title,
-      excerpt: String(data.description || text.slice(0, 220)),
-      date: dateString(data.date),
-      draft: data.draft === true,
-      coverImage: data.cover ? String(data.cover) : undefined,
-      tags: Array.isArray(data.tags) ? data.tags.map(String) : undefined,
-      readingTime: Math.max(1, Math.ceil(text.split(/\s+/).filter(Boolean).length / 200)),
-    });
-  }
-  return posts.sort((left, right) => (right.date || "").localeCompare(left.date || ""));
-}
-
 async function updateRemoteIndex(
   client: S3Client,
   bucket: string,
-  posts: Awaited<ReturnType<typeof buildPostEntries>>,
+  posts: ReturnType<typeof buildBlogPostIndexEntries>,
   dryRun: boolean
 ) {
   let index: Record<string, any>;
@@ -234,8 +183,9 @@ async function main() {
     }
   }
 
-  const indexFiles = localFiles.filter((file) => path.basename(file).toLowerCase() === "index.md");
-  const posts = await buildPostEntries(indexFiles);
+  const posts = buildBlogPostIndexEntries(
+    await scanBlog(new LocalStorageAdapter(CONTENT_ROOT)),
+  );
   await updateRemoteIndex(client, bucket, posts, dryRun);
   console.log(
     `${dryRun ? "Dry run" : "Sync complete"}: ${uploaded} uploaded, ` +
