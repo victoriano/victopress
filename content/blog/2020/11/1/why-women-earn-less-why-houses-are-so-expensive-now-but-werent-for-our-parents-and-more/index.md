@@ -36,9 +36,7 @@ Why? Most **women reduce their working hours drastically after having children*
 
 Paradoxically, there are now [**more educated and highly skilled women in the job market than men**](https://magnet.xataka.com/preguntas-no-tan-frecuentes/hay-mujeres-jovenes-que-hombres-trabajando-profesiones-alta-cualificacion-espana), and **they make more money than men** before having children.
 
-[Victoriano Izquierdo @victorianoiMirando con microdatos de la última EPA en @graphext  las ocupaciones y actividades donde más diferencia hay de hombres y mujeres de 20 a 44 años.  
-Ya hay muchas más mujeres jóvenes en España que hombres trabajando en profesiones de alta cualificación...  
-Mini-hilo 👇 7:07 PM ∙ Jan 6, 202062Likes54Retweets](https://twitter.com/victorianoi/status/1214262353602187264)
+[Victoriano Izquierdo @victorianoi: Looking at the latest Spanish Labour Force Survey microdata in @graphext, these are the occupations and activities with the largest differences between men and women aged 20 to 44. There are already many more young women than men in Spain working in highly skilled occupations... Mini-thread 👇 7:07 PM · Jan 6, 2020 · 62 Likes · 54 Retweets](https://twitter.com/victorianoi/status/1214262353602187264)
 
 ![](/api/images/blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-06.jpg "text-width")
 
@@ -76,7 +74,7 @@ Apparently, that change created inflation; banks started enjoying low-interest r
 
 Another good example of big data from anonymized mobile phones from telco companies. Personal income was inferred from census data. The median income in Spain is around 26K, so I wouldn’t call (as the journalist does) “rich people” to those making above 25K…
 
-🔗 **Source**: [Trabajo: Los pobres se mueven por trabajo y los ricos por ocio: así nos desplazamos en 2020](https://www.elconfidencial.com/espana/2020-10-30/trabajo-vacaciones-desplazamientos-espana_2812019/)
+🔗 **Source**: [Work: Poor people travel for work and rich people for leisure. This is how we moved around in 2020](https://www.elconfidencial.com/espana/2020-10-30/trabajo-vacaciones-desplazamientos-espana_2812019/)
 
 ---
 

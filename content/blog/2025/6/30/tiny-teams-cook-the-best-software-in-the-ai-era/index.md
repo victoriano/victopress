@@ -32,26 +32,26 @@ Demand for software that automates today’s inefficient, manual workflows is se
   - Innovation sparks when tacit and explicit know-how spin inside a tight internal loop.
   - Examples: Mercadona Tech (\<20 people) and Freepik (6 on AI) out-innovate consulting armies
 
-La demanda de software que automatice tareas y flujos de trabajo hoy ejecutados de forma ineficiente se va a disparar: cuanto más rápidos y asequibles sean estos sistemas, más se integrarán en el día a día. Aquí entra en juego la paradoja de Jevons: la eficiencia que aporta la IA aumenta el consumo de tecnología, y el reto ya no es limitarla sino construir microequipos de talento 10× capaces de convertirla en valor mediante iteraciones rápidas y un expertise interno profundo.
+Demand for software that automates tasks and workflows that are handled inefficiently today is going to soar. The faster and more affordable these systems become, the more they will become part of everyday work. This is where the Jevons paradox comes in. AI efficiency increases the use of technology, and the challenge is no longer to limit it. It is to build tiny teams of 10× talent that can turn it into value through fast iterations and deep in-house expertise.
 
-- **Automatización de tareas y flujos**
-  - El próximo boom estará en herramientas que conecten sistemas y eliminen trabajo manual redundante.
-  - Cuanta más fricción quitan, más crecen su adopción y su impacto.
-- **Paradoja de Jevons + IA**
-  - La eficiencia dispara el consumo de software y servicios expertos.
-  - La ventaja competitiva reside en orquestar bien esas herramientas, no en inventarlas todas.
-- **Microequipos que facturan 100 M $ en 1-2 años**
-  - Un puñado de especialistas, apoyados por IA, puede escalar producto y ventas sin capas intermedias.
-  - El tamaño pequeño obliga a priorizar: cero reuniones innecesarias y procesos automatizados.
-- **Velocidad ≠ añadir gente (Ley de Brooks y Regla de la pizza)**
-  - Cada incorporación multiplica los canales de comunicación; ≤8 personas suelen rendir más que 20.
-  - Un ingeniero sénior + IA cubre el trabajo de varios perfiles medios; ciclos cortos y feedback constante del cliente.
-- **Talento 10× / 1000×**
-  - Un perfil excepcional explora y ejecuta donde muchos se bloquean; protégelo de burocracia.
-  - Evita “ascenderlo” a gestor: su multiplicación ocurre en el código y el diseño, no en hojas de cálculo.
-- **Conocimiento interno como ventaja**
-  - La innovación surge cuando el saber tácito y explícito giran en bucle dentro del equipo.
-  - Ejemplos: Mercadona Tech (\<20 personas) y Freepik (6 en IA) superan a consultoras con ejércitos.
+- **Task and workflow automation**
+  - The next boom will come from tools that connect systems and remove redundant manual work.
+  - The more friction they remove, the faster their adoption and impact grow.
+- **Jevons paradox + AI**
+  - Greater efficiency drives greater use of software and expert services.
+  - The competitive advantage lies in orchestrating those tools well, not inventing all of them.
+- **Tiny teams earning $100M in 1-2 years**
+  - A handful of specialists, supported by AI, can scale product and sales without middle layers.
+  - A small team must prioritise. No unnecessary meetings and automated processes.
+- **Speed ≠ adding people (Brooks' law and the pizza rule)**
+  - Every new hire multiplies communication paths. Teams of ≤8 people often outperform teams of 20.
+  - One senior engineer + AI can do the work of several mid-level engineers. Keep cycles short and customer feedback constant.
+- **10× / 1000× talent**
+  - An exceptional contributor explores and executes where many get stuck. Protect them from bureaucracy.
+  - Do not "promote" them into management. Their multiplying effect happens in code and design, not in spreadsheets.
+- **In-house knowledge as an advantage**
+  - Innovation appears when tacit and explicit knowledge move in a tight loop inside the team.
+  - Examples: Mercadona Tech (\<20 people) and Freepik (6 people working on AI) outperform armies of consultants.
 
 [Open the presentation in Google Slides](https://docs.google.com/presentation/d/1aceaKFw5lSJwmBwRKT4B3ehrt5a-1pklBKTtUA_7XUQ/edit?slide=id.g36a604a3ff8_1_0#slide=id.g36a604a3ff8_1_0)
 

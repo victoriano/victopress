@@ -19,7 +19,7 @@ coverInBody: true
 
 > Los mapas políticos rojos y azules de EE. UU. crean una mayor percepción de polarización y más estereotipos políticos, en comparación con los mapas morados, que son más precisos.
 
-🔗 **Fuente**: [Seeing Red (and Blue): Effects of Electoral College Depictions on Political Group Perception](https://sci-hub.se/https://spssi.onlinelibrary.wiley.com/doi/abs/10.1111/j.1530-2415.2009.01183.x)
+🔗 **Fuente**: [Ver rojo (y azul): efectos de las representaciones del Colegio Electoral en la percepción de los grupos políticos](https://sci-hub.se/https://spssi.onlinelibrary.wiley.com/doi/abs/10.1111/j.1530-2415.2009.01183.x)
 
 **La mayoría de los mapas** que presentan los medios para mostrar los resultados de las elecciones se parecen a este de The New York Times:
 
@@ -53,7 +53,7 @@ Si queremos vivir en una sociedad menos polarizada, necesitamos diseñar ciudade
 
 > La desigualdad económica en EE. UU. es hoy mayor que en los años 70 y, según algunas métricas, se sitúa en niveles no vistos desde la última Gran Depresión. Una forma especial de segregación es la que ocurre en nuestras ciudades. Compartimos los lugares públicos, nuestros lugares de trabajo y nuestros barrios residenciales con gente como nosotros: mismo tipo de trabajo, misma educación, estatus económico y opiniones políticas similares.
 
-🔗 **Fuente**: [Blog de Esteban Moro](http://estebanmoro.org/post/2019-02-02-behavioral-fundations-of-inequality/) y [Atlas of Inequality](https://inequality.media.mit.edu/) y [Segregated interactions in urban and online space](https://link.springer.com/content/pdf/10.1140/epjds/s13688-020-00238-7.pdf)
+🔗 **Fuente**: [Blog de Esteban Moro](http://estebanmoro.org/post/2019-02-02-behavioral-fundations-of-inequality/) y [Atlas de la desigualdad](https://inequality.media.mit.edu/) y [Interacciones segregadas en el espacio urbano y digital](https://link.springer.com/content/pdf/10.1140/epjds/s13688-020-00238-7.pdf)
 
 ![](/api/images/blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-07.jpg "text-width")
 
@@ -91,13 +91,13 @@ Este artículo de 2015, que me encanta, tiene una forma muy original de medir la
 
 > EE. UU. tiene la mayor polarización en el número de personas que apoyan o no a su gobierno en la gestión del brote de coronavirus.
 
-🔗 **Fuente**: [America is exceptional in the nature of its political divide](https://www.pewresearch.org/fact-tank/2020/11/13/america-is-exceptional-in-the-nature-of-its-political-divide/)
+🔗 **Fuente**: [Estados Unidos es excepcional por la naturaleza de su división política](https://www.pewresearch.org/fact-tank/2020/11/13/america-is-exceptional-in-the-nature-of-its-political-divide/)
 
 ![](/api/images/blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-12.jpg "text-width")
 
 > Los países con más acceso a Internet muestran una aprobación del gobierno significativamente menor
 
-🔗 **Fuente**: [3G Internet and Confidence in Government](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3456747)
+🔗 **Fuente**: [Internet 3G y confianza en el gobierno](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3456747)
 
 La desilusión de los votantes con los gobiernos tuvo implicaciones electorales: la expansión del internet de banda ancha móvil provocó una disminución en la cuota de votos de los partidos en el poder y un aumento en la cuota de votos de la oposición populista antisistema. La cuota de votos de la oposición no populista no se vio afectada por la expansión de las redes 3G.
 
