@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
+import {
+  findMarkdownImages,
+  setMarkdownImageWidth,
+} from "../app/lib/markdown-images";
 import { renderMarkdown } from "../app/lib/markdown";
 
 const POSTS = [
@@ -61,6 +65,44 @@ describe("blog Markdown", () => {
     expect(html).toContain('src="/api/images/blog/photo.jpg?v=mime-v2"');
     expect(html).not.toContain('class="blog-image-link"');
     expect(html).not.toContain('href="/api/images/blog/photo.jpg?v=mime-v2"');
+  });
+
+  test("renders text-column images without leaking layout directives into HTML titles", () => {
+    const html = renderMarkdown([
+      '![Diagram](/api/images/blog/diagram.png "caption | text-width")',
+      "",
+      '![Chart](/api/images/blog/chart.png "Source chart | text-width")',
+    ].join("\n"));
+
+    expect(html).toContain(
+      '<p class="blog-image-row" data-image-width="text">',
+    );
+    expect(html).toContain(
+      '<span class="blog-image-frame" data-image-width="text">',
+    );
+    expect(html).toContain('<span class="blog-image-caption">Diagram</span>');
+    expect(html).toContain('title="Source chart"');
+    expect(html).not.toContain('title="caption | text-width"');
+    expect(html).not.toContain('title="Source chart | text-width"');
+  });
+
+  test("lets the editor switch image width while preserving captions and galleries", () => {
+    const source = [
+      '![Photo](/api/images/blog/photo.jpg "caption")',
+      "",
+      '![Pair](/api/images/blog/pair.jpg "gallery-2")',
+    ].join("\n");
+
+    const textWidth = setMarkdownImageWidth(source, 0, "text");
+    const galleryTextWidth = setMarkdownImageWidth(textWidth, 1, "text");
+
+    expect(textWidth).toContain('"caption | text-width"');
+    expect(galleryTextWidth).toContain('"gallery-2 | text-width"');
+    expect(findMarkdownImages(galleryTextWidth).map((image) => image.width))
+      .toEqual(["text", "text"]);
+    expect(setMarkdownImageWidth(galleryTextWidth, 0, "wide")).toContain(
+      '"caption"',
+    );
   });
 
   test("all migrated posts are HTML-free Markdown with every image referenced", async () => {

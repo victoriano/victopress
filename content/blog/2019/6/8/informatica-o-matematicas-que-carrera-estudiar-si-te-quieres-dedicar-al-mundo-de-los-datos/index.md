@@ -14,7 +14,7 @@ coverInBody: true
 
 > Desde el sesgo de un informático que trabaja haciendo un producto para que las empresas analicen sus datos
 
-![](/api/images/blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/image-01.png)
+![](/api/images/blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/image-01.png "text-width")
 
 Una de las diapositivas que suelo usar en nuestra presentación de [Graphext](http://www.graphext.com/) para inversores
 
@@ -74,7 +74,7 @@ y son muy demandados (de todos los perfiles que comento probablemente sea del qu
 
 Luego están los “***data scientists***” que son los que hacen cosas más allá de estadística descriptiva sobre los KPIs (variables que indican cómo va el negocio), estos más que describir los datos aspiran a **crear modelos** (que combinan muchas variables) para **predecir el futuro.**
 
-![](/api/images/blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/image-02.png)
+![](/api/images/blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/image-02.png "text-width")
 
 Otra slide del deck de inversores de [Graphext](http://www.graphext.com/)
 

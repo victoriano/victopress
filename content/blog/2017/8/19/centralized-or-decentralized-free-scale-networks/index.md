@@ -15,7 +15,7 @@ coverInBody: true
 
 > TLDR: I don’t believe blockchain will make markets more significantly decentralized and efficient than they are now
 
-![](/api/images/blog/2017/8/19/centralized-or-decentralized-free-scale-networks/image-01.jpg)
+![](/api/images/blog/2017/8/19/centralized-or-decentralized-free-scale-networks/image-01.jpg "text-width")
 
 It seems to me there is always an ongoing discussion about whether systems should be more or less decentralized. **Blockchain** is responsible for many of these discussions right now, like the internet itself was a few decades ago.
 

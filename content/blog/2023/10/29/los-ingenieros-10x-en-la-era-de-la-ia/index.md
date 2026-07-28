@@ -13,7 +13,7 @@ cover: "blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/image-01.png"
 coverInBody: true
 ---
 
-![](/api/images/blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/image-01.png)
+![](/api/images/blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/image-01.png "text-width")
 
 Si hay algo que he aprendido en mis años de informático emprendedor, es que **los ingenieros 10x, existen y hacen la diferencia**. Gente como [Jeff Dean](https://en.wikipedia.org/wiki/Jeff_Dean)[, John Carmack](https://youtu.be/I845O57ZSy4?si=xf1VWPYsqlSsBiLO), [Andrej Karpathy](https://youtu.be/kCc8FmEb1nY?si=gmUD96WDzX6jjQTo), [George Hotz](https://www.youtube.com/watch?v=AV5JXG8y4fA) y muchos otros son capaces de crear código que va mucho más allá de lo que ningún CEO o product manager sería capaz de imaginar. Son los que inventan el motor de explosión cuando la mayoría de la gente esperaba poder añadir algunos caballos más a sus carros. Los verdaderos inventores.
 

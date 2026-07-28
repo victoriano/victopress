@@ -13,7 +13,7 @@ cover: "blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-comple
 coverInBody: true
 ---
 
-![](/api/images/blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/image-01.png)
+![](/api/images/blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/image-01.png "text-width")
 
 There's a great indicator for predicting how well a country's economy will develop. It is based on the **diversity** and **originality** of the products a country knows how to manufacture and export, which [@cesifoti](https://twitter.com/cesifoti) and  [@ricardo_hausman](https://twitter.com/ricardo_hausman) refer to as the **Economic Complexity Index**.
 

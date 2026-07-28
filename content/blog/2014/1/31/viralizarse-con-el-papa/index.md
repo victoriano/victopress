@@ -23,7 +23,7 @@ A la mañana siguiente, casualmente pasábamos por allí y cuando nos acercarmos
 
 Horas más tarde empezamos a aparecer en las webs de decenas de periódicos como [The USA Today](https://www.usatoday.com/story/news/nation/2014/01/29/pope-francis-birds/5031215/), [Clarín](http://hd.clarin.com/post/74940239764/a-horas-del-tuit-del-consejo-pontificio-de-la), [The Huffintong Post](http://www.huffingtonpost.com/2014/01/28/pope-francis-graffiti_n_4682803.html), [La Voz de Galicia](http://www.lavozdegalicia.es/noticia/sociedad/2014/01/29/papa-superman-revoluciona-twitter/00031391017181775553513.htm), [Reuters](https://www.reuters.com/article/2014/01/29/us-pope-superpope-idUSBREA0S0ND20140129), The Indian Express, [la televisión australiana](https://twitter.com/acalerog/status/428661280564449280)… incluso una mini entrevista en los informativos de Polonia de ese mediodía.
 
-![](/api/images/blog/2014/1/31/viralizarse-con-el-papa/image-02.png)
+![](/api/images/blog/2014/1/31/viralizarse-con-el-papa/image-02.png "text-width")
 
 Gracias a David Rodríguez por enviarme la imagen de este periódico de Melbourne, Australia
 

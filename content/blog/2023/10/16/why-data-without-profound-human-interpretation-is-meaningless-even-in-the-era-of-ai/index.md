@@ -13,7 +13,7 @@ cover: "blog/2023/10/16/why-data-without-profound-human-interpretation-is-meanin
 coverInBody: true
 ---
 
-![](/api/images/blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/image-01.jpg)
+![](/api/images/blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/image-01.jpg "text-width")
 
 **Data**, by nature, is always **subjective** (Many implicit biases about what is measured and how) and **meaningless** without **human interpretation**.
 

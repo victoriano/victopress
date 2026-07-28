@@ -1,5 +1,12 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { MarkdownContent } from "~/components/BlogPostContent";
+import {
+  findMarkdownImages,
+  setMarkdownImageWidth,
+  type MarkdownImageReference,
+  type MarkdownImageWidth,
+} from "~/lib/markdown-images";
+import { resolveMarkdownImageUrl } from "~/lib/markdown";
 
 type EditorMode = "write" | "preview" | "split";
 
@@ -12,6 +19,8 @@ interface MarkdownEditorProps {
 export function MarkdownEditor({ value, onChange, imagePathHint }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [mode, setMode] = useState<EditorMode>("split");
+  const [showImageLayouts, setShowImageLayouts] = useState(false);
+  const images = useMemo(() => findMarkdownImages(value), [value]);
 
   const replaceSelection = useCallback((
     before: string,
@@ -79,7 +88,15 @@ export function MarkdownEditor({ value, onChange, imagePathHint }: MarkdownEdito
     const alt = window.prompt("Alt text or caption", "") || "";
     const markdown = alt ? `![${alt}](${src} "caption")` : `![](${src})`;
     replaceSelection("", "", markdown, true);
+    setShowImageLayouts(true);
   }, [imagePathHint, replaceSelection]);
+
+  const updateImageWidth = useCallback((
+    imageIndex: number,
+    width: MarkdownImageWidth,
+  ) => {
+    onChange(setMarkdownImageWidth(value, imageIndex, width));
+  }, [onChange, value]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (!(event.metaKey || event.ctrlKey)) return;
@@ -129,7 +146,26 @@ export function MarkdownEditor({ value, onChange, imagePathHint }: MarkdownEdito
           <ToolbarButton label="Numbered list" onClick={() => prefixLines("", true)}>1. List</ToolbarButton>
           <ToolbarDivider />
           <ToolbarButton label="Insert image" onClick={insertImage}>Image</ToolbarButton>
+          {images.length > 0 && (
+            <>
+              <ToolbarDivider />
+              <ToolbarButton
+                label="Choose image widths"
+                onClick={() => setShowImageLayouts((current) => !current)}
+              >
+                Layout · {images.length}
+              </ToolbarButton>
+            </>
+          )}
         </div>
+      )}
+
+      {showEditor && showImageLayouts && images.length > 0 && (
+        <ImageLayoutPanel
+          images={images}
+          onChange={updateImageWidth}
+          onClose={() => setShowImageLayouts(false)}
+        />
       )}
 
       <div className={mode === "split" ? "grid lg:grid-cols-2" : "block"}>
@@ -155,7 +191,7 @@ export function MarkdownEditor({ value, onChange, imagePathHint }: MarkdownEdito
             <div className="border-b border-gray-100 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-gray-400 dark:border-gray-800">
               Live preview
             </div>
-            <div className="min-h-[34rem] overflow-hidden px-5 py-5">
+            <div className="markdown-editor-preview min-h-[34rem] overflow-hidden px-5 py-5">
               {value.trim() ? (
                 <MarkdownContent content={value} />
               ) : (
@@ -215,4 +251,120 @@ function ToolbarButton({ label, onClick, children }: {
 
 function ToolbarDivider() {
   return <span className="mx-1 h-5 w-px bg-gray-200 dark:bg-gray-700" aria-hidden="true" />;
+}
+
+function ImageLayoutPanel({
+  images,
+  onChange,
+  onClose,
+}: {
+  images: MarkdownImageReference[];
+  onChange: (imageIndex: number, width: MarkdownImageWidth) => void;
+  onClose: () => void;
+}) {
+  return (
+    <section
+      className="border-b border-gray-200 bg-[#faf9f6] dark:border-gray-700 dark:bg-gray-950"
+      aria-labelledby="image-layout-heading"
+    >
+      <div className="flex items-start justify-between gap-4 px-4 py-3">
+        <div>
+          <h3
+            id="image-layout-heading"
+            className="text-xs font-semibold text-gray-900 dark:text-white"
+          >
+            Image width
+          </h3>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-gray-500 dark:text-gray-400">
+            Wide lets photographs break out beyond the reading column. Text
+            column keeps illustrations and diagrams aligned with the copy.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:hover:bg-gray-800 dark:hover:text-white dark:focus-visible:ring-white"
+        >
+          Close
+        </button>
+      </div>
+
+      <div className="max-h-80 overflow-y-auto border-t border-gray-200 dark:border-gray-800">
+        {images.map((image) => (
+          <div
+            key={`${image.start}-${image.src}`}
+            className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-3 border-b border-gray-200 px-4 py-3 last:border-b-0 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto] dark:border-gray-800"
+          >
+            <img
+              src={resolveMarkdownImageUrl(image.src) || ""}
+              alt=""
+              loading="lazy"
+              className="h-11 w-14 bg-gray-100 object-cover dark:bg-gray-800"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-gray-800 dark:text-gray-200">
+                {image.alt || imageName(image.src)}
+              </p>
+              <p className="mt-0.5 truncate font-mono text-[10px] text-gray-400">
+                {imageName(image.src)}
+              </p>
+            </div>
+            <div
+              className="col-span-2 inline-flex w-fit border border-gray-300 bg-white p-0.5 sm:col-span-1 dark:border-gray-700 dark:bg-gray-900"
+              role="group"
+              aria-label={`Width for ${image.alt || imageName(image.src)}`}
+            >
+              <ImageWidthButton
+                active={image.width === "wide"}
+                onClick={() => onChange(image.index, "wide")}
+              >
+                Wide
+              </ImageWidthButton>
+              <ImageWidthButton
+                active={image.width === "text"}
+                onClick={() => onChange(image.index, "text")}
+              >
+                Text column
+              </ImageWidthButton>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ImageWidthButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`px-2.5 py-1.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white ${
+        active
+          ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+          : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function imageName(src: string): string {
+  const path = src.split(/[?#]/, 1)[0];
+  const name = path.split("/").pop() || "Image";
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
 }

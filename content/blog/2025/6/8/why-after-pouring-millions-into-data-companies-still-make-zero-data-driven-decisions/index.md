@@ -13,7 +13,7 @@ cover: "blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-
 coverInBody: true
 ---
 
-![](/api/images/blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/image-01.png)
+![](/api/images/blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/image-01.png "text-width")
 
 At the decision making table, the data is just something nice that executives feel they need to have but clearly don't know how to use
 

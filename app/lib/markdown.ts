@@ -3,6 +3,7 @@ import {
   Renderer,
   type TokenizerAndRendererExtension,
 } from "marked";
+import { parseMarkdownImageDirectives } from "~/lib/markdown-images";
 
 const ALLOWED_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
 const ALLOWED_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
@@ -163,11 +164,24 @@ function createRenderer(options: MarkdownRenderOptions): Renderer {
     const onlyImages = imageTokens.length > 0 && tokens.every((token) =>
       token.type === "image" || (token.type === "text" && token.text.trim() === "")
     );
-    const galleryColumns = imageTokens
-      .map((token) => token.type === "image" ? token.title?.match(/^gallery-([23])$/)?.[1] : undefined)
+    const imageDirectives = imageTokens.map((token) =>
+      parseMarkdownImageDirectives(
+        token.type === "image" ? token.title : null,
+      )
+    );
+    const galleryColumns = imageDirectives
+      .map((directives) => directives.galleryColumns)
       .find(Boolean);
+    const imageWidth = imageDirectives.length > 0 &&
+        imageDirectives.every((directives) => directives.width === "text")
+      ? "text"
+      : null;
     const attributes = onlyImages
-      ? ` class="blog-image-row"${galleryColumns ? ` data-gallery-columns="${galleryColumns}"` : ""}`
+      ? [
+        ' class="blog-image-row"',
+        galleryColumns ? ` data-gallery-columns="${galleryColumns}"` : "",
+        imageWidth ? ` data-image-width="${imageWidth}"` : "",
+      ].join("")
       : "";
 
     return `<p${attributes}>${this.parser.parseInline(tokens)}</p>\n`;
@@ -178,20 +192,24 @@ function createRenderer(options: MarkdownRenderOptions): Renderer {
     const alt = text.trim();
     if (!src) return alt ? escapeHtml(alt) : "";
 
-    const galleryColumns = title?.match(/^gallery-([23])$/)?.[1];
-    const isCaptioned = title === "caption" && alt.length > 0;
+    const directives = parseMarkdownImageDirectives(title);
+    const galleryColumns = directives.galleryColumns;
+    const isCaptioned = directives.caption && alt.length > 0;
     const galleryAttribute = galleryColumns
       ? ` data-gallery-columns="${galleryColumns}"`
       : "";
-    const titleAttribute = title && !galleryColumns && title !== "caption"
-      ? ` title="${escapeHtml(title)}"`
+    const widthAttribute = directives.width === "text"
+      ? ' data-image-width="text"'
+      : "";
+    const titleAttribute = directives.htmlTitle
+      ? ` title="${escapeHtml(directives.htmlTitle)}"`
       : "";
     const caption = isCaptioned
       ? `<span class="blog-image-caption">${escapeHtml(alt)}</span>`
       : "";
 
     return [
-      `<span class="blog-image-frame"${galleryAttribute}>`,
+      `<span class="blog-image-frame"${galleryAttribute}${widthAttribute}>`,
       `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}"${titleAttribute} loading="lazy" decoding="async">`,
       caption,
       "</span>",

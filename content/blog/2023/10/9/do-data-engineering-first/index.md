@@ -19,9 +19,9 @@ As happened years ago with IBM Watson, many will invest resources in something t
 
 This goes through the entire ladder of understanding which business problems truly make sense to solve, measuring accurately, having good data infrastructure, well-defined descriptive dashboards, and advanced analytics to understand the 'why,' prototype models, and do forecasting
 
-![](/api/images/blog/2023/10/9/do-data-engineering-first/data-maturity-ladder.jpg)
+![](/api/images/blog/2023/10/9/do-data-engineering-first/data-maturity-ladder.jpg "text-width")
 
-![](/api/images/blog/2023/10/9/do-data-engineering-first/data-analysis-process.png)
+![](/api/images/blog/2023/10/9/do-data-engineering-first/data-analysis-process.png "text-width")
 
 [Related post on X](https://twitter.com/SeattleDataGuy/status/1723090286576898476/photo/1)
 

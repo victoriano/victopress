@@ -19,4 +19,4 @@ Almost two years ago, I installed the [@one_sec_app](https://twitter.com/one_sec
 
 This demonstrates the lack of effort companies like [@Apple](https://twitter.com/Apple) or [@Google](https://twitter.com/Google) put into creating operating systems that truly help us have a better relationship with our phones.
 
-![](/api/images/blog/2023/10/6/controlling-addiction-to-tech/one-sec-app-usage.png)
+![](/api/images/blog/2023/10/6/controlling-addiction-to-tech/one-sec-app-usage.png "text-width")

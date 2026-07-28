@@ -326,6 +326,24 @@
   width: 100%;
 }
 
+.markdown-editor-preview .markdown-blog-content {
+  width: min(100%, 680px);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.markdown-editor-preview .blog-image-row {
+  width: min(1200px, calc(100% + 160px));
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+.markdown-editor-preview .blog-image-row[data-image-width="text"] {
+  width: 100%;
+  margin-left: 0;
+  transform: none;
+}
+
 .markdown-blog-content .blog-image-frame {
   display: block;
   min-width: 0;
@@ -376,6 +394,14 @@
 .markdown-blog-content [data-gallery-columns] img {
   height: 100%;
   object-fit: cover;
+}
+
+@media (max-width: 767px) {
+  .markdown-editor-preview .blog-image-row {
+    width: 100%;
+    margin-left: 0;
+    transform: none;
+  }
 }
 
 /* Trusted HTML snapshots imported from the owner's Squarespace blog. */

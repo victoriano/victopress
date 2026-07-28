@@ -29,7 +29,7 @@ This is better than having nothing because it tells us to focus more on customer
 
 The best way to prevent churn is to understand** why it happens**, and the key to that is examining **the type and level of engagement** the customer has had with the company.
 
-![](/api/images/blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/image-01.png)
+![](/api/images/blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/image-01.png "text-width")
 
 **TLDR**: The ideal approach to churn prediction is probably to combine **a churn probability score** with a simple classification of **churn type based on engagement levels** Include some **metrics** that can provide more clues about the specific type of churn, and link these to a series of **suggested actions** to either prevent it or let it go. If your service/product isn’t designed for a certain type of customer, it’s often best not to waste time on them. It’s also crucial to create a model that can **predict churn weeks or even months in advance**, giving enough time to implement effective measures.
 

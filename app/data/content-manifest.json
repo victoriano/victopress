@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-07-28T12:12:18.643Z",
+  "generatedAt": "2026-07-28T12:45:10.830Z",
   "repo": "victoriano/victopress",
   "branch": "main",
   "contentPath": "content",
@@ -37,7 +37,7 @@
     },
     {
       "path": "blog/2014/1/31/viralizarse-con-el-papa/index.md",
-      "size": 4509,
+      "size": 4522,
       "type": "text"
     },
     {
@@ -272,7 +272,7 @@
     },
     {
       "path": "blog/2016/12/24/the-unpublished-golden-information/index.md",
-      "size": 1639,
+      "size": 1652,
       "type": "text"
     },
     {
@@ -417,7 +417,7 @@
     },
     {
       "path": "blog/2017/8/19/centralized-or-decentralized-free-scale-networks/index.md",
-      "size": 5434,
+      "size": 5447,
       "type": "text"
     },
     {
@@ -637,7 +637,7 @@
     },
     {
       "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/index.md",
-      "size": 4052,
+      "size": 4130,
       "type": "text"
     },
     {
@@ -652,7 +652,7 @@
     },
     {
       "path": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/index.md",
-      "size": 10351,
+      "size": 10377,
       "type": "text"
     },
     {
@@ -732,7 +732,7 @@
     },
     {
       "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/index.md",
-      "size": 10114,
+      "size": 10309,
       "type": "text"
     },
     {
@@ -802,7 +802,7 @@
     },
     {
       "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/index.md",
-      "size": 9415,
+      "size": 9584,
       "type": "text"
     },
     {
@@ -912,7 +912,7 @@
     },
     {
       "path": "blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/index.md",
-      "size": 4460,
+      "size": 4473,
       "type": "text"
     },
     {
@@ -922,12 +922,12 @@
     },
     {
       "path": "blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/index.md",
-      "size": 7752,
+      "size": 7765,
       "type": "text"
     },
     {
       "path": "blog/2023/10/6/controlling-addiction-to-tech/index.md",
-      "size": 1481,
+      "size": 1494,
       "type": "text"
     },
     {
@@ -942,7 +942,7 @@
     },
     {
       "path": "blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/index.md",
-      "size": 3956,
+      "size": 3969,
       "type": "text"
     },
     {
@@ -957,7 +957,7 @@
     },
     {
       "path": "blog/2023/10/9/do-data-engineering-first/index.md",
-      "size": 4671,
+      "size": 4697,
       "type": "text"
     },
     {
@@ -992,7 +992,7 @@
     },
     {
       "path": "blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/index.md",
-      "size": 12838,
+      "size": 12851,
       "type": "text"
     },
     {
@@ -1017,7 +1017,7 @@
     },
     {
       "path": "blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/index.md",
-      "size": 4341,
+      "size": 4354,
       "type": "text"
     },
     {
@@ -2511,6 +2511,6 @@
       "type": "text"
     }
   ],
-  "totalSize": 514030835,
+  "totalSize": 514031446,
   "totalFiles": 501
 }

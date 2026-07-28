@@ -13,7 +13,7 @@ cover: "blog/2016/12/24/the-unpublished-golden-information/image-01.png"
 coverInBody: true
 ---
 
-![](/api/images/blog/2016/12/24/the-unpublished-golden-information/image-01.png)
+![](/api/images/blog/2016/12/24/the-unpublished-golden-information/image-01.png "text-width")
 
 Los que tienen buena información se la tienen que callar y parecen “sesgados” por no traicionar a los que se la facilitan y los que no la tienen sesgados por ignorancia.
 
