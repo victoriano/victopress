@@ -329,16 +329,22 @@ describe("migrated blog through the headless contract", () => {
         join(process.cwd(), "content/blog/_notion-posted-import-manifest.json"),
         "utf8",
       ),
-    ) as { posts: Array<{ date: string; target: string }> };
+    ) as { posts: Array<{ date: string; target: string; removed?: boolean }> };
     const draftImport = JSON.parse(
       await readFile(join(process.cwd(), "content/blog/_notion-import-manifest.json"), "utf8"),
     ) as { posts: Array<{ target: string }> };
     const bySlug = new Map(published.posts.map((post) => [post.slug, post]));
 
     expect(postedImport.posts).toHaveLength(20);
-    for (const post of postedImport.posts) {
+    const activePostedImports = postedImport.posts.filter((post) => !post.removed);
+    expect(activePostedImports).toHaveLength(19);
+    for (const post of activePostedImports) {
       const slug = post.target.replace(/^blog\//, "").replace(/\/index\.md$/, "");
       expect(bySlug.get(slug)?.date).toBe(post.date);
+    }
+    for (const post of postedImport.posts.filter((candidate) => candidate.removed)) {
+      const slug = post.target.replace(/^blog\//, "").replace(/\/index\.md$/, "");
+      expect(bySlug.has(slug)).toBe(false);
     }
     for (const post of draftImport.posts) {
       const slug = post.target.replace(/^blog\//, "").replace(/\/index\.md$/, "");
@@ -402,7 +408,7 @@ describe("migrated blog through the headless contract", () => {
     const indexedPosts = buildBlogPostIndexEntries(posts);
     const rehydratedPosts = blogPostsFromIndexEntries(indexedPosts);
 
-    expect(posts).toHaveLength(30);
+    expect(posts).toHaveLength(29);
     expect(indexedPosts).toHaveLength(posts.length);
     expect(rehydratedPosts).toHaveLength(posts.length);
     for (const post of posts) {

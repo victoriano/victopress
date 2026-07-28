@@ -11,6 +11,7 @@ const MANIFEST_PATHS = [
 interface ImportedPost {
   target: string;
   contentSha256?: string;
+  removed?: boolean;
 }
 
 interface ImportManifest {
@@ -113,6 +114,7 @@ async function repairManifest(relativePath: string): Promise<number> {
   let changedPosts = 0;
 
   for (const post of manifest.posts) {
+    if (post.removed) continue;
     const postPath = path.join(CONTENT_ROOT, post.target);
     const document = await readFile(postPath, "utf8");
     const { frontmatter, body } = bodyFromDocument(document);
