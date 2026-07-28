@@ -102,54 +102,6 @@
   padding: 50px 44px 152px;
 }
 
-.blog-category-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-  margin: 0 0 52px;
-  padding: 0 0 16px;
-  border-bottom: 1px solid #e7e7e7;
-}
-
-.blog-category-filter-link {
-  color: #919191;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 24px;
-  letter-spacing: 0.02em;
-  text-decoration: none;
-}
-
-.blog-category-filter-link span {
-  margin-left: 3px;
-  color: #b5b5b5;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.blog-category-filter-link:hover,
-.blog-category-filter-link.is-active {
-  color: #121212;
-  text-decoration: none;
-}
-
-.dark .blog-category-filter {
-  border-bottom-color: #333;
-}
-
-.dark .blog-category-filter-link {
-  color: #9d9d9d;
-}
-
-.dark .blog-category-filter-link span {
-  color: #6f6f6f;
-}
-
-.dark .blog-category-filter-link:hover,
-.dark .blog-category-filter-link.is-active {
-  color: #f2f2f2;
-}
-
 .blog-entry + .blog-entry {
   margin-top: 101px;
 }
@@ -687,11 +639,6 @@
 
   .blog-entry-title {
     font-size: 24px;
-  }
-
-  .blog-category-filter {
-    gap: 6px 16px;
-    margin-bottom: 40px;
   }
 
   .legacy-squarespace-content .sqs-block {

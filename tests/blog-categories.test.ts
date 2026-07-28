@@ -57,4 +57,15 @@ describe("blog categories", () => {
         .toBe(true);
     }
   });
+
+  test("keeps the Photos archive limited to photography posts", async () => {
+    const route = await readFile(
+      join(process.cwd(), "app/routes/blog._index.tsx"),
+      "utf8",
+    );
+
+    expect(route).toContain('filterPostsByBlogCategory(publishedPosts, "photos")');
+    expect(route).not.toContain("blog-category-filter");
+    expect(route).not.toContain("?category=");
+  });
 });

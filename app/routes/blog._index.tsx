@@ -18,11 +18,7 @@ import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
 import { isNewsletterConfigured } from "~/lib/newsletter/config.server";
 import { readSiteLanguageSettings } from "~/lib/site-languages.server";
 import { loadHeadlessBlogPosts } from "~/lib/headless-blog-storage.server";
-import {
-  BLOG_CATEGORIES,
-  filterPostsByBlogCategory,
-  normalizeBlogCategory,
-} from "~/lib/blog-categories";
+import { filterPostsByBlogCategory } from "~/lib/blog-categories";
 
 export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
 
@@ -50,10 +46,6 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     getNavigationFromIndex(storage, locale),
   ]);
 
-  const activeCategory = normalizeBlogCategory(
-    new URL(request.url).searchParams.get("category"),
-  );
-
   // Filter published posts and sort by date
   const publishedPosts = allPosts
     .filter(p => !p.draft)
@@ -63,20 +55,13 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       return dateB - dateA;
     })
     .map((post) => localizeBlogPost(post, locale));
-  const posts = filterPostsByBlogCategory(publishedPosts, activeCategory);
-  const categoryCounts = Object.fromEntries(
-    BLOG_CATEGORIES.map((category) => [
-      category,
-      filterPostsByBlogCategory(publishedPosts, category).length,
-    ]),
-  );
+  // Photos is the photographic portfolio, so its archive never exposes
+  // articles from the other editorial categories.
+  const posts = filterPostsByBlogCategory(publishedPosts, "photos");
 
   const alternates = localizedAlternates(request, locale, "/blog", siteLanguages);
   return json({
     posts,
-    activeCategory,
-    categoryCounts,
-    totalPosts: publishedPosts.length,
     navigation,
     siteName: "Victoriano Izquierdo",
     locale,
@@ -99,16 +84,8 @@ export default function BlogIndex() {
     socialLinks,
     locale,
     newsletterEnabled,
-    activeCategory,
-    categoryCounts,
-    totalPosts,
   } = useLoaderData<typeof loader>();
   const messages = photoMessages[locale];
-  const blogPath = localizedPath(locale, "/blog");
-  const filterLabel = locale === "es" ? "Filtrar entradas por categoría" : "Filter posts by category";
-  const emptyCategoryMessage = locale === "es"
-    ? "No hay entradas publicadas en esta categoría."
-    : "There are no published posts in this category.";
 
   return (
     <Layout
@@ -121,34 +98,13 @@ export default function BlogIndex() {
       <GalleryBreadcrumb navigation={navigation} locale={locale} />
       
       <div className="blog-page-shell">
-        <nav className="blog-category-filter" aria-label={filterLabel}>
-          <Link
-            to={blogPath}
-            className={`blog-category-filter-link ${activeCategory === null ? "is-active" : ""}`}
-            aria-current={activeCategory === null ? "page" : undefined}
-            prefetch="intent"
-          >
-            all <span>{totalPosts}</span>
-          </Link>
-          {BLOG_CATEGORIES.map((category) => (
-            <Link
-              key={category}
-              to={`${blogPath}?category=${category}`}
-              className={`blog-category-filter-link ${activeCategory === category ? "is-active" : ""}`}
-              aria-current={activeCategory === category ? "page" : undefined}
-              prefetch="intent"
-            >
-              {category} <span>{categoryCounts[category]}</span>
-            </Link>
-          ))}
-        </nav>
         {posts.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">
-              {activeCategory ? emptyCategoryMessage : messages.noPosts}
+              {messages.noPosts}
             </p>
             <p className="text-gray-400 dark:text-gray-500 text-sm">
-              {activeCategory ? "" : messages.addPosts}
+              {messages.addPosts}
             </p>
           </div>
         ) : (
