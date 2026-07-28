@@ -10,8 +10,8 @@ import { useLoaderData, Link, useFetcher, useNavigate } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
 import { MarkdownEditor } from "~/components/MarkdownEditor";
-import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
-import { scanBlog, getStorage } from "~/lib/content-engine";
+import { requireAdminUser } from "~/utils/admin-auth";
+import { getPostBySlug, getStorage } from "~/lib/content-engine";
 import { buildPublicBlogPostUrl } from "~/lib/blog-urls";
 import { resolveHeadlessBlogConfig } from "~/lib/headless-blog";
 import { useState, useEffect, useCallback } from "react";
@@ -66,10 +66,8 @@ function editionsForPost(post: any) {
 }
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
-  await checkAdminAuth(request, context);
-  
   const slug = params["*"];
-  const username = await getAdminUser(request, context);
+  const username = await requireAdminUser(request, context);
   const storage = getStorage(context);
   const blogConfig = resolveHeadlessBlogConfig(context, request);
   
@@ -87,8 +85,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     throw new Response("Not Found", { status: 404 });
   }
   
-  const posts = await scanBlog(storage);
-  const post = posts.find((p) => p.slug === slug);
+  const post = await getPostBySlug(storage, slug);
   
   if (!post) {
     throw new Response("Post not found", { status: 404 });

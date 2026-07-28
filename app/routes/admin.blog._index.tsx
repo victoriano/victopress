@@ -5,10 +5,15 @@
  */
 
 import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
-import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
+import {
+  useLoaderData,
+  Link,
+  useNavigation,
+  useSearchParams,
+} from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
 import { AdminLayout } from "~/components/AdminLayout";
-import { checkAdminAuth, getAdminUser } from "~/utils/admin-auth";
+import { requireAdminUser } from "~/utils/admin-auth";
 import { getStorage, getContentIndex } from "~/lib/content-engine";
 import { buildPublicBlogPostUrl } from "~/lib/blog-urls";
 import { resolveHeadlessBlogConfig } from "~/lib/headless-blog";
@@ -16,9 +21,7 @@ import { normalizeLocale, SUPPORTED_LOCALES } from "~/lib/i18n";
 import { useSiteLanguages } from "~/hooks/useSiteLanguages";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  await checkAdminAuth(request, context);
-  
-  const username = await getAdminUser(request, context);
+  const username = await requireAdminUser(request, context);
   const storage = getStorage(context);
   const blogConfig = resolveHeadlessBlogConfig(context, request);
   
@@ -47,8 +50,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 export default function AdminBlog() {
   const { username, posts, stats, publicBlogUrl } = useLoaderData<typeof loader>();
   const siteLanguages = useSiteLanguages();
+  const navigation = useNavigation();
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter") || "all";
+  const pendingEditorPath =
+    navigation.state === "loading" ? navigation.location?.pathname : undefined;
 
   const filteredPosts = posts.filter((post) => {
     if (filter === "published") return !post.draft;
@@ -69,6 +75,7 @@ export default function AdminBlog() {
           </div>
           <Link
             to="/admin/blog/new"
+            prefetch="intent"
             className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium"
           >
             <PlusIcon />
@@ -104,6 +111,7 @@ export default function AdminBlog() {
             {filter === "all" && (
               <Link
                 to="/admin/blog/new"
+                prefetch="intent"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors text-sm font-medium"
               >
                 <PlusIcon />
@@ -137,6 +145,7 @@ export default function AdminBlog() {
                       <div>
                         <Link
                           to={`/admin/blog/${post.slug}`}
+                          prefetch="intent"
                           className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
                         >
                           {post.title}
@@ -205,10 +214,23 @@ export default function AdminBlog() {
                         </a>
                         <Link
                           to={`/admin/blog/${post.slug}`}
-                          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                          prefetch="intent"
+                          aria-label={`Edit ${post.title}`}
+                          aria-busy={
+                            pendingEditorPath === `/admin/blog/${post.slug}`
+                          }
+                          className={`p-2 transition-colors ${
+                            pendingEditorPath === `/admin/blog/${post.slug}`
+                              ? "text-blue-600 dark:text-blue-400"
+                              : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                          }`}
                           title="Edit"
                         >
-                          <EditIcon />
+                          {pendingEditorPath === `/admin/blog/${post.slug}` ? (
+                            <LoadingIcon />
+                          ) : (
+                            <EditIcon />
+                          )}
                         </Link>
                       </div>
                     </td>
@@ -275,6 +297,33 @@ function EditIcon() {
   return (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+    </svg>
+  );
+}
+
+function LoadingIcon() {
+  return (
+    <svg
+      className="h-4 w-4 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="9"
+        stroke="currentColor"
+        strokeWidth="3"
+      />
+      <path
+        className="opacity-90"
+        d="M21 12a9 9 0 00-9-9"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

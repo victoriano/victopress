@@ -7,7 +7,12 @@
 
 import type { ContentIndex, StorageAdapter } from "./types";
 import { scanGalleries } from "./gallery-scanner";
-import { scanBlog, filterPublishedPosts } from "./blog-scanner";
+import {
+  scanBlog,
+  scanBlogPost,
+  filterPublishedPosts,
+  normalizeBlogSlug,
+} from "./blog-scanner";
 import { buildTagIndex } from "./tag-indexer";
 import { sortByDateDesc } from "./utils";
 
@@ -74,6 +79,14 @@ export async function getPostBySlug(
   storage: StorageAdapter,
   slug: string
 ): Promise<Awaited<ReturnType<typeof scanBlog>>[number] | null> {
+  const normalizedSlug = normalizeBlogSlug(slug);
+  if (!normalizedSlug) return null;
+
+  const directPost = await scanBlogPost(storage, normalizedSlug);
+  if (directPost?.slug === normalizedSlug) return directPost;
+
+  // Preserve compatibility with uncommon legacy layouts where the frontmatter
+  // slug does not match the containing folder or flat filename.
   const posts = await scanBlog(storage);
-  return posts.find((p) => p.slug === slug) || null;
+  return posts.find((p) => p.slug === normalizedSlug) || null;
 }

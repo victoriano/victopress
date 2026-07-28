@@ -16,6 +16,7 @@ import type {
 import {
   normalizeLocale,
   resolveTranslation,
+  SUPPORTED_LOCALES,
   type Locale,
 } from "~/lib/i18n";
 import {
@@ -29,6 +30,124 @@ import {
 } from "./utils";
 
 const BLOG_PATH = "blog";
+
+export function normalizeBlogSlug(slug: string): string | null {
+  const normalized = slug.replace(/^\/+|\/+$/g, "");
+  if (!normalized) return null;
+
+  const segments = normalized.split("/");
+  if (
+    segments.some(
+      (segment) =>
+        !segment ||
+        segment === "." ||
+        segment === ".." ||
+        segment.includes("\\"),
+    )
+  ) {
+    return null;
+  }
+
+  return segments.join("/");
+}
+
+/**
+ * Load one post directly from its folder instead of scanning every blog file.
+ *
+ * CMS-created posts and migrated historical posts both use
+ * blog/<slug>/index.md. Reading the source and localized variants in parallel
+ * keeps an editor navigation to one storage round trip. Unusual legacy layouts
+ * still fall back to the generic folder/file scanners below.
+ */
+export async function scanBlogPost(
+  storage: StorageAdapter,
+  slug: string,
+): Promise<BlogPost | null> {
+  const normalizedSlug = normalizeBlogSlug(slug);
+  if (!normalizedSlug) return null;
+
+  const folderPath = `${BLOG_PATH}/${normalizedSlug}`;
+  const localizedFiles = SUPPORTED_LOCALES.map((locale) => ({
+    locale,
+    name: `index.${locale}.md`,
+    path: `${folderPath}/index.${locale}.md`,
+  }));
+  const [items, sourceContent, localizedContents] = await Promise.all([
+    storage.list(folderPath),
+    storage.getText(`${folderPath}/index.md`),
+    Promise.all(
+      localizedFiles.map(async (file) => ({
+        ...file,
+        content: await storage.getText(file.path),
+      })),
+    ),
+  ]);
+
+  if (sourceContent) {
+    const images = items
+      .filter((item) => !item.isDirectory && isImageFile(item.name))
+      .map((item) => item.path);
+    const post = parseMarkdownPost(
+      sourceContent,
+      folderPath,
+      normalizedSlug,
+      images,
+    );
+    const sourceLocale = normalizeLocale(post.locale) || "en";
+    const translations: NonNullable<BlogPost["translations"]> = {
+      [sourceLocale]: translationFromPost(post, sourceLocale),
+    };
+
+    for (const file of localizedContents) {
+      if (!file.content) continue;
+      const variant = parseMarkdownPost(
+        file.content,
+        folderPath,
+        normalizedSlug,
+        images,
+      );
+      translations[file.locale] = translationFromPost(
+        variant,
+        file.locale,
+        file.path,
+      );
+    }
+
+    return { ...post, locale: sourceLocale, translations };
+  }
+
+  const markdownFiles = items.filter(
+    (item) => !item.isDirectory && isMarkdownFile(item.name),
+  );
+  const mainMarkdownFile = findMainMarkdownFile(markdownFiles);
+  if (mainMarkdownFile) {
+    return scanBlogFolder(
+      storage,
+      folderPath,
+      mainMarkdownFile,
+      markdownFiles,
+      items,
+    );
+  }
+
+  // Support the original flat blog/<slug>.md layout without a recursive scan.
+  const rootItems = await storage.list(BLOG_PATH);
+  const flatFile = rootItems.find(
+    (item) =>
+      !item.isDirectory &&
+      isMarkdownFile(item.name) &&
+      !localeFromVariantFilename(item.name) &&
+      getBasename(item.name) === normalizedSlug,
+  );
+  if (!flatFile) return null;
+
+  const variants = rootItems.filter(
+    (item) =>
+      !item.isDirectory &&
+      localizedVariantBelongsTo(item.name, flatFile.name),
+  );
+  return scanBlogFile(storage, flatFile, variants);
+}
 
 /**
  * Scan all blog posts in the content folder

@@ -46,7 +46,12 @@ export {
 // Scanners
 export { scanGalleries, scanParentMetadata } from "./gallery-scanner";
 export type { ParentGalleryMetadata } from "./gallery-scanner";
-export { scanBlog, filterPublishedPosts, localizeBlogPost } from "./blog-scanner";
+export {
+  scanBlog,
+  scanBlogPost,
+  filterPublishedPosts,
+  localizeBlogPost,
+} from "./blog-scanner";
 export type { LocalizedBlogPost } from "./blog-scanner";
 export {
   blogPostFromIndexEntry,

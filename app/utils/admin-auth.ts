@@ -283,22 +283,39 @@ function readSessionCookie(request: Request): string | null {
   return match?.[1] || null;
 }
 
-export async function checkAdminAuth(request: Request, context: AdminContext): Promise<void> {
+/**
+ * Validate an admin request and return the authenticated username from the
+ * same credential read. Loaders that need the username should use this helper
+ * instead of checking auth and then reading the auth record a second time.
+ */
+export async function requireAdminUser(
+  request: Request,
+  context: AdminContext,
+): Promise<string | null> {
   const url = new URL(request.url);
-  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") return;
+  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+    return getAdminCredentials(getEnv(context))?.username || null;
+  }
 
   const credentials = await getEffectiveAdminCredentials(context, request);
   if (!credentials) {
     throw new Response(null, { status: 302, headers: { Location: "/setup" } });
   }
 
-  if (await hasValidAdminSession(request, credentials)) return;
+  if (await hasValidAdminSession(request, credentials)) {
+    return credentials.username;
+  }
 
   const authorization = request.headers.get("Authorization");
   if (authorization?.startsWith("Basic ")) {
     try {
       const [username, password] = atob(authorization.slice(6)).split(":");
-      if (username === credentials.username && await verifyAdminPassword(password, credentials)) return;
+      if (
+        username === credentials.username &&
+        await verifyAdminPassword(password, credentials)
+      ) {
+        return credentials.username;
+      }
     } catch {
       // Invalid Basic Auth data.
     }
@@ -306,6 +323,10 @@ export async function checkAdminAuth(request: Request, context: AdminContext): P
 
   const loginUrl = new URLSearchParams({ redirectTo: url.pathname }).toString();
   throw new Response(null, { status: 302, headers: { Location: `/admin/login?${loginUrl}` } });
+}
+
+export async function checkAdminAuth(request: Request, context: AdminContext): Promise<void> {
+  await requireAdminUser(request, context);
 }
 
 export async function isAdminConfigured(context: AdminContext): Promise<boolean> {

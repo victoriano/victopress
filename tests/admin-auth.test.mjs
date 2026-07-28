@@ -8,6 +8,7 @@ import {
   adminSessionCookie,
   createAdminSessionToken,
   hasValidAdminSession,
+  requireAdminUser,
   setAdminPassword,
   verifyAdminPassword,
 } from "../app/utils/admin-auth.ts";
@@ -84,5 +85,35 @@ describe("local admin password reset", () => {
     expect(persistentResponse.headers.get("Set-Cookie")).toContain("Max-Age=86400");
     expect(browserSessionResponse.status).toBe(302);
     expect(browserSessionResponse.headers.get("Set-Cookie")).not.toContain("Max-Age");
+  });
+
+  test("returns the authenticated username without reading credentials twice", async () => {
+    const credentials = { username: "admin", password: "test-password" };
+    const token = await createAdminSessionToken(credentials);
+    let authRecordReads = 0;
+    const emptyAuthBucket = {
+      get: async () => {
+        authRecordReads += 1;
+        return null;
+      },
+    };
+
+    const username = await requireAdminUser(
+      new Request("https://victopress.example/admin/blog/example", {
+        headers: { Cookie: `admin_auth=${token}` },
+      }),
+      {
+        cloudflare: {
+          env: {
+            ADMIN_USERNAME: credentials.username,
+            ADMIN_PASSWORD: credentials.password,
+            CONTENT_BUCKET: emptyAuthBucket,
+          },
+        },
+      },
+    );
+
+    expect(username).toBe("admin");
+    expect(authRecordReads).toBe(1);
   });
 });

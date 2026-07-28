@@ -4,7 +4,7 @@
  * Layout for the CMS admin panel with sidebar and header.
  */
 
-import { Link, NavLink, Form } from "@remix-run/react";
+import { Link, NavLink, Form, useNavigation } from "@remix-run/react";
 import { ThemeToggle } from "./ThemeToggle";
 import { DemoModeBanner, DemoModeIndicator } from "./DemoModeBanner";
 
@@ -15,8 +15,35 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children, username, isDemoMode = false }: AdminLayoutProps) {
+  const navigation = useNavigation();
+  const isNavigating = navigation.state === "loading";
+  const destination = navigation.location?.pathname;
+  const navigationMessage =
+    destination?.startsWith("/admin/blog/") &&
+    destination !== "/admin/blog/new"
+      ? "Opening editor…"
+      : destination === "/admin/blog/new"
+        ? "Opening new post…"
+        : "Loading…";
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {isNavigating && (
+        <div
+          className="pointer-events-none fixed left-1/2 top-20 z-[70] -translate-x-1/2 lg:top-4"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-3.5 py-2 text-sm font-medium text-gray-700 shadow-lg backdrop-blur dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-200">
+            <span
+              className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400"
+              aria-hidden="true"
+            />
+            {navigationMessage}
+          </div>
+        </div>
+      )}
+
       {/* Demo Mode Banner - shown at top when in demo mode */}
       {isDemoMode && <DemoModeBanner className="fixed top-0 left-0 right-0 z-50 lg:left-64" />}
       
