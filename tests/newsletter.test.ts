@@ -17,10 +17,12 @@ import {
   NewsletterCampaignAlreadySentError,
   requestNewsletterSubscription,
   sendNewsletterCampaign,
+  trackNewsletterOpenToken,
   unsubscribeNewsletterToken,
 } from "~/lib/newsletter/newsletter-service.server";
 import {
   getNewsletterSubscriber,
+  listNewsletterOpens,
   normalizeNewsletterEmail,
   saveNewsletterSubscriber,
 } from "~/lib/newsletter/subscriber-store.server";
@@ -235,6 +237,29 @@ describe("newsletter double opt-in and unsubscribe", () => {
     );
     expect(confirmationMatch).not.toBeNull();
     const confirmationToken = decodeURIComponent(confirmationMatch![1]);
+    expect((await verifyNewsletterToken({
+      token: confirmationToken,
+      secret: newsletterConfig.tokenSecret,
+      purpose: "confirm",
+      now: now.getTime() + 49 * 60 * 60 * 1000,
+    }))?.subscriberId).toBe(await newsletterSubscriberId("reader@example.com"));
+    expect(await verifyNewsletterToken({
+      token: confirmationToken,
+      secret: newsletterConfig.tokenSecret,
+      purpose: "confirm",
+      now: now.getTime() + 73 * 60 * 60 * 1000,
+    })).toBeNull();
+    expect(calls[0].body.html).toContain(
+      '<table role="presentation" class="outer" width="100%"',
+    );
+    expect(calls[0].body.html).toContain("box-sizing:border-box");
+    expect(calls[0].body.html).not.toContain('<div class="shell">');
+    expect(calls[0].body.html).toContain(
+      "medición aproximada de apertura",
+    );
+    expect(calls[0].body.html).toContain(
+      "El enlace caduca dentro de 72 horas.",
+    );
     const confirmed = await confirmNewsletterToken({
       storage,
       config: newsletterConfig,
@@ -355,6 +380,9 @@ describe("newsletter campaigns", () => {
       now: new Date("2026-07-28T11:00:00.000Z"),
     });
     expect(campaign.status).toBe("sent");
+    expect(campaign.batches.every((batch) =>
+      batch.sentRecipientIds?.length === batch.recipientCount
+    )).toBe(true);
     expect(batches.map((batch) => batch.length)).toEqual([100, 1]);
     expect(batches.flat()).toHaveLength(101);
     expect(batches.flat().some((message) =>
@@ -369,7 +397,70 @@ describe("newsletter campaigns", () => {
       );
       expect(message.html).toContain("Darme de baja");
       expect(message.html).not.toContain("reader-0@example.com");
+      expect(message.html).toMatch(
+        /newsletter\/open\.gif\?token=[^"&]+/,
+      );
+      expect(message.html).toContain(
+        'width="1" height="1" alt="" aria-hidden="true"',
+      );
+      expect(message.html).toContain(
+        "apertura se detecta de forma aproximada",
+      );
     }
+
+    const firstOpenMatch = String(batches[0][0].html).match(
+      /newsletter\/open\.gif\?token=([^"&]+)/,
+    );
+    expect(firstOpenMatch).not.toBeNull();
+    const firstOpenToken = decodeURIComponent(firstOpenMatch![1]);
+    const openPayload = await verifyNewsletterToken({
+      token: firstOpenToken,
+      secret: newsletterConfig.tokenSecret,
+      purpose: "open",
+    });
+    expect(openPayload?.campaignId).toBe(campaign.id);
+    expect(campaign.recipientIds).toContain(openPayload?.subscriberId);
+
+    const firstDetection = await trackNewsletterOpenToken({
+      storage,
+      config: newsletterConfig,
+      token: firstOpenToken,
+      now: new Date("2026-07-28T12:00:00.000Z"),
+    });
+    const secondDetection = await trackNewsletterOpenToken({
+      storage,
+      config: newsletterConfig,
+      token: firstOpenToken,
+      now: new Date("2026-07-28T12:05:00.000Z"),
+    });
+    const laterDetection = await trackNewsletterOpenToken({
+      storage,
+      config: newsletterConfig,
+      token: firstOpenToken,
+      now: new Date("2026-07-28T14:05:00.000Z"),
+    });
+    expect(firstDetection?.openCount).toBe(1);
+    expect(secondDetection?.openCount).toBe(1);
+    expect(laterDetection?.openCount).toBe(2);
+    expect(secondDetection?.firstOpenedAt).toBe(
+      "2026-07-28T12:00:00.000Z",
+    );
+    expect(laterDetection?.lastOpenedAt).toBe(
+      "2026-07-28T14:05:00.000Z",
+    );
+    expect(await listNewsletterOpens(storage, campaign.id)).toHaveLength(1);
+
+    const unrelatedOpenToken = await createNewsletterToken({
+      secret: newsletterConfig.tokenSecret,
+      purpose: "open",
+      subscriberId: campaign.recipientIds[0],
+      campaignId: "a".repeat(64),
+    });
+    expect(await trackNewsletterOpenToken({
+      storage,
+      config: newsletterConfig,
+      token: unrelatedOpenToken,
+    })).toBeNull();
 
     await expect(sendNewsletterCampaign({
       storage,

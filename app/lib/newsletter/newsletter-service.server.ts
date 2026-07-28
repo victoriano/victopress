@@ -20,6 +20,7 @@ import {
   markConfirmationDeliveryFailed,
   normalizeNewsletterEmail,
   prepareNewsletterSubscription,
+  recordNewsletterOpen,
   saveNewsletterCampaign,
   unsubscribeNewsletterSubscriber,
 } from "./subscriber-store.server";
@@ -29,10 +30,11 @@ import {
 } from "./resend.server";
 import type {
   NewsletterCampaign,
+  NewsletterOpenRecord,
   NewsletterSubscriber,
 } from "./types";
 
-const CONFIRMATION_TTL_SECONDS = 48 * 60 * 60;
+const CONFIRMATION_TTL_SECONDS = 72 * 60 * 60;
 const RESEND_BATCH_SIZE = 100;
 
 export class NewsletterConfigurationError extends Error {
@@ -204,6 +206,41 @@ export async function unsubscribeNewsletterToken(options: {
   });
 }
 
+export async function trackNewsletterOpenToken(options: {
+  storage: StorageAdapter;
+  config: NewsletterConfig;
+  token: string;
+  now?: Date;
+}): Promise<NewsletterOpenRecord | null> {
+  requireConfiguration(options.config);
+  const payload = await verifyNewsletterToken({
+    token: options.token,
+    secret: options.config.tokenSecret,
+    purpose: "open",
+    now: (options.now || new Date()).getTime(),
+  });
+  if (!payload?.campaignId) return null;
+
+  const [campaign, subscriber] = await Promise.all([
+    getNewsletterCampaign(options.storage, payload.campaignId),
+    getNewsletterSubscriber(options.storage, payload.subscriberId),
+  ]);
+  if (
+    !campaign ||
+    !subscriber ||
+    !campaign.recipientIds.includes(payload.subscriberId)
+  ) {
+    return null;
+  }
+
+  return recordNewsletterOpen({
+    storage: options.storage,
+    campaignId: campaign.id,
+    subscriberId: subscriber.id,
+    now: options.now,
+  });
+}
+
 function campaignBatches(recipientIds: string[]) {
   const batches = [];
   for (let index = 0; index < recipientIds.length; index += RESEND_BATCH_SIZE) {
@@ -314,6 +351,17 @@ export async function sendNewsletterCampaign(options: {
           "/newsletter/unsubscribe",
           unsubscribeToken,
         );
+        const openToken = await createNewsletterToken({
+          secret: options.config.tokenSecret,
+          purpose: "open",
+          subscriberId: subscriber.id,
+          campaignId: campaign!.id,
+        });
+        const trackingPixelUrl = link(
+          options.config.baseUrl,
+          "/newsletter/open.gif",
+          openToken,
+        );
         return buildNewsletterEmail({
           locale: campaign!.locale,
           siteName: options.config.siteName,
@@ -322,6 +370,7 @@ export async function sendNewsletterCampaign(options: {
           subject: campaign!.subject,
           post: options.post,
           unsubscribeUrl,
+          trackingPixelUrl,
           replyTo: options.config.replyTo,
           campaignTag: campaign!.id.slice(0, 32),
         });
@@ -335,6 +384,7 @@ export async function sendNewsletterCampaign(options: {
       const completedAt = new Date().toISOString();
       batch.status = "sent";
       batch.recipientCount = subscribers.length;
+      batch.sentRecipientIds = subscribers.map((subscriber) => subscriber.id);
       batch.resendEmailIds = resendEmailIds;
       batch.completedAt = completedAt;
       campaign.updatedAt = completedAt;

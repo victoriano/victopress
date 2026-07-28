@@ -8,7 +8,7 @@ newsletter campaigns, but it is not the source of truth for consent.
 1. The footer form submits an email address and the current blog language.
 2. VictoPress writes a `pending` subscriber record and sends a confirmation
    email through Resend.
-3. The signed confirmation link is valid for 48 hours. Opening it changes the
+3. The signed confirmation link is valid for 72 hours. Opening it changes the
    record to `active`.
 4. **Admin → Newsletter** sends a published post only to active subscribers
    whose saved language matches the chosen edition.
@@ -18,6 +18,9 @@ newsletter campaigns, but it is not the source of truth for consent.
    scanners cannot silently remove a subscriber. A human form submission—or
    the standard one-click email-client `POST`—changes the status to
    `unsubscribed`.
+7. Campaign emails include a signed, recipient-specific one-pixel image.
+   VictoPress records approximate open detections and exposes both campaign
+   totals and a per-recipient report in **Admin → Newsletter**.
 
 Unsubscribed records are retained as a suppression/consent trail and are never
 included in future sends. Subscribing again starts a new double-opt-in flow.
@@ -30,8 +33,11 @@ The newsletter uses the same `StorageAdapter` as the rest of VictoPress:
 .victopress/newsletter/
 ├── subscribers/
 │   └── <sha256-normalized-email>.json
-└── campaigns/
-    └── <sha256-language-and-post-slug>.json
+├── campaigns/
+│   └── <sha256-language-and-post-slug>.json
+└── opens/
+    └── <campaign-id>/
+        └── <subscriber-id>.json
 ```
 
 The paths are under `content/.victopress/` in local development (already
@@ -42,12 +48,18 @@ two simultaneous signups could overwrite one another. Campaign records retain
 batch progress and Resend message IDs so a failed send can resume without
 repeating completed batches.
 
+Open records retain first/last detection timestamps and a throttled request
+count, but no IP address or user agent. They indicate that a mail client
+requested the tracking image, not that a person definitely read the message:
+image blocking can hide real opens, while privacy proxies and security scanners
+can create detections automatically.
+
 ## Required configuration
 
 | Variable | Kind | Purpose |
 |---|---|---|
 | `RESEND_API_KEY` | secret | Resend API authentication |
-| `NEWSLETTER_TOKEN_SECRET` | secret | HMAC signing for confirmation and unsubscribe links; use at least 32 random characters |
+| `NEWSLETTER_TOKEN_SECRET` | secret | HMAC signing for confirmation, unsubscribe, and open-detection links; use at least 32 random characters |
 | `NEWSLETTER_FROM_EMAIL` | variable | Sender in `Name <email@verified-domain>` format |
 | `NEWSLETTER_REPLY_TO` | optional variable | Reply-to address |
 | `PUBLIC_NEWSLETTER_URL` | optional variable | Public origin that hosts `/newsletter/*`; request origin is the fallback |
@@ -85,7 +97,10 @@ old confirmation and unsubscribe links depend on it.
 
 The admin action requires an explicit checkbox before it makes an external
 send. VictoPress renders the selected language edition, uses absolute image and
-article URLs, and sends personalized batches of at most 100 messages.
+article URLs, and sends personalized batches of at most 100 messages. The HTML
+uses a fixed-layout presentation table, bounded media, and wrapping for long
+URLs/code so supported mail clients do not create a page-level horizontal
+scroll.
 
 Only one completed campaign is allowed for each post/language pair. A provider
 failure saves the campaign as `failed`; submitting the same post/language

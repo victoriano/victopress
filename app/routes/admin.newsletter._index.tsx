@@ -1,6 +1,7 @@
 import { json } from "@remix-run/cloudflare";
 import type {
   ActionFunctionArgs,
+  HeadersFunction,
   LoaderFunctionArgs,
   MetaFunction,
 } from "@remix-run/cloudflare";
@@ -31,6 +32,7 @@ import {
 } from "~/lib/newsletter/newsletter-service.server";
 import {
   listNewsletterCampaigns,
+  listNewsletterOpens,
   listNewsletterSubscribers,
   newsletterSubscriberStats,
 } from "~/lib/newsletter/subscriber-store.server";
@@ -40,15 +42,40 @@ export const meta: MetaFunction = () => [
   { title: "Newsletter — VictoPress" },
 ];
 
+export const headers: HeadersFunction = () => ({
+  "Cache-Control": "private, no-store, max-age=0",
+  "X-Robots-Tag": "noindex, nofollow",
+});
+
+const subscriberFilters = ["all", "active", "pending", "unsubscribed"] as const;
+type SubscriberFilter = typeof subscriberFilters[number];
+
 export async function loader({ request, context }: LoaderFunctionArgs) {
   await checkAdminAuth(request, context);
   const storage = getStorage(context, request);
-  const [username, subscribers, campaigns, contentIndex] = await Promise.all([
+  const [username, allSubscribers, campaigns, contentIndex] = await Promise.all([
     getAdminUser(request, context),
     listNewsletterSubscribers(storage),
     listNewsletterCampaigns(storage),
     getContentIndex(storage),
   ]);
+  const requestedFilter = new URL(request.url).searchParams.get("status");
+  const subscriberFilter: SubscriberFilter = subscriberFilters.includes(
+      requestedFilter as SubscriberFilter,
+    )
+    ? requestedFilter as SubscriberFilter
+    : "all";
+  const subscribers = subscriberFilter === "all"
+    ? allSubscribers
+    : allSubscribers.filter((subscriber) => subscriber.status === subscriberFilter);
+  const campaignOpenCounts = Object.fromEntries(
+    await Promise.all(
+      campaigns.map(async (campaign) => [
+        campaign.id,
+        (await listNewsletterOpens(storage, campaign.id)).length,
+      ] as const),
+    ),
+  );
   const config = resolveNewsletterConfig(context, request);
   const posts = contentIndex.posts
     .filter((post) => !post.draft)
@@ -65,8 +92,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     username,
     subscribers,
     campaigns,
+    campaignOpenCounts,
     posts,
-    stats: newsletterSubscriberStats(subscribers),
+    stats: newsletterSubscriberStats(allSubscribers),
+    subscriberFilter,
     configuration: {
       configured: config.configured,
       missing: config.missing,
@@ -174,8 +203,10 @@ export default function AdminNewsletter() {
     username,
     subscribers,
     campaigns,
+    campaignOpenCounts,
     posts,
     stats,
+    subscriberFilter,
     configuration,
   } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
@@ -232,7 +263,9 @@ export default function AdminNewsletter() {
                 }`}
                 role="status"
               >
-                {actionData.ok ? actionData.message : actionData.error}
+                {"message" in actionData
+                  ? actionData.message
+                  : actionData.error}
               </div>
             )}
 
@@ -347,6 +380,9 @@ export default function AdminNewsletter() {
         <section className="mb-8 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
           <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
             <h2 className="font-semibold text-gray-900 dark:text-white">Campaigns</h2>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              Opens are detections, not proof of reading: inboxes can block, cache, or preload images.
+            </p>
           </div>
           {campaigns.length === 0 ? (
             <p className="p-6 text-sm text-gray-500 dark:text-gray-400">
@@ -360,8 +396,10 @@ export default function AdminNewsletter() {
                     <th className="px-5 py-3">Post</th>
                     <th className="px-5 py-3">Language</th>
                     <th className="px-5 py-3">Recipients</th>
+                    <th className="px-5 py-3">Open detections</th>
                     <th className="px-5 py-3">Status</th>
                     <th className="px-5 py-3">Created</th>
+                    <th className="px-5 py-3"><span className="sr-only">Report</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -384,11 +422,31 @@ export default function AdminNewsletter() {
                           0,
                         )}
                       </td>
+                      <td className="px-5 py-4 text-gray-600 dark:text-gray-300">
+                        {campaignOpenCounts[campaign.id]}{" "}
+                        <span className="text-gray-400">
+                          ({formatOpenRate(
+                            campaignOpenCounts[campaign.id],
+                            campaign.batches.reduce(
+                              (total, batch) => total + (batch.recipientCount || 0),
+                              0,
+                            ),
+                          )})
+                        </span>
+                      </td>
                       <td className="px-5 py-4">
                         <StatusBadge status={campaign.status} />
                       </td>
                       <td className="px-5 py-4 text-gray-500 dark:text-gray-400">
                         {formatDate(campaign.createdAt)}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <Link
+                          to={`/admin/newsletter/${campaign.id}`}
+                          className="font-medium text-gray-900 hover:underline dark:text-white"
+                        >
+                          Report
+                        </Link>
                       </td>
                     </tr>
                   ))}
@@ -398,19 +456,46 @@ export default function AdminNewsletter() {
           )}
         </section>
 
-        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-          <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-            <div>
-              <h2 className="font-semibold text-gray-900 dark:text-white">Subscribers</h2>
-              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                Double opt-in records stored privately in VictoPress.
-              </p>
+        <section id="subscribers" className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+          <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="font-semibold text-gray-900 dark:text-white">Subscribers</h2>
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  Double opt-in records stored privately in VictoPress.
+                </p>
+              </div>
+              <span className="text-sm text-gray-500 dark:text-gray-400">{subscribers.length}</span>
             </div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">{stats.total}</span>
+            <nav className="mt-4 flex flex-wrap gap-2" aria-label="Subscriber status">
+              {subscriberFilters.map((filter) => {
+                const count = filter === "all" ? stats.total : stats[filter];
+                const selected = subscriberFilter === filter;
+                return (
+                  <Link
+                    key={filter}
+                    to={filter === "all"
+                      ? "/admin/newsletter#subscribers"
+                      : `/admin/newsletter?status=${filter}#subscribers`}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      selected
+                        ? "bg-gray-950 text-white dark:bg-white dark:text-gray-950"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+                    }`}
+                  >
+                    {filter === "all"
+                      ? "All"
+                      : filter[0].toUpperCase() + filter.slice(1)} ({count})
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
           {subscribers.length === 0 ? (
             <p className="p-6 text-sm text-gray-500 dark:text-gray-400">
-              No one has subscribed yet.
+              {subscriberFilter === "all"
+                ? "No one has subscribed yet."
+                : `There are no ${subscriberFilter} subscribers.`}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -498,4 +583,12 @@ function formatDate(value: string): string {
     timeStyle: "short",
     timeZone: "Europe/Madrid",
   }).format(new Date(value));
+}
+
+function formatOpenRate(opens: number, recipients: number): string {
+  if (recipients < 1) return "—";
+  return new Intl.NumberFormat("en-GB", {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(opens / recipients);
 }

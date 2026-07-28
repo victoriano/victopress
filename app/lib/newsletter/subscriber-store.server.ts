@@ -3,22 +3,37 @@ import type { StorageAdapter } from "~/lib/content-engine";
 import {
   NEWSLETTER_CONSENT_VERSION,
   type NewsletterCampaign,
+  type NewsletterOpenRecord,
   type NewsletterSubscriber,
   type NewsletterSubscriberStats,
 } from "./types";
 
 const SUBSCRIBER_PREFIX = ".victopress/newsletter/subscribers";
 const CAMPAIGN_PREFIX = ".victopress/newsletter/campaigns";
+const OPEN_PREFIX = ".victopress/newsletter/opens";
 const CONFIRMATION_COOLDOWN_MS = 10 * 60 * 1000;
+const OPEN_DETECTION_COOLDOWN_MS = 60 * 60 * 1000;
+const MAX_OPEN_DETECTIONS = 100;
+
+function requireNewsletterId(value: string, label: string): string {
+  if (!/^[a-f0-9]{64}$/.test(value)) {
+    throw new Error(`Invalid ${label} id.`);
+  }
+  return value;
+}
 
 function subscriberPath(id: string): string {
-  if (!/^[a-f0-9]{64}$/.test(id)) throw new Error("Invalid subscriber id.");
-  return `${SUBSCRIBER_PREFIX}/${id}.json`;
+  return `${SUBSCRIBER_PREFIX}/${requireNewsletterId(id, "subscriber")}.json`;
 }
 
 function campaignPath(id: string): string {
-  if (!/^[a-f0-9]{64}$/.test(id)) throw new Error("Invalid campaign id.");
-  return `${CAMPAIGN_PREFIX}/${id}.json`;
+  return `${CAMPAIGN_PREFIX}/${requireNewsletterId(id, "campaign")}.json`;
+}
+
+function openPath(campaignId: string, subscriberId: string): string {
+  return `${OPEN_PREFIX}/${requireNewsletterId(campaignId, "campaign")}/${
+    requireNewsletterId(subscriberId, "subscriber")
+  }.json`;
 }
 
 function parseSubscriber(raw: string | null): NewsletterSubscriber | null {
@@ -49,7 +64,46 @@ function parseCampaign(raw: string | null): NewsletterCampaign | null {
       !/^[a-f0-9]{64}$/.test(value.id) ||
       !["sending", "sent", "failed"].includes(value.status) ||
       !Array.isArray(value.recipientIds) ||
-      !Array.isArray(value.batches)
+      !value.recipientIds.every((id) =>
+        typeof id === "string" && /^[a-f0-9]{64}$/.test(id)
+      ) ||
+      !Array.isArray(value.batches) ||
+      !value.batches.every((batch) =>
+        Number.isInteger(batch.index) &&
+        Array.isArray(batch.recipientIds) &&
+        batch.recipientIds.every((id) =>
+          typeof id === "string" && /^[a-f0-9]{64}$/.test(id)
+        ) &&
+        ["pending", "sent", "skipped"].includes(batch.status) &&
+        (batch.sentRecipientIds === undefined ||
+          (Array.isArray(batch.sentRecipientIds) &&
+            batch.sentRecipientIds.every((id) =>
+              typeof id === "string" && /^[a-f0-9]{64}$/.test(id)
+            )))
+      )
+    ) {
+      return null;
+    }
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function parseOpenRecord(raw: string | null): NewsletterOpenRecord | null {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as NewsletterOpenRecord;
+    if (
+      value.version !== 1 ||
+      !/^[a-f0-9]{64}$/.test(value.campaignId) ||
+      !/^[a-f0-9]{64}$/.test(value.subscriberId) ||
+      typeof value.firstOpenedAt !== "string" ||
+      typeof value.lastOpenedAt !== "string" ||
+      !Number.isFinite(Date.parse(value.firstOpenedAt)) ||
+      !Number.isFinite(Date.parse(value.lastOpenedAt)) ||
+      !Number.isInteger(value.openCount) ||
+      value.openCount < 1
     ) {
       return null;
     }
@@ -302,4 +356,77 @@ export async function listNewsletterCampaigns(
   return records
     .filter((record): record is NewsletterCampaign => Boolean(record))
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+export async function getNewsletterOpen(
+  storage: StorageAdapter,
+  campaignId: string,
+  subscriberId: string,
+): Promise<NewsletterOpenRecord | null> {
+  return parseOpenRecord(
+    await storage.getText(openPath(campaignId, subscriberId)),
+  );
+}
+
+export async function recordNewsletterOpen(options: {
+  storage: StorageAdapter;
+  campaignId: string;
+  subscriberId: string;
+  now?: Date;
+}): Promise<NewsletterOpenRecord> {
+  const now = options.now || new Date();
+  const openedAt = now.toISOString();
+  const existing = await getNewsletterOpen(
+    options.storage,
+    options.campaignId,
+    options.subscriberId,
+  );
+  const lastOpenedAt = existing
+    ? new Date(existing.lastOpenedAt).getTime()
+    : 0;
+  if (
+    existing &&
+    (existing.openCount >= MAX_OPEN_DETECTIONS ||
+      (Number.isFinite(lastOpenedAt) &&
+        now.getTime() - lastOpenedAt < OPEN_DETECTION_COOLDOWN_MS))
+  ) {
+    return existing;
+  }
+  const record: NewsletterOpenRecord = existing
+    ? {
+        ...existing,
+        lastOpenedAt: openedAt,
+        openCount: existing.openCount + 1,
+      }
+    : {
+        version: 1,
+        campaignId: options.campaignId,
+        subscriberId: options.subscriberId,
+        firstOpenedAt: openedAt,
+        lastOpenedAt: openedAt,
+        openCount: 1,
+      };
+  await options.storage.put(
+    openPath(options.campaignId, options.subscriberId),
+    JSON.stringify(record, null, 2),
+    "application/json",
+  );
+  return record;
+}
+
+export async function listNewsletterOpens(
+  storage: StorageAdapter,
+  campaignId: string,
+): Promise<NewsletterOpenRecord[]> {
+  const prefix = `${OPEN_PREFIX}/${requireNewsletterId(campaignId, "campaign")}`;
+  const files = (await storage.listRecursive(prefix))
+    .filter((file) => !file.isDirectory && file.name.endsWith(".json"))
+    .sort((left, right) => left.path.localeCompare(right.path));
+  const records = await mapInChunks(files, async (file) =>
+    parseOpenRecord(await storage.getText(file.path)),
+  );
+  return records
+    .filter((record): record is NewsletterOpenRecord => Boolean(record))
+    .filter((record) => record.campaignId === campaignId)
+    .sort((left, right) => left.firstOpenedAt.localeCompare(right.firstOpenedAt));
 }

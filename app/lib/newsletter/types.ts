@@ -35,6 +35,7 @@ export interface NewsletterCampaignBatch {
   recipientIds: string[];
   status: "pending" | "sent" | "skipped";
   recipientCount?: number;
+  sentRecipientIds?: string[];
   resendEmailIds?: string[];
   completedAt?: string;
 }
@@ -61,4 +62,13 @@ export interface NewsletterSubscriberStats {
   active: number;
   unsubscribed: number;
   activeByLocale: Record<Locale, number>;
+}
+
+export interface NewsletterOpenRecord {
+  version: 1;
+  campaignId: string;
+  subscriberId: string;
+  firstOpenedAt: string;
+  lastOpenedAt: string;
+  openCount: number;
 }

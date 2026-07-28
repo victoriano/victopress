@@ -1,9 +1,10 @@
-export type NewsletterTokenPurpose = "confirm" | "unsubscribe";
+export type NewsletterTokenPurpose = "confirm" | "unsubscribe" | "open";
 
-interface NewsletterTokenPayload {
+export interface NewsletterTokenPayload {
   version: 1;
   purpose: NewsletterTokenPurpose;
   subscriberId: string;
+  campaignId?: string;
   expiresAt?: number;
 }
 
@@ -76,14 +77,23 @@ export async function createNewsletterToken(options: {
   secret: string;
   purpose: NewsletterTokenPurpose;
   subscriberId: string;
+  campaignId?: string;
   now?: number;
   expiresInSeconds?: number;
 }): Promise<string> {
+  if (
+    (options.purpose === "open" &&
+      !/^[a-f0-9]{64}$/.test(options.campaignId || "")) ||
+    (options.purpose !== "open" && options.campaignId !== undefined)
+  ) {
+    throw new Error("Invalid newsletter token context.");
+  }
   const now = options.now ?? Date.now();
   const payload: NewsletterTokenPayload = {
     version: 1,
     purpose: options.purpose,
     subscriberId: options.subscriberId,
+    ...(options.campaignId ? { campaignId: options.campaignId } : {}),
     ...(options.expiresInSeconds
       ? { expiresAt: now + options.expiresInSeconds * 1000 }
       : {}),
@@ -116,6 +126,10 @@ export async function verifyNewsletterToken(options: {
       payload.purpose !== options.purpose ||
       typeof payload.subscriberId !== "string" ||
       !/^[a-f0-9]{64}$/.test(payload.subscriberId) ||
+      (options.purpose === "open" &&
+        (typeof payload.campaignId !== "string" ||
+          !/^[a-f0-9]{64}$/.test(payload.campaignId))) ||
+      (options.purpose !== "open" && payload.campaignId !== undefined) ||
       (payload.expiresAt !== undefined &&
         (typeof payload.expiresAt !== "number" || payload.expiresAt < now))
     ) {
