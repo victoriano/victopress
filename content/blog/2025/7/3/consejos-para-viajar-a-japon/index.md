@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: true
 format: markdown
+categories: [photos]
 tags: ["Traveling", "Photography"]
 sourceUrl: "https://app.notion.com/p/225358038bc580119b85d3f84023e99c"
 ---

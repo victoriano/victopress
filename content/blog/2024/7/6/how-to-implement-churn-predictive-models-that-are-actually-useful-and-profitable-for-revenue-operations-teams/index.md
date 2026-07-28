@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [data, product, business]
 tags: ["Data Analytics"]
 sourceUrl: "https://app.notion.com/p/68fc4fc1e5994c42a9d6fdd1a9c65cfd"
 cover: "blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/image-01.png"

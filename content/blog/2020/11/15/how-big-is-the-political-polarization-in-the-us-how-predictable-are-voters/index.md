@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [data]
 sourceUrl: "https://app.notion.com/p/153056c9495e479ca94ce4990010213f"
 cover: "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-01.jpg"
 coverInBody: true

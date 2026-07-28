@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: false
 format: markdown
+categories: [photos]
 coverInBody: true
 sourceUrl: "https://victoriano.me/blog/2017/1/31/la-nia-fotgrafa-de-sol"
 cover: "blog/2017/1/31/la-nia-fotgrafa-de-sol/image-asset.jpeg"

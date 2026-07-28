@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: false
 format: markdown
+categories: [product, business]
 tags: ["Technology","Entrepeneurship","Predicting the Future"]
 sourceUrl: "https://app.notion.com/p/ce6c7602d10a43f986c228b6fb3845d3"
 cover: "blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/image-01.png"

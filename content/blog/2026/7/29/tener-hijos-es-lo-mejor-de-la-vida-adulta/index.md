@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: true
 format: markdown
+categories: [business]
 tags: ["paternidad", "familia", "generación"]
 ---
 

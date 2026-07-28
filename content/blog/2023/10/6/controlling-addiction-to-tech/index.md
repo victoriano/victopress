@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: true
 format: markdown
+categories: [product]
 tags: ["Self-Control"]
 sourceUrl: "https://app.notion.com/p/f32f111ec1f24021a5666720c9c38cfa"
 cover: "blog/2023/10/6/controlling-addiction-to-tech/one-sec-app-usage.png"

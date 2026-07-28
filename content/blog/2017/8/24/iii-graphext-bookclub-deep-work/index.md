@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: false
 format: markdown
+categories: [business]
 tags: ["Attention"]
 sourceUrl: "https://app.notion.com/p/17f14169b3a94db9bd53d0ade5a4045f"
 cover: "blog/2017/8/24/iii-graphext-bookclub-deep-work/image-01.jpg"

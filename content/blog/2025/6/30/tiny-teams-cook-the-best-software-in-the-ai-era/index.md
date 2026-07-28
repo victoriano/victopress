@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: true
 format: markdown
+categories: [product, business]
 tags: ["Entrepeneurship", "Predicting the Future", "LLMs / Gen AI"]
 sourceUrl: "https://app.notion.com/p/1f4358038bc5800abe6bfe7800fe7734"
 ---

@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: false
 format: markdown
+categories: [business]
 tags: ["Learning"]
 sourceUrl: "https://app.notion.com/p/95a22acde75d4d9080a9022611269e31"
 cover: "blog/2016/12/24/the-unpublished-golden-information/image-01.png"

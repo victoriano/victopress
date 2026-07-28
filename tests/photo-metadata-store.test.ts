@@ -98,7 +98,7 @@ describe("private photo metadata sidecars", () => {
     await storage.put(photoPath, await Bun.file(samplePath).arrayBuffer(), "image/jpeg");
 
     const index: ContentIndex = {
-      version: 10,
+      version: 11,
       updatedAt: "2026-07-19T10:00:00.000Z",
       galleries: [{
         slug: "example",

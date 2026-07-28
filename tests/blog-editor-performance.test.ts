@@ -34,6 +34,7 @@ describe("blog editor loading", () => {
 
     expect(post?.slug).toBe(slug);
     expect(post?.title).toContain("Manna");
+    expect(post?.categories).toEqual(["product", "business"]);
     expect(post?.translations?.es?.content).toContain("El libro");
     expect(post?.translations?.en?.content).toContain("During these holidays");
     expect(recursiveScans).toBe(0);

@@ -22,6 +22,7 @@ import {
   SUPPORTED_LOCALES,
   type Locale,
 } from "~/lib/i18n";
+import { normalizeBlogCategories } from "~/lib/blog-categories";
 
 type BlogActionContext = ActionFunctionArgs["context"];
 
@@ -76,6 +77,7 @@ function sharedFrontmatter(formData: FormData, existing: Record<string, unknown>
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
+  const categories = normalizeBlogCategories(text(formData, "categories"));
 
   if (date) next.date = date;
   else delete next.date;
@@ -83,6 +85,8 @@ function sharedFrontmatter(formData: FormData, existing: Record<string, unknown>
   else delete next.author;
   if (tags.length > 0) next.tags = tags;
   else delete next.tags;
+  if (categories.length > 0) next.categories = categories;
+  else delete next.categories;
   if (formData.get("draft") !== null) next.draft = formData.get("draft") === "true";
   next.format = "markdown";
 
@@ -172,9 +176,13 @@ async function handleCreate(formData: FormData, context: BlogActionContext) {
   const sourceLocale = normalizeLocale(formData.get("sourceLocale")) || "es";
   const source = edition(formData, sourceLocale);
   const legacy = legacyEdition(formData);
+  const categories = normalizeBlogCategories(text(formData, "categories"));
 
-  if (!slug || !(source.title || legacy.title)) {
-    return json({ success: false, error: "Slug and source title are required" }, { status: 400 });
+  if (!slug || !(source.title || legacy.title) || categories.length === 0) {
+    return json(
+      { success: false, error: "Slug, source title and at least one category are required" },
+      { status: 400 },
+    );
   }
   if (!/^[a-z0-9-]+$/.test(slug)) {
     return json(
@@ -202,8 +210,12 @@ async function handleCreate(formData: FormData, context: BlogActionContext) {
 
 async function handleUpdate(formData: FormData, context: BlogActionContext) {
   const slug = text(formData, "slug");
-  if (!slug) {
-    return json({ success: false, error: "Slug is required" }, { status: 400 });
+  const categories = normalizeBlogCategories(text(formData, "categories"));
+  if (!slug || categories.length === 0) {
+    return json(
+      { success: false, error: "Slug and at least one category are required" },
+      { status: 400 },
+    );
   }
 
   const storage = getStorage(context);

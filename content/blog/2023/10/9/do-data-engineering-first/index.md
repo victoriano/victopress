@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: true
 format: markdown
+categories: [data, product, business]
 tags: ["Data Analytics", "Generative AI", "Data Engineering"]
 sourceUrl: "https://app.notion.com/p/7241b455750246689d28b5df71935ede"
 cover: "blog/2023/10/9/do-data-engineering-first/data-maturity-ladder.jpg"

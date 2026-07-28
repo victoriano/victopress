@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [data, business]
 sourceUrl: "https://app.notion.com/p/e78de7840c194f40a0eceb558993e4bc"
 cover: "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-01.jpg"
 coverInBody: true

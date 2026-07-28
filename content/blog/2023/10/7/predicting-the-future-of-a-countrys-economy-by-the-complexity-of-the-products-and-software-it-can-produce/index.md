@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [data, product, business]
 tags: ["Data Analytics","Economics","Technology"]
 sourceUrl: "https://app.notion.com/p/f5431eeb3374496b82c44e6bbfbef194"
 cover: "blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/image-01.png"

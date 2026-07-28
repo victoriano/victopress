@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: false
 format: markdown
+categories: [photos, business]
 coverInBody: true
 sourceUrl: "https://victoriano.me/blog/2017/1/31/tiendas-de-barrio"
 cover: "blog/2017/1/31/tiendas-de-barrio/image-asset.jpeg"

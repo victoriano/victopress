@@ -19,6 +19,7 @@ import type {
   PageTranslation,
   ImageMetadataSummary,
 } from "./types";
+import type { BlogCategory } from "~/lib/blog-categories";
 import { scanGalleries, scanParentMetadata, type PhotoCache, type CachedPhotoData } from "./gallery-scanner";
 import { scanBlog } from "./blog-scanner";
 import {
@@ -42,7 +43,7 @@ import { createCanonicalImageSourceFingerprint } from "./victopress-xmp";
 import type { GalleryThumbnailAspectRatio } from "./gallery-layout";
 
 const INDEX_FILE = "_content-index.json";
-const INDEX_VERSION = 10; // Bilingual metadata; embedded/layout fields remain optional
+const INDEX_VERSION = 11; // Blog categories; embedded/layout fields remain optional
 
 /** Number of photos to store per gallery for home page */
 const PHOTOS_PER_GALLERY = 6;
@@ -297,6 +298,7 @@ export interface PostIndexEntry {
   coverImage?: string;
   coverInBody?: boolean;
   tags?: string[];
+  categories?: BlogCategory[];
   readingTime: number;
   author?: string;
   sourceUrl?: string;

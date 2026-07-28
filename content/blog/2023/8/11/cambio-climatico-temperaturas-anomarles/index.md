@@ -6,6 +6,6 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: true
 format: markdown
+categories: [data]
 sourceUrl: "https://app.notion.com/p/c49b039f2b7d4ac2a410f1c4997c946f"
 ---
-

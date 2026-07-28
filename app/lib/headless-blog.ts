@@ -3,6 +3,7 @@ import { localizeBlogPost } from "~/lib/content-engine";
 import { buildLocalizedBlogUrl, buildPublicBlogPostUrl } from "~/lib/blog-urls";
 import { renderMarkdown, resolveMarkdownImageUrl } from "~/lib/markdown";
 import { type Locale } from "~/lib/i18n";
+import type { BlogCategory } from "~/lib/blog-categories";
 
 export { buildPublicBlogPostUrl } from "~/lib/blog-urls";
 
@@ -21,6 +22,7 @@ export interface HeadlessBlogSummary {
   excerpt: string;
   readingTime: number;
   tags: string[];
+  categories: BlogCategory[];
   coverUrl: string | null;
   canonicalUrl: string;
   locale: Locale;
@@ -136,6 +138,7 @@ function summaryFor(
     excerpt: localizedPost.excerpt || localizedPost.description || "",
     readingTime: Math.max(1, localizedPost.readingTime || 1),
     tags: [...(localizedPost.tags || [])],
+    categories: [...(post.categories || [])],
     coverUrl: absoluteMediaUrl(post.cover, config),
     canonicalUrl: buildPublicBlogPostUrl(post.slug, config, locale),
     locale: locale || "en",

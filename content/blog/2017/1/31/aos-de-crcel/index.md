@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: false
 format: markdown
+categories: [photos]
 tags: ["Photography"]
 sourceUrl: "https://app.notion.com/p/82be18f5932d4ab4853272b4b54e84bb"
 cover: "blog/2017/1/31/aos-de-crcel/image-01.jpg"

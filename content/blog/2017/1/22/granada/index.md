@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: false
 format: markdown
+categories: [photos]
 tags: ["Photography"]
 sourceUrl: "https://app.notion.com/p/8ef96b7aded34ec393a663688b9fef30"
 cover: "blog/2017/1/22/granada/image-01.jpg"

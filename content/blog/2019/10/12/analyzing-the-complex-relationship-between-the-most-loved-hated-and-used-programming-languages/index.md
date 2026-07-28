@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [data, product]
 sourceUrl: "https://app.notion.com/p/519646eb8f844b6fbabe377ae19ed001"
 cover: "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-01.jpg"
 coverInBody: true

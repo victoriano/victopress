@@ -6,6 +6,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [photos]
 tags: ["Photography","Traveling"]
 description: "One year after finishing my Erasmus in Rome, I came back to rediscover the city"
 sourceUrl: "https://app.notion.com/p/451adeb9b057406684db24bf11c425a7"

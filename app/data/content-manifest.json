@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-07-28T14:40:59.860Z",
+  "generatedAt": "2026-07-28T18:44:23.205Z",
   "repo": "victoriano/victopress",
   "branch": "main",
   "contentPath": "content",
@@ -42,7 +42,7 @@
     },
     {
       "path": "blog/2014/1/31/viralizarse-con-el-papa/index.md",
-      "size": 4522,
+      "size": 4543,
       "type": "text"
     },
     {
@@ -272,7 +272,7 @@
     },
     {
       "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/index.md",
-      "size": 6457,
+      "size": 6478,
       "type": "text"
     },
     {
@@ -287,7 +287,7 @@
     },
     {
       "path": "blog/2016/12/24/the-unpublished-golden-information/index.md",
-      "size": 1218,
+      "size": 1241,
       "type": "text"
     },
     {
@@ -362,7 +362,7 @@
     },
     {
       "path": "blog/2017/1/22/granada/index.md",
-      "size": 4649,
+      "size": 4670,
       "type": "text"
     },
     {
@@ -392,7 +392,7 @@
     },
     {
       "path": "blog/2017/1/31/aos-de-crcel/index.md",
-      "size": 5558,
+      "size": 5579,
       "type": "text"
     },
     {
@@ -407,7 +407,7 @@
     },
     {
       "path": "blog/2017/1/31/la-nia-fotgrafa-de-sol/index.md",
-      "size": 1214,
+      "size": 1235,
       "type": "text"
     },
     {
@@ -422,7 +422,7 @@
     },
     {
       "path": "blog/2017/1/31/tiendas-de-barrio/index.md",
-      "size": 3159,
+      "size": 3190,
       "type": "text"
     },
     {
@@ -437,7 +437,7 @@
     },
     {
       "path": "blog/2017/8/19/centralized-or-decentralized-free-scale-networks/index.md",
-      "size": 5447,
+      "size": 5476,
       "type": "text"
     },
     {
@@ -457,7 +457,7 @@
     },
     {
       "path": "blog/2017/8/24/iii-graphext-bookclub-deep-work/index.md",
-      "size": 4975,
+      "size": 4998,
       "type": "text"
     },
     {
@@ -632,7 +632,7 @@
     },
     {
       "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/index.md",
-      "size": 9828,
+      "size": 9849,
       "type": "text"
     },
     {
@@ -672,7 +672,7 @@
     },
     {
       "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/index.md",
-      "size": 4130,
+      "size": 4158,
       "type": "text"
     },
     {
@@ -692,7 +692,7 @@
     },
     {
       "path": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/index.md",
-      "size": 10377,
+      "size": 10415,
       "type": "text"
     },
     {
@@ -777,7 +777,7 @@
     },
     {
       "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/index.md",
-      "size": 10343,
+      "size": 10372,
       "type": "text"
     },
     {
@@ -852,7 +852,7 @@
     },
     {
       "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/index.md",
-      "size": 9584,
+      "size": 9603,
       "type": "text"
     },
     {
@@ -952,7 +952,7 @@
     },
     {
       "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/index.md",
-      "size": 5451,
+      "size": 5481,
       "type": "text"
     },
     {
@@ -967,7 +967,7 @@
     },
     {
       "path": "blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/index.md",
-      "size": 4473,
+      "size": 4502,
       "type": "text"
     },
     {
@@ -982,7 +982,7 @@
     },
     {
       "path": "blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/index.md",
-      "size": 7765,
+      "size": 7797,
       "type": "text"
     },
     {
@@ -992,7 +992,7 @@
     },
     {
       "path": "blog/2023/10/6/controlling-addiction-to-tech/index.md",
-      "size": 1494,
+      "size": 1516,
       "type": "text"
     },
     {
@@ -1012,7 +1012,7 @@
     },
     {
       "path": "blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/index.md",
-      "size": 3969,
+      "size": 4007,
       "type": "text"
     },
     {
@@ -1032,7 +1032,7 @@
     },
     {
       "path": "blog/2023/10/9/do-data-engineering-first/index.md",
-      "size": 4697,
+      "size": 4735,
       "type": "text"
     },
     {
@@ -1047,7 +1047,7 @@
     },
     {
       "path": "blog/2023/7/8/the-best-argument-against-remote-work-ive-come-across-a-company-is-a-machine-for-creating-knowledge/index.md",
-      "size": 3622,
+      "size": 3645,
       "type": "text"
     },
     {
@@ -1057,7 +1057,7 @@
     },
     {
       "path": "blog/2023/8/11/cambio-climatico-temperaturas-anomarles/index.md",
-      "size": 277,
+      "size": 295,
       "type": "text"
     },
     {
@@ -1072,7 +1072,7 @@
     },
     {
       "path": "blog/2023/8/20/manna-ai-serving-a-dystopian-capitalism-vs-an-utopian-socialism/index.md",
-      "size": 2774,
+      "size": 2806,
       "type": "text"
     },
     {
@@ -1087,7 +1087,7 @@
     },
     {
       "path": "blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/index.md",
-      "size": 12851,
+      "size": 12889,
       "type": "text"
     },
     {
@@ -1097,7 +1097,7 @@
     },
     {
       "path": "blog/2025/6/30/tiny-teams-cook-the-best-software-in-the-ai-era/index.md",
-      "size": 4567,
+      "size": 4599,
       "type": "text"
     },
     {
@@ -1117,7 +1117,7 @@
     },
     {
       "path": "blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/index.md",
-      "size": 4354,
+      "size": 4383,
       "type": "text"
     },
     {
@@ -1127,7 +1127,7 @@
     },
     {
       "path": "blog/2025/7/3/consejos-para-viajar-a-japon/index.md",
-      "size": 6227,
+      "size": 6248,
       "type": "text"
     },
     {
@@ -1137,7 +1137,7 @@
     },
     {
       "path": "blog/2026/7/28/escribir-para-otros-escribir-para-mi/index.md",
-      "size": 12183,
+      "size": 12215,
       "type": "text"
     },
     {
@@ -1147,7 +1147,7 @@
     },
     {
       "path": "blog/2026/7/29/tener-hijos-es-lo-mejor-de-la-vida-adulta/index.md",
-      "size": 10114,
+      "size": 10137,
       "type": "text"
     },
     {
@@ -2626,6 +2626,6 @@
       "type": "text"
     }
   ],
-  "totalSize": 514181046,
+  "totalSize": 514181829,
   "totalFiles": 524
 }

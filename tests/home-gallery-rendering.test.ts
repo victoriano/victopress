@@ -18,7 +18,7 @@ describe("home gallery rendering data", () => {
     storage = new LocalStorageAdapter(directory);
 
     const index: ContentIndex = {
-      version: 10,
+      version: 11,
       updatedAt: "2026-07-21T08:00:00.000Z",
       galleries: [],
       galleryData: [

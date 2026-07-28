@@ -22,6 +22,11 @@ import {
   type Locale,
 } from "~/lib/i18n";
 import { useSiteLanguages } from "~/hooks/useSiteLanguages";
+import {
+  BLOG_CATEGORIES,
+  normalizeBlogCategories,
+  type BlogCategory,
+} from "~/lib/blog-categories";
 
 interface BlogActionResponse {
   success: boolean;
@@ -137,6 +142,9 @@ export default function AdminBlogEditor() {
   );
   const [slug, setSlug] = useState(post?.slug || "");
   const [tags, setTags] = useState((post?.tags || []).join(", "));
+  const [categories, setCategories] = useState<BlogCategory[]>(() =>
+    normalizeBlogCategories(post?.categories),
+  );
   const [date, setDate] = useState(post?.date ? new Date(post.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
   const [draft, setDraft] = useState(post?.draft ?? true);
   const [author, setAuthor] = useState(post?.author || "");
@@ -169,12 +177,13 @@ export default function AdminBlogEditor() {
       const changed = 
         JSON.stringify(editions) !== JSON.stringify(editionsForPost(post)) ||
         tags !== (post.tags || []).join(", ") ||
+        JSON.stringify(categories) !== JSON.stringify(normalizeBlogCategories(post.categories)) ||
         date !== (post.date ? new Date(post.date).toISOString().split("T")[0] : "") ||
         draft !== (post.draft ?? false) ||
         author !== (post.author || "");
       setHasChanges(changed);
     }
-  }, [editions, tags, date, draft, author, post, isNew]);
+  }, [editions, tags, categories, date, draft, author, post, isNew]);
   
   // Handle save success/redirect
   useEffect(() => {
@@ -202,6 +211,7 @@ export default function AdminBlogEditor() {
       formData.append(`content_${locale}`, editions[locale].content);
     }
     formData.append("tags", tags);
+    formData.append("categories", categories.join(","));
     formData.append("date", date);
     formData.append("draft", draft.toString());
     formData.append("author", author);
@@ -210,7 +220,7 @@ export default function AdminBlogEditor() {
       method: "POST",
       action: "/api/admin/blog",
     });
-  }, [isNew, slug, sourceLocale, editions, tags, date, draft, author, fetcher]);
+  }, [isNew, slug, sourceLocale, editions, tags, categories, date, draft, author, fetcher]);
   
   const handleDelete = useCallback(() => {
     const formData = new FormData();
@@ -262,7 +272,7 @@ export default function AdminBlogEditor() {
             <button
               type="button"
               onClick={handleSave}
-              disabled={isLoading || !editions[sourceLocale].title || !slug}
+              disabled={isLoading || !editions[sourceLocale].title || !slug || categories.length === 0}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
             >
               {isLoading ? (
@@ -396,6 +406,51 @@ export default function AdminBlogEditor() {
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
             />
           </div>
+
+          <fieldset>
+            <legend className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Categories <span className="text-red-500">*</span>
+            </legend>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Choose every category that applies. Categories are shared by all language editions.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {BLOG_CATEGORIES.map((category) => {
+                const selected = categories.includes(category);
+                return (
+                  <label
+                    key={category}
+                    className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
+                      selected
+                        ? "border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-300"
+                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => {
+                        setCategories((current) =>
+                          selected
+                            ? current.filter((value) => value !== category)
+                            : BLOG_CATEGORIES.filter(
+                                (value) => value === category || current.includes(value),
+                              ),
+                        );
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>{category}</span>
+                  </label>
+                );
+              })}
+            </div>
+            {categories.length === 0 && (
+              <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                Select at least one category before saving.
+              </p>
+            )}
+          </fieldset>
           
           {/* Date, Author, Tags */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

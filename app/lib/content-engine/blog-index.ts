@@ -2,6 +2,7 @@ import type { Locale } from "../i18n";
 import { normalizeLocale } from "../i18n";
 import type { PostIndexEntry } from "./content-index";
 import type { BlogPost, BlogPostTranslation } from "./types";
+import { normalizeBlogCategories } from "../blog-categories";
 
 function indexDate(value: BlogPost["date"]): string | undefined {
   if (!value) return undefined;
@@ -36,6 +37,7 @@ export function blogPostToIndexEntry(post: BlogPost): PostIndexEntry {
     coverImage: post.cover,
     coverInBody: post.coverInBody === true,
     tags: post.tags,
+    categories: normalizeBlogCategories(post.categories),
     readingTime: post.readingTime || 1,
     author: post.author,
     sourceUrl: post.sourceUrl,
@@ -92,6 +94,7 @@ export function blogPostFromIndexEntry(entry: PostIndexEntry): BlogPost {
     date: postDate(entry.date),
     description: entry.description ?? translation?.description,
     tags: entry.tags ?? translation?.tags,
+    categories: normalizeBlogCategories(entry.categories),
     draft: entry.draft,
     cover: entry.coverImage,
     coverInBody: entry.coverInBody === true,

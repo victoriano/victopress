@@ -59,7 +59,7 @@ describe("background photo metadata writeback", () => {
     });
 
     const index: ContentIndex = {
-      version: 10,
+      version: 11,
       updatedAt: "2026-07-20T08:05:00.000Z",
       galleries: [
         {

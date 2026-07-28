@@ -640,6 +640,7 @@ describe("newsletter campaigns", () => {
       excerpt: "An excerpt",
       readingTime: 3,
       tags: [],
+      categories: ["business"],
       coverUrl: "https://photos.example.com/api/images/cover.jpg",
       canonicalUrl: "https://example.com/blog/a-new-post",
       locale: "es",

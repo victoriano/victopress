@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: false
 format: markdown
+categories: [data, product, business]
 sourceUrl: "https://app.notion.com/p/6a3f4fb5bd6e4257b300ea065106c1bc"
 cover: "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/image-01.png"
 coverInBody: true

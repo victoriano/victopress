@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [data, business]
 tags: ["Data Analytics"]
 sourceUrl: "https://app.notion.com/p/225358038bc5800f83cce629b4350921"
 cover: "blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/image-01.png"

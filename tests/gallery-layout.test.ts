@@ -28,7 +28,7 @@ describe("gallery thumbnail layout setting", () => {
       childCount: 0,
     };
     const index: ContentIndex = {
-      version: 10,
+      version: 11,
       updatedAt: "2026-07-22T10:00:00.000Z",
       galleries: [gallery],
       galleryData: [{ ...gallery, photos: [] }],

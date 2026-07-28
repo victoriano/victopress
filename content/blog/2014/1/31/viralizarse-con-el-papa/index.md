@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: false
 format: markdown
+categories: [photos]
 tags: ["Photography","Communication"]
 sourceUrl: "https://app.notion.com/p/011f4b0aff204dec8e09426847a1cd69"
 cover: "blog/2014/1/31/viralizarse-con-el-papa/image-01.jpg"

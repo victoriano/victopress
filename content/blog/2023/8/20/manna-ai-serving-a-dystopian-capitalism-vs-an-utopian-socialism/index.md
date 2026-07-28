@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [product, business]
 tags: ["Predicting the Future"]
 sourceUrl: "https://app.notion.com/p/fdd9cca34bae417586272458c743706c"
 cover: "blog/2023/8/20/manna-ai-serving-a-dystopian-capitalism-vs-an-utopian-socialism/image-01.png"

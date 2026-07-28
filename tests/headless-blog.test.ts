@@ -52,6 +52,7 @@ describe("headless blog contract", () => {
       content: "![Cover](/api/images/blog/newest/cover.jpg)",
       cover: "blog/newest/cover.jpg",
       tags: ["product"],
+      categories: ["product", "business"],
     }),
     post({
       id: "nested",
@@ -83,6 +84,7 @@ describe("headless blog contract", () => {
       "2021/10/3/nested",
     ]);
     expect(payload.posts[0].date).toBe("2024-06-20");
+    expect(payload.posts[0].categories).toEqual(["product", "business"]);
     expect(payload.posts[0].coverUrl).toBe(
       "https://photos.victoriano.me/api/images/blog/newest/cover.jpg?v=mime-v2",
     );
@@ -246,7 +248,7 @@ describe("migrated blog through the headless contract", () => {
     const storage = {
       getText: async (key: string) => key === "_content-index.json"
         ? JSON.stringify({
-            version: 10,
+            version: 11,
             updatedAt: "2026-07-28T00:00:00.000Z",
             galleries: [],
             galleryData: [],

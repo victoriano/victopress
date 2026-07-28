@@ -19,6 +19,7 @@ import {
   SUPPORTED_LOCALES,
   type Locale,
 } from "~/lib/i18n";
+import { normalizeBlogCategories } from "~/lib/blog-categories";
 import {
   folderNameToTitle,
   toSlug,
@@ -373,6 +374,7 @@ function parseMarkdownPost(
     date,
     description: frontmatter.description,
     tags: frontmatter.tags,
+    categories: normalizeBlogCategories(frontmatter.categories),
     draft: frontmatter.draft || false,
     cover,
     coverInBody: frontmatter.coverInBody,

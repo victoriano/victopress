@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [data, business]
 tags: ["Data Analytics"]
 sourceUrl: "https://app.notion.com/p/510339d390354d3096329a78da518216"
 cover: "blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/image-01.jpg"

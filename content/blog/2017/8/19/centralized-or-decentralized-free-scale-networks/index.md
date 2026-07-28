@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [data, business]
 tags: ["Technology"]
 sourceUrl: "https://app.notion.com/p/5c3d41ae1c9f48efb7e6f013a253b280"
 cover: "blog/2017/8/19/centralized-or-decentralized-free-scale-networks/image-01.jpg"

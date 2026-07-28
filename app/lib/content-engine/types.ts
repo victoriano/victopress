@@ -1,4 +1,5 @@
 import type { Locale, TranslationMap } from "~/lib/i18n";
+import type { BlogCategory } from "~/lib/blog-categories";
 
 /**
  * VictoPress Content Engine Types
@@ -306,6 +307,8 @@ export interface PostFrontmatter {
   date?: Date;
   description?: string;
   tags?: string[];
+  /** Shared editorial facets used by the public blog filter. */
+  categories?: BlogCategory[];
   draft?: boolean;
   cover?: string;
   /** The cover already appears in the post body and should not be repeated. */

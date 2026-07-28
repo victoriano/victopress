@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [photos, product]
 coverInBody: true
 sourceUrl: "https://victoriano.me/blog/2021/10/3/testing-iphone-13-pro-in-granada"
 cover: "blog/2021/10/3/testing-iphone-13-pro-in-granada/IMG_8578.jpg"

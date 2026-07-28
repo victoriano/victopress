@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: en
 draft: false
 format: markdown
+categories: [business]
 sourceUrl: "https://app.notion.com/p/ef6ae8fee9344b57baa41b0effa9bad4"
 cover: "blog/2023/7/8/the-best-argument-against-remote-work-ive-come-across-a-company-is-a-machine-for-creating-knowledge/image-01.png"
 coverInBody: true

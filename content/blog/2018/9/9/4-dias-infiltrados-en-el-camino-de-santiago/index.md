@@ -7,6 +7,7 @@ author: "Victoriano Izquierdo"
 locale: es
 draft: false
 format: markdown
+categories: [photos]
 tags: ["Traveling","Photography"]
 sourceUrl: "https://app.notion.com/p/2da3c2b6cf9f416687cc6b548c53ff14"
 cover: "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-01.jpg"
