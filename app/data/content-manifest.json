@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-07-28T13:20:58.738Z",
+  "generatedAt": "2026-07-28T14:32:47.662Z",
   "repo": "victoriano/victopress",
   "branch": "main",
   "contentPath": "content",
@@ -17,7 +17,7 @@
     },
     {
       "path": "blog/_notion-posted-import-manifest.json",
-      "size": 59662,
+      "size": 59799,
       "type": "text"
     },
     {
@@ -1088,16 +1088,6 @@
     {
       "path": "blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/index.md",
       "size": 12851,
-      "type": "text"
-    },
-    {
-      "path": "blog/2025/10/31/chatgpt-intelligence/index.es.md",
-      "size": 1119,
-      "type": "text"
-    },
-    {
-      "path": "blog/2025/10/31/chatgpt-intelligence/index.md",
-      "size": 1084,
       "type": "text"
     },
     {
@@ -2636,6 +2626,6 @@
       "type": "text"
     }
   ],
-  "totalSize": 514183084,
-  "totalFiles": 526
+  "totalSize": 514181018,
+  "totalFiles": 524
 }

@@ -16,6 +16,7 @@ interface ManifestPost {
   status: string;
   date: string;
   target: string;
+  removed?: boolean;
   contentSha256?: string;
   assets?: Array<{
     path: string;
@@ -61,9 +62,10 @@ describe("Notion blog rendering", () => {
     expect(posts).toHaveLength(25);
     expect(posts.filter((post) => post.status === "Posted")).toHaveLength(20);
     expect(posts.filter((post) => post.status !== "Posted")).toHaveLength(5);
+    expect(posts.filter((post) => post.removed)).toHaveLength(1);
 
     let importedImageCount = 0;
-    for (const post of posts) {
+    for (const post of posts.filter((candidate) => !candidate.removed)) {
       const document = await readFile(join("content", post.target), "utf8");
       const parsed = matter(document);
       const body = parsed.content.trim();
