@@ -2,8 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import YAML from "yaml";
-import type { BlogPost } from "../app/lib/content-engine";
+import type { BlogPost, StorageAdapter } from "../app/lib/content-engine";
 import { LocalStorageAdapter, scanBlog, scanGalleries, scanPages } from "../app/lib/content-engine";
+import {
+  blogPostsFromIndexEntries,
+  buildBlogPostIndexEntries,
+} from "../app/lib/content-engine/blog-index";
 import {
   buildHeadlessBlogIndex,
   buildHeadlessBlogPost,
@@ -14,7 +18,7 @@ import {
 } from "../app/lib/headless-blog";
 import { renderMarkdown } from "../app/lib/markdown";
 import { languageSwitchPath, localizedPath, parseAcceptLanguage } from "../app/lib/i18n";
-import { buildBlogPostIndexEntries } from "../scripts/lib/blog-index";
+import { loadHeadlessBlogPosts } from "../app/lib/headless-blog-storage.server";
 
 const config: HeadlessBlogConfig = {
   siteName: "Victoriano Izquierdo",
@@ -201,6 +205,83 @@ describe("headless blog contract", () => {
 });
 
 describe("migrated blog through the headless contract", () => {
+  test("serves a hydrated blog index without scanning every Markdown file", async () => {
+    const source = post({
+      id: "fast-index",
+      slug: "fast-index",
+      title: "Fast index",
+      path: "blog/fast-index",
+      content: "English body",
+      excerpt: "English excerpt",
+      date: new Date("2026-07-28T00:00:00.000Z"),
+      author: "Victoriano Izquierdo",
+      sourceUrl: "https://example.com/source",
+      cover: "blog/fast-index/cover.jpg",
+      coverInBody: true,
+      images: ["blog/fast-index/cover.jpg"],
+      locale: "en",
+      translations: {
+        en: {
+          locale: "en",
+          title: "Fast index",
+          content: "English body",
+          excerpt: "English excerpt",
+          readingTime: 1,
+          format: "markdown",
+          path: "blog/fast-index",
+        },
+        es: {
+          locale: "es",
+          title: "Índice rápido",
+          content: "Cuerpo español",
+          excerpt: "Extracto español",
+          readingTime: 1,
+          format: "markdown",
+          path: "blog/fast-index/index.es.md",
+        },
+      },
+    });
+    const indexedPosts = buildBlogPostIndexEntries([source]);
+    let scannedFiles = false;
+    const storage = {
+      getText: async (key: string) => key === "_content-index.json"
+        ? JSON.stringify({
+            version: 10,
+            updatedAt: "2026-07-28T00:00:00.000Z",
+            galleries: [],
+            galleryData: [],
+            posts: indexedPosts,
+            pages: [],
+            parentMetadata: [],
+            featuredPhotos: [],
+            stats: {
+              totalGalleries: 0,
+              totalPhotos: 0,
+              totalPosts: 1,
+              totalPages: 0,
+            },
+          })
+        : null,
+      listRecursive: async () => {
+        scannedFiles = true;
+        throw new Error("The hydrated index should avoid a recursive scan");
+      },
+    } as unknown as StorageAdapter;
+
+    const loaded = await loadHeadlessBlogPosts(storage);
+    const spanish = buildHeadlessBlogPost(loaded, source.slug, config, "es");
+
+    expect(scannedFiles).toBe(false);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].author).toBe(source.author);
+    expect(loaded[0].sourceUrl).toBe(source.sourceUrl);
+    expect(loaded[0].coverInBody).toBe(true);
+    expect(loaded[0].images).toEqual(source.images);
+    expect(spanish?.post.title).toBe("Índice rápido");
+    expect(spanish?.post.contentMarkdown).toBe("Cuerpo español");
+    expect(spanish?.post.isFallback).toBe(false);
+  });
+
   test("publishes all five Squarespace posts with every localized body image", async () => {
     const storage = new LocalStorageAdapter(`${process.cwd()}/content`);
     const posts = await scanBlog(storage);
@@ -319,9 +400,11 @@ describe("migrated blog through the headless contract", () => {
     const storage = new LocalStorageAdapter(join(process.cwd(), "content"));
     const posts = await scanBlog(storage);
     const indexedPosts = buildBlogPostIndexEntries(posts);
+    const rehydratedPosts = blogPostsFromIndexEntries(indexedPosts);
 
     expect(posts).toHaveLength(30);
     expect(indexedPosts).toHaveLength(posts.length);
+    expect(rehydratedPosts).toHaveLength(posts.length);
     for (const post of posts) {
       expect(post.translations?.es, `${post.slug} is missing Spanish`).toBeTruthy();
       expect(post.translations?.en, `${post.slug} is missing English`).toBeTruthy();
@@ -329,6 +412,14 @@ describe("migrated blog through the headless contract", () => {
     for (const post of indexedPosts) {
       expect(post.translations?.es, `${post.slug} lost Spanish in the CMS index`).toBeTruthy();
       expect(post.translations?.en, `${post.slug} lost English in the CMS index`).toBeTruthy();
+    }
+    for (const rehydrated of rehydratedPosts) {
+      const source = posts.find((post) => post.slug === rehydrated.slug);
+      expect(rehydrated.author).toBe(source?.author);
+      expect(rehydrated.sourceUrl).toBe(source?.sourceUrl);
+      expect(rehydrated.coverInBody).toBe(source?.coverInBody === true);
+      expect(rehydrated.images).toEqual(source?.images);
+      expect(rehydrated.content).toBe(source?.content);
     }
 
     for (const locale of ["es", "en"] as const) {

@@ -21,6 +21,10 @@ import type {
 } from "./types";
 import { scanGalleries, scanParentMetadata, type PhotoCache, type CachedPhotoData } from "./gallery-scanner";
 import { scanBlog } from "./blog-scanner";
+import {
+  blogPostToIndexEntry,
+  buildBlogPostIndexEntries,
+} from "./blog-index";
 import { scanPages } from "./page-scanner";
 import { addGalleryMemberships, readGalleryMemberships } from "./gallery-memberships";
 import { readGalleryOrders, sortPhotosByGalleryOrder } from "./gallery-orders";
@@ -286,12 +290,20 @@ export interface GalleryIndexEntry {
 export interface PostIndexEntry {
   slug: string;
   title: string;
+  description?: string;
   excerpt?: string;
   date?: string;
   draft: boolean;
   coverImage?: string;
+  coverInBody?: boolean;
   tags?: string[];
   readingTime: number;
+  author?: string;
+  sourceUrl?: string;
+  format?: "markdown" | "html";
+  path?: string;
+  images?: string[];
+  hasFrontmatter?: boolean;
   locale?: Locale;
   translations?: TranslationMap<BlogPostTranslation>;
 }
@@ -611,18 +623,7 @@ export async function rebuildContentIndex(storage: StorageAdapter, skipCache = f
     }
   }
   
-  const postEntries: PostIndexEntry[] = posts.map(p => ({
-    slug: p.slug,
-    title: p.title,
-    excerpt: p.excerpt,
-    date: p.date,
-    draft: p.draft,
-    coverImage: p.cover,
-    tags: p.tags,
-    readingTime: p.readingTime,
-    locale: normalizeLocale(p.locale) || "en",
-    translations: p.translations,
-  }));
+  const postEntries = buildBlogPostIndexEntries(posts);
   
   const pageEntries: PageIndexEntry[] = pages.map(p => ({
     slug: p.slug,
@@ -1471,18 +1472,7 @@ export async function updatePostInIndex(
     return;
   }
   
-  const entry: PostIndexEntry = {
-    slug: post.slug,
-    title: post.title,
-    excerpt: post.excerpt,
-    date: post.date,
-    draft: post.draft,
-    coverImage: post.cover,
-    tags: post.tags,
-    readingTime: post.readingTime,
-    locale: normalizeLocale(post.locale) || "en",
-    translations: post.translations,
-  };
+  const entry = blogPostToIndexEntry(post);
   
   const existingIdx = index.posts.findIndex(p => p.slug === post.slug);
   if (existingIdx >= 0) {

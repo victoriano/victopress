@@ -12,8 +12,8 @@ import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { scanBlog } from "../app/lib/content-engine/blog-scanner";
+import { buildBlogPostIndexEntries } from "../app/lib/content-engine/blog-index";
 import { LocalStorageAdapter } from "../app/lib/content-engine/storage/local-adapter";
-import { buildBlogPostIndexEntries } from "./lib/blog-index";
 
 interface RemoteFile {
   key: string;

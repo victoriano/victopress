@@ -8,7 +8,7 @@
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import { getStorage, getNavigationFromIndex, scanBlog, localizeBlogPost } from "~/lib/content-engine";
+import { getStorage, getNavigationFromIndex, localizeBlogPost } from "~/lib/content-engine";
 import { Layout } from "~/components/Layout";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { BlogPostContent } from "~/components/BlogPostContent";
@@ -17,6 +17,7 @@ import { localizedPath, photoMessages } from "~/lib/i18n";
 import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
 import { isNewsletterConfigured } from "~/lib/newsletter/config.server";
 import { readSiteLanguageSettings } from "~/lib/site-languages.server";
+import { loadHeadlessBlogPosts } from "~/lib/headless-blog-storage.server";
 
 export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
 
@@ -39,10 +40,8 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
   const siteLanguages = await readSiteLanguageSettings(storage);
   const locale = requireRouteLocale(request, params.locale, siteLanguages);
 
-  // Posts are scanned directly because the public index renders the complete
-  // article body, matching the original Squarespace blog.
   const [allPosts, navigation] = await Promise.all([
-    scanBlog(storage),
+    loadHeadlessBlogPosts(storage),
     getNavigationFromIndex(storage, locale),
   ]);
 

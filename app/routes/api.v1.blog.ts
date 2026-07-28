@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/cloudflare";
-import { getStorage, scanBlog } from "~/lib/content-engine";
+import { getStorage } from "~/lib/content-engine";
 import {
   buildHeadlessBlogIndex,
   headlessCorsPreflight,
@@ -12,6 +12,7 @@ import {
   readSiteLanguageSettings,
   type SiteLanguageSettings,
 } from "~/lib/site-languages.server";
+import { loadHeadlessBlogPosts } from "~/lib/headless-blog-storage.server";
 
 function requestLocale(request: Request, settings: SiteLanguageSettings): Locale {
   if (!settings.multilingual) return settings.defaultLocale;
@@ -31,7 +32,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   try {
     const storage = getStorage(context, request);
     const [posts, siteLanguages] = await Promise.all([
-      scanBlog(storage),
+      loadHeadlessBlogPosts(storage),
       readSiteLanguageSettings(storage),
     ]);
     const locale = requestLocale(request, siteLanguages);
