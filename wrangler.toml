@@ -29,9 +29,9 @@ PUBLIC_BLOG_URL = "https://victoriano.me/blog"
 # Newsletter
 # Set RESEND_API_KEY and NEWSLETTER_TOKEN_SECRET as encrypted Pages secrets.
 # NEWSLETTER_FROM_EMAIL must use a sender/domain already verified in Resend.
-# NEWSLETTER_FROM_EMAIL = "Victoriano Izquierdo <newsletter@victoriano.me>"
-# NEWSLETTER_REPLY_TO = "victoriano@victoriano.me"
-# PUBLIC_NEWSLETTER_URL = "https://photos.victoriano.me"
+NEWSLETTER_FROM_EMAIL = "Victoriano Izquierdo <me@victoriano.me>"
+NEWSLETTER_REPLY_TO = "me@victoriano.me"
+PUBLIC_NEWSLETTER_URL = "https://photos.victoriano.me"
 
 # R2 Configuration
 R2_BUCKET_NAME = "victopress-content"
