@@ -6,8 +6,9 @@
 
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useState, useEffect, useMemo } from "react";
-import { ThemeToggle } from "./ThemeToggle";
-import { LanguageEditionSwitch } from "./LanguageEditionSwitch";
+import { SiteIdentity } from "./SiteIdentity";
+import { PersonalSiteNavLinks } from "./PersonalSiteNavLinks";
+import { SitePreferenceControls } from "./SitePreferenceControls";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
 export interface NavItem {
@@ -46,7 +47,7 @@ interface SidebarProps {
   locale: Locale;
 }
 
-export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEnabled = false, multilingual = false, locale }: SidebarProps) {
+export function Sidebar({ navigation, socialLinks, photoNav, photoAiEnabled = false, multilingual = false, locale }: SidebarProps) {
   const location = useLocation();
   const messages = photoMessages[locale];
   const hasPrimaryPhotoText = Boolean(photoNav?.title || photoNav?.description || photoNav?.photoInfo);
@@ -139,15 +140,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
     <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 flex-col justify-between px-12 py-12 bg-white dark:bg-gray-950 z-50">
       {/* Site Name */}
       <div>
-        <Link to={localizedPath(locale, "/")} className="block mb-12">
-          <h1 className="text-[27px] font-bold leading-[1.2] tracking-normal text-black dark:text-white">
-            {siteName.split(" ").map((word, i) => (
-              <span key={i} className="block">
-                {word}
-              </span>
-            ))}
-          </h1>
-        </Link>
+        <SiteIdentity locale={locale} layout="desktop" />
 
         {/* Gallery Navigation */}
         <nav className="space-y-2">
@@ -174,59 +167,54 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
             <StaticNavLink href={localizedPath(locale, "/blog")} currentPath={location.pathname}>
               {messages.blog}
             </StaticNavLink>
-            <StaticNavLink href={localizedPath(locale, "/about")} currentPath={location.pathname}>
-              {messages.about}
-            </StaticNavLink>
-            <StaticNavLink href={localizedPath(locale, "/contact")} currentPath={location.pathname}>
-              {messages.contact}
-            </StaticNavLink>
+            <PersonalSiteNavLinks locale={locale} />
           </div>
 
-          {/* Language edition */}
-          {multilingual && (
-            <div className="pt-5">
-              <LanguageEditionSwitch locale={locale} />
+          {/* Language edition + theme */}
+          <SitePreferenceControls
+            multilingual={multilingual}
+            locale={locale}
+            className="pt-5"
+          />
+
+          {/* Social Links */}
+          {(socialLinks?.instagram || socialLinks?.twitter || socialLinks?.linkedin) && (
+            <div className="flex items-center gap-4 pt-4">
+              {socialLinks?.instagram && (
+                <a
+                  href={socialLinks.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                  aria-label="Instagram"
+                >
+                  <InstagramIcon />
+                </a>
+              )}
+              {socialLinks?.twitter && (
+                <a
+                  href={socialLinks.twitter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                  aria-label="Twitter"
+                >
+                  <TwitterIcon />
+                </a>
+              )}
+              {socialLinks?.linkedin && (
+                <a
+                  href={socialLinks.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
+                  aria-label="LinkedIn"
+                >
+                  <LinkedInIcon />
+                </a>
+              )}
             </div>
           )}
-
-          {/* Social Links + Theme Toggle */}
-          <div className="flex items-center gap-4 pt-4">
-            {socialLinks?.instagram && (
-              <a
-                href={socialLinks.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
-                aria-label="Instagram"
-              >
-                <InstagramIcon />
-              </a>
-            )}
-            {socialLinks?.twitter && (
-              <a
-                href={socialLinks.twitter}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
-                aria-label="Twitter"
-              >
-                <TwitterIcon />
-              </a>
-            )}
-            {socialLinks?.linkedin && (
-              <a
-                href={socialLinks.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-800 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white transition-colors"
-                aria-label="LinkedIn"
-              >
-                <LinkedInIcon />
-              </a>
-            )}
-            {/* Theme Toggle */}
-            <ThemeToggle locale={locale} />
-          </div>
         </nav>
       </div>
 

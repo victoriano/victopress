@@ -333,7 +333,13 @@ export class GeminiPhotoAiProvider implements PhotoAiProvider {
     this.apiKey = options.apiKey.trim();
     if (!this.apiKey) throw new AiConfigurationError("Gemini API key cannot be empty");
 
-    this.fetchImplementation = options.fetch ?? fetch;
+    // Cloudflare Workers requires the native fetch receiver to be globalThis.
+    // Calling a stored native function as `this.fetchImplementation(...)`
+    // otherwise binds the provider instance and fails before any request is sent.
+    const customFetch = options.fetch;
+    this.fetchImplementation = customFetch
+      ? (input, init) => customFetch(input, init)
+      : (input, init) => globalThis.fetch(input, init);
     this.apiBaseUrl = (options.apiBaseUrl ?? DEFAULT_API_BASE_URL).replace(/\/+$/, "");
     this.analysisModel = normalizeModelName(
       options.analysisModel ?? DEFAULT_ANALYSIS_MODEL,

@@ -12,8 +12,10 @@ import { getStorage, getNavigationFromIndex, scanBlog, localizeBlogPost } from "
 import { Layout } from "~/components/Layout";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { BlogPostContent } from "~/components/BlogPostContent";
+import { NewsletterSignup } from "~/components/NewsletterSignup";
 import { localizedPath, photoMessages } from "~/lib/i18n";
 import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
+import { isNewsletterConfigured } from "~/lib/newsletter/config.server";
 import { readSiteLanguageSettings } from "~/lib/site-languages.server";
 
 export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
@@ -61,6 +63,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
     siteName: "Victoriano Izquierdo",
     locale,
     alternates,
+    newsletterEnabled: isNewsletterConfigured(context, request),
     socialLinks: {
       instagram: "https://instagram.com/victoriano",
       twitter: "https://twitter.com/victoriano",
@@ -71,7 +74,14 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
 }
 
 export default function BlogIndex() {
-  const { posts, navigation, siteName, socialLinks, locale } = useLoaderData<typeof loader>();
+  const {
+    posts,
+    navigation,
+    siteName,
+    socialLinks,
+    locale,
+    newsletterEnabled,
+  } = useLoaderData<typeof loader>();
   const messages = photoMessages[locale];
 
   return (
@@ -119,6 +129,12 @@ export default function BlogIndex() {
             ))}
           </div>
         )}
+        <NewsletterSignup
+          locale={locale}
+          enabled={newsletterEnabled}
+          source="blog-index-footer"
+          className="mt-20"
+        />
       </div>
     </Layout>
   );

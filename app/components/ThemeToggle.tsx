@@ -6,71 +6,88 @@
 
 import { useEffect, useState } from "react";
 import { photoMessages, type Locale } from "~/lib/i18n";
+import {
+  applyTheme,
+  readStoredTheme,
+  resolveTheme,
+  THEME_CHANGE_EVENT,
+  THEME_STORAGE_KEY,
+  type Theme,
+} from "~/lib/theme";
 
-export function ThemeToggle({ locale = "en" }: { locale?: Locale }) {
-  const [isDark, setIsDark] = useState(false);
-  const [mounted, setMounted] = useState(false);
+interface ThemeToggleProps {
+  locale?: Locale;
+  size?: "default" | "compact";
+}
+
+export function ThemeToggle({
+  locale = "en",
+  size = "default",
+}: ThemeToggleProps) {
+  const [theme, setTheme] = useState<Theme | null>(null);
   const messages = photoMessages[locale];
+  const buttonSizeClasses = size === "compact" ? "p-1 rounded-md" : "p-2 rounded-lg";
+  const iconSizeClasses = size === "compact" ? "w-4 h-4" : "w-5 h-5";
 
-  // Only run on client
   useEffect(() => {
-    setMounted(true);
-    // Check initial state
-    const isDarkMode = document.documentElement.classList.contains("dark");
-    setIsDark(isDarkMode);
-
-    // Listen for system preference changes
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (!localStorage.getItem("theme")) {
-        if (e.matches) {
-          document.documentElement.classList.add("dark");
-          setIsDark(true);
-        } else {
-          document.documentElement.classList.remove("dark");
-          setIsDark(false);
-        }
-      }
+    const initialTheme = resolveTheme(readStoredTheme(), mediaQuery.matches);
+    applyTheme(initialTheme, { notify: false });
+    setTheme(initialTheme);
+
+    const handleSystemChange = (event: MediaQueryListEvent) => {
+      if (readStoredTheme()) return;
+      const nextTheme = resolveTheme(null, event.matches);
+      applyTheme(nextTheme);
     };
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== THEME_STORAGE_KEY) return;
+      const nextTheme = resolveTheme(event.newValue, mediaQuery.matches);
+      applyTheme(nextTheme);
+    };
+    const handleThemeChange = (event: Event) => {
+      setTheme((event as CustomEvent<Theme>).detail);
+    };
+
+    mediaQuery.addEventListener("change", handleSystemChange);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+    return () => {
+      mediaQuery.removeEventListener("change", handleSystemChange);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+    };
   }, []);
 
-  const toggle = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
-    
-    if (newIsDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
-
   // Prevent hydration mismatch by not rendering until mounted
-  if (!mounted) {
+  if (!theme) {
     return (
       <button
-        className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+        className={`${buttonSizeClasses} bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400`}
+        data-theme-toggle-size={size}
         aria-label={messages.toggleTheme}
       >
-        <span className="w-5 h-5 block" />
+        <span className={`${iconSizeClasses} block`} />
       </button>
     );
   }
 
+  const isDark = theme === "dark";
+  const nextTheme: Theme = isDark ? "light" : "dark";
+
   return (
     <button
-      onClick={toggle}
-      className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+      onClick={() => {
+        applyTheme(nextTheme, { persist: true });
+      }}
+      className={`${buttonSizeClasses} bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors`}
+      data-theme-toggle-size={size}
       aria-label={isDark ? messages.switchToLight : messages.switchToDark}
       title={isDark ? messages.switchToLight : messages.switchToDark}
     >
       {isDark ? (
         // Sun icon for light mode
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className={iconSizeClasses} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -80,7 +97,7 @@ export function ThemeToggle({ locale = "en" }: { locale?: Locale }) {
         </svg>
       ) : (
         // Moon icon for dark mode
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className={iconSizeClasses} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"

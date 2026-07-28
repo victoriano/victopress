@@ -7,8 +7,9 @@
 import { Link, useLocation, useNavigate } from "@remix-run/react";
 import { useEffect, useState, useMemo } from "react";
 import type { NavItem } from "./Sidebar";
-import { ThemeToggle } from "./ThemeToggle";
-import { LanguageEditionSwitch } from "./LanguageEditionSwitch";
+import { PersonalSiteNavLinks } from "./PersonalSiteNavLinks";
+import { SiteIdentity } from "./SiteIdentity";
+import { SitePreferenceControls } from "./SitePreferenceControls";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
 interface MobileMenuProps {
@@ -25,7 +26,7 @@ interface MobileMenuProps {
   locale: Locale;
 }
 
-export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled = false, multilingual = false, locale }: MobileMenuProps) {
+export function MobileMenu({ navigation, socialLinks, photoAiEnabled = false, multilingual = false, locale }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const messages = photoMessages[locale];
@@ -119,9 +120,7 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
     <>
       {/* Mobile Header */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-900 z-50 flex items-center justify-between px-6 lg:hidden">
-        <Link to={localizedPath(locale, "/")} className="font-bold text-lg">
-          {siteName}
-        </Link>
+        <SiteIdentity locale={locale} layout="mobile" />
         <button
           onClick={() => setIsOpen(true)}
           className="p-2 -mr-2"
@@ -136,13 +135,11 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
         <div className="fixed inset-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm z-[100] lg:hidden overflow-y-auto">
           {/* Header - matches the mobile header exactly */}
           <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800">
-            <Link
-              to={localizedPath(locale, "/")}
-              className="font-bold text-lg"
-              onClick={() => setIsOpen(false)}
-            >
-              {siteName}
-            </Link>
+            <SiteIdentity
+              locale={locale}
+              layout="mobile"
+              onNavigate={() => setIsOpen(false)}
+            />
             <button
               onClick={() => setIsOpen(false)}
               className="p-2 -mr-2"
@@ -179,55 +176,53 @@ export function MobileMenu({ siteName, navigation, socialLinks, photoAiEnabled =
               <MobileNavLink href={localizedPath(locale, "/blog")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
                 {messages.blog}
               </MobileNavLink>
-              <MobileNavLink href={localizedPath(locale, "/about")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
-                {messages.about}
-              </MobileNavLink>
-              <MobileNavLink href={localizedPath(locale, "/contact")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
-                {messages.contact}
-              </MobileNavLink>
+              <PersonalSiteNavLinks
+                locale={locale}
+                onNavigate={() => setIsOpen(false)}
+              />
             </div>
           </nav>
 
-          {/* Social Links + Theme Toggle */}
+          {/* Language edition + theme, followed by social links */}
           <div className="px-6 py-8 border-t border-gray-100 dark:border-gray-800">
-            {multilingual && <LanguageEditionSwitch locale={locale} />}
-            <div className={`flex items-center gap-6 ${multilingual ? "mt-6" : ""}`}>
-              {socialLinks?.instagram && (
-                <a
-                  href={socialLinks.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 dark:text-gray-400"
-                  aria-label="Instagram"
-                >
-                  <InstagramIcon />
-                </a>
-              )}
-              {socialLinks?.twitter && (
-                <a
-                  href={socialLinks.twitter}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 dark:text-gray-400"
-                  aria-label="Twitter"
-                >
-                  <TwitterIcon />
-                </a>
-              )}
-              {socialLinks?.linkedin && (
-                <a
-                  href={socialLinks.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 dark:text-gray-400"
-                  aria-label="LinkedIn"
-                >
-                  <LinkedInIcon />
-                </a>
-              )}
-              {/* Theme Toggle */}
-              <ThemeToggle locale={locale} />
-            </div>
+            <SitePreferenceControls multilingual={multilingual} locale={locale} />
+            {(socialLinks?.instagram || socialLinks?.twitter || socialLinks?.linkedin) && (
+              <div className="flex items-center gap-6 mt-6">
+                {socialLinks?.instagram && (
+                  <a
+                    href={socialLinks.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-600 dark:text-gray-400"
+                    aria-label="Instagram"
+                  >
+                    <InstagramIcon />
+                  </a>
+                )}
+                {socialLinks?.twitter && (
+                  <a
+                    href={socialLinks.twitter}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-600 dark:text-gray-400"
+                    aria-label="Twitter"
+                  >
+                    <TwitterIcon />
+                  </a>
+                )}
+                {socialLinks?.linkedin && (
+                  <a
+                    href={socialLinks.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-600 dark:text-gray-400"
+                    aria-label="LinkedIn"
+                  >
+                    <LinkedInIcon />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -8,6 +8,7 @@
 import { Link } from "@remix-run/react";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { personalSiteSectionHref } from "./PersonalSiteNavLinks";
 import type { NavItem } from "./Sidebar";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 
@@ -27,10 +28,25 @@ interface BreadcrumbSegment {
 export function GalleryBreadcrumb({ currentSlug, navigation, locale }: GalleryBreadcrumbProps) {
   const messages = photoMessages[locale];
   const segments = currentSlug ? buildBreadcrumb(currentSlug, navigation, locale) : [];
-  const staticPages: NavItem[] = [
-    { title: messages.blog, slug: "blog", path: localizedPath(locale, "/blog") },
-    { title: messages.about, slug: "about", path: localizedPath(locale, "/about") },
-    { title: messages.contact, slug: "contact", path: localizedPath(locale, "/contact") },
+  const staticPages = [
+    {
+      title: messages.blog,
+      slug: "blog",
+      path: localizedPath(locale, "/blog"),
+      external: false,
+    },
+    {
+      title: messages.about,
+      slug: "about",
+      path: personalSiteSectionHref(locale, "about"),
+      external: true,
+    },
+    {
+      title: messages.contact,
+      slug: "contact",
+      path: personalSiteSectionHref(locale, "contact"),
+      external: true,
+    },
   ];
   
   // Create root segment with galleries only
@@ -65,15 +81,24 @@ export function GalleryBreadcrumb({ currentSlug, navigation, locale }: GalleryBr
         {/* Static page links - same level as PHOTOS */}
         {isRootPage && (
           <>
-            {staticPages.map((page) => (
-              <Link
-                key={page.slug}
-                to={page.path}
-                className="shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors py-1 px-2"
-              >
-                {page.title}
-              </Link>
-            ))}
+            {staticPages.map((page) => {
+              const className =
+                "shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors py-1 px-2";
+
+              return page.external ? (
+                <a key={page.slug} href={page.path} className={className}>
+                  {page.title}
+                </a>
+              ) : (
+                <Link
+                  key={page.slug}
+                  to={page.path}
+                  className={className}
+                >
+                  {page.title}
+                </Link>
+              );
+            })}
           </>
         )}
       </div>
