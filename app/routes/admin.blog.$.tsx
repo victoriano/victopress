@@ -308,8 +308,10 @@ export default function AdminBlogEditor() {
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-950">
             <div className="flex items-center gap-1" aria-label="Language edition">
               {SUPPORTED_LOCALES.map((locale) => {
+                const sourceHasBody = Boolean(editions[sourceLocale].content.trim());
                 const complete = Boolean(
-                  editions[locale].title.trim() && editions[locale].content.trim(),
+                  editions[locale].title.trim() &&
+                  (!sourceHasBody || editions[locale].content.trim()),
                 );
                 const active = activeLocale === locale;
                 return (

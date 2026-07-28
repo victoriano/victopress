@@ -313,4 +313,24 @@ describe("migrated blog through the headless contract", () => {
     expect(photosWithPublicText.every((photo) =>
       Boolean(photo.translations?.es?.title) && Boolean(photo.translations?.es?.description))).toBe(true);
   });
+
+  test("has complete Spanish and English editions for every blog post", async () => {
+    const storage = new LocalStorageAdapter(join(process.cwd(), "content"));
+    const posts = await scanBlog(storage);
+
+    expect(posts).toHaveLength(30);
+    for (const post of posts) {
+      expect(post.translations?.es, `${post.slug} is missing Spanish`).toBeTruthy();
+      expect(post.translations?.en, `${post.slug} is missing English`).toBeTruthy();
+    }
+
+    for (const locale of ["es", "en"] as const) {
+      const index = buildHeadlessBlogIndex(posts, config, locale);
+      expect(index.posts).toHaveLength(posts.filter((post) => !post.draft).length);
+      expect(index.posts.every((post) => post.resolvedLocale === locale)).toBe(true);
+      expect(index.posts.every((post) => post.isFallback === false)).toBe(true);
+      expect(index.posts.every((post) =>
+        post.availableLocales.includes("es") && post.availableLocales.includes("en"))).toBe(true);
+    }
+  });
 });

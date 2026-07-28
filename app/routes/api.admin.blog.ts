@@ -153,7 +153,9 @@ async function writeEditions(
     }
 
     const translated = localizedEditions[locale];
-    if (translated.title && translated.content) {
+    // A title-only source is still a valid draft edition. Preserve its
+    // translated title instead of deleting the locale when the body is empty.
+    if (translated.title) {
       await storage.put(
         variantPath,
         serializeEdition(shared, slug, locale, translated),

@@ -20,6 +20,7 @@
     "generate-manifest": "bun run scripts/generate-content-manifest.ts",
     "sync-to-r2": "bun run scripts/sync-local-to-r2.ts",
     "sync-blog-to-r2": "bun run scripts/sync-blog-to-r2.ts",
+    "translate-blog": "bun --env-file=.dev.vars run scripts/translate-blog-editions.ts",
     "sync-from-r2": "bun run scripts/sync-r2-to-local.ts",
     "import:squarespace-galleries": "bun run scripts/import-squarespace-galleries.ts",
     "sync:squarespace-orders": "bun run scripts/sync-squarespace-gallery-orders.ts",

@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-07-28T12:45:10.830Z",
+  "generatedAt": "2026-07-28T13:20:58.738Z",
   "repo": "victoriano/victopress",
   "branch": "main",
   "contentPath": "content",
@@ -34,6 +34,11 @@
       "path": "blog/2014/1/31/viralizarse-con-el-papa/image-02.png",
       "size": 638951,
       "type": "binary"
+    },
+    {
+      "path": "blog/2014/1/31/viralizarse-con-el-papa/index.en.md",
+      "size": 4371,
+      "type": "text"
     },
     {
       "path": "blog/2014/1/31/viralizarse-con-el-papa/index.md",
@@ -261,6 +266,11 @@
       "type": "binary"
     },
     {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/index.es.md",
+      "size": 6453,
+      "type": "text"
+    },
+    {
       "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/index.md",
       "size": 6457,
       "type": "text"
@@ -271,8 +281,13 @@
       "type": "binary"
     },
     {
+      "path": "blog/2016/12/24/the-unpublished-golden-information/index.en.md",
+      "size": 1197,
+      "type": "text"
+    },
+    {
       "path": "blog/2016/12/24/the-unpublished-golden-information/index.md",
-      "size": 1652,
+      "size": 1218,
       "type": "text"
     },
     {
@@ -416,6 +431,11 @@
       "type": "binary"
     },
     {
+      "path": "blog/2017/8/19/centralized-or-decentralized-free-scale-networks/index.es.md",
+      "size": 5967,
+      "type": "text"
+    },
+    {
       "path": "blog/2017/8/19/centralized-or-decentralized-free-scale-networks/index.md",
       "size": 5447,
       "type": "text"
@@ -429,6 +449,11 @@
       "path": "blog/2017/8/24/iii-graphext-bookclub-deep-work/image-02.jpg",
       "size": 143185,
       "type": "binary"
+    },
+    {
+      "path": "blog/2017/8/24/iii-graphext-bookclub-deep-work/index.en.md",
+      "size": 4692,
+      "type": "text"
     },
     {
       "path": "blog/2017/8/24/iii-graphext-bookclub-deep-work/index.md",
@@ -601,6 +626,11 @@
       "type": "binary"
     },
     {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/index.en.md",
+      "size": 9477,
+      "type": "text"
+    },
+    {
       "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/index.md",
       "size": 9828,
       "type": "text"
@@ -636,6 +666,11 @@
       "type": "binary"
     },
     {
+      "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/index.es.md",
+      "size": 4353,
+      "type": "text"
+    },
+    {
       "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/index.md",
       "size": 4130,
       "type": "text"
@@ -649,6 +684,11 @@
       "path": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/image-02.png",
       "size": 895037,
       "type": "binary"
+    },
+    {
+      "path": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/index.en.md",
+      "size": 10077,
+      "type": "text"
     },
     {
       "path": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/index.md",
@@ -731,6 +771,11 @@
       "type": "binary"
     },
     {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/index.es.md",
+      "size": 11183,
+      "type": "text"
+    },
+    {
       "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/index.md",
       "size": 10309,
       "type": "text"
@@ -799,6 +844,11 @@
       "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-13.jpg",
       "size": 150155,
       "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/index.es.md",
+      "size": 10291,
+      "type": "text"
     },
     {
       "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/index.md",
@@ -911,6 +961,11 @@
       "type": "binary"
     },
     {
+      "path": "blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/index.es.md",
+      "size": 4817,
+      "type": "text"
+    },
+    {
       "path": "blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/index.md",
       "size": 4473,
       "type": "text"
@@ -921,8 +976,18 @@
       "type": "binary"
     },
     {
+      "path": "blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/index.en.md",
+      "size": 7421,
+      "type": "text"
+    },
+    {
       "path": "blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/index.md",
       "size": 7765,
+      "type": "text"
+    },
+    {
+      "path": "blog/2023/10/6/controlling-addiction-to-tech/index.es.md",
+      "size": 1561,
       "type": "text"
     },
     {
@@ -941,6 +1006,11 @@
       "type": "binary"
     },
     {
+      "path": "blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/index.es.md",
+      "size": 4213,
+      "type": "text"
+    },
+    {
       "path": "blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/index.md",
       "size": 3969,
       "type": "text"
@@ -956,6 +1026,11 @@
       "type": "binary"
     },
     {
+      "path": "blog/2023/10/9/do-data-engineering-first/index.es.md",
+      "size": 5101,
+      "type": "text"
+    },
+    {
       "path": "blog/2023/10/9/do-data-engineering-first/index.md",
       "size": 4697,
       "type": "text"
@@ -966,8 +1041,18 @@
       "type": "binary"
     },
     {
+      "path": "blog/2023/7/8/the-best-argument-against-remote-work-ive-come-across-a-company-is-a-machine-for-creating-knowledge/index.es.md",
+      "size": 3728,
+      "type": "text"
+    },
+    {
       "path": "blog/2023/7/8/the-best-argument-against-remote-work-ive-come-across-a-company-is-a-machine-for-creating-knowledge/index.md",
       "size": 3622,
+      "type": "text"
+    },
+    {
+      "path": "blog/2023/8/11/cambio-climatico-temperaturas-anomarles/index.en.md",
+      "size": 266,
       "type": "text"
     },
     {
@@ -981,6 +1066,11 @@
       "type": "binary"
     },
     {
+      "path": "blog/2023/8/20/manna-ai-serving-a-dystopian-capitalism-vs-an-utopian-socialism/index.es.md",
+      "size": 3058,
+      "type": "text"
+    },
+    {
       "path": "blog/2023/8/20/manna-ai-serving-a-dystopian-capitalism-vs-an-utopian-socialism/index.md",
       "size": 2774,
       "type": "text"
@@ -991,13 +1081,28 @@
       "type": "binary"
     },
     {
+      "path": "blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/index.es.md",
+      "size": 14709,
+      "type": "text"
+    },
+    {
       "path": "blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/index.md",
       "size": 12851,
       "type": "text"
     },
     {
+      "path": "blog/2025/10/31/chatgpt-intelligence/index.es.md",
+      "size": 1119,
+      "type": "text"
+    },
+    {
       "path": "blog/2025/10/31/chatgpt-intelligence/index.md",
       "size": 1084,
+      "type": "text"
+    },
+    {
+      "path": "blog/2025/6/30/tiny-teams-cook-the-best-software-in-the-ai-era/index.es.md",
+      "size": 5067,
       "type": "text"
     },
     {
@@ -1016,8 +1121,18 @@
       "type": "binary"
     },
     {
+      "path": "blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/index.es.md",
+      "size": 4904,
+      "type": "text"
+    },
+    {
       "path": "blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/index.md",
       "size": 4354,
+      "type": "text"
+    },
+    {
+      "path": "blog/2025/7/3/consejos-para-viajar-a-japon/index.en.md",
+      "size": 6592,
       "type": "text"
     },
     {
@@ -1026,8 +1141,18 @@
       "type": "text"
     },
     {
+      "path": "blog/2026/7/28/escribir-para-otros-escribir-para-mi/index.en.md",
+      "size": 11867,
+      "type": "text"
+    },
+    {
       "path": "blog/2026/7/28/escribir-para-otros-escribir-para-mi/index.md",
       "size": 12183,
+      "type": "text"
+    },
+    {
+      "path": "blog/2026/7/29/tener-hijos-es-lo-mejor-de-la-vida-adulta/index.en.md",
+      "size": 9588,
       "type": "text"
     },
     {
@@ -2511,6 +2636,6 @@
       "type": "text"
     }
   ],
-  "totalSize": 514031446,
-  "totalFiles": 501
+  "totalSize": 514183084,
+  "totalFiles": 526
 }
