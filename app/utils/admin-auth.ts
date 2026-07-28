@@ -12,7 +12,9 @@ import type { StorageAdapter } from "~/lib/content-engine";
 const ADMIN_AUTH_PATH = ".victopress/admin-auth.json";
 const SESSION_COOKIE = "admin_auth";
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
-const PBKDF2_ITERATIONS = 210_000;
+// Cloudflare Workers currently rejects PBKDF2 costs above 100,000.
+const PBKDF2_ITERATIONS = 100_000;
+const LEGACY_PBKDF2_ITERATIONS = 210_000;
 
 interface AdminContext {
   cloudflare?: { env?: unknown };
@@ -28,6 +30,7 @@ export interface AdminCredentials {
   password?: string;
   passwordHash?: string;
   passwordSalt?: string;
+  passwordIterations?: number;
 }
 
 interface AdminAuthRecord {
@@ -35,6 +38,7 @@ interface AdminAuthRecord {
   username: string;
   passwordHash: string;
   passwordSalt: string;
+  passwordIterations?: number;
   updatedAt: string;
 }
 
@@ -73,7 +77,11 @@ function randomToken(byteLength = 32): string {
   return bytesToBase64Url(crypto.getRandomValues(new Uint8Array(byteLength)));
 }
 
-async function derivePasswordHash(password: string, salt: string): Promise<string> {
+async function derivePasswordHash(
+  password: string,
+  salt: string,
+  iterations = PBKDF2_ITERATIONS,
+): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(password),
@@ -86,7 +94,7 @@ async function derivePasswordHash(password: string, salt: string): Promise<strin
       name: "PBKDF2",
       hash: "SHA-256",
       salt: base64UrlToBytes(salt),
-      iterations: PBKDF2_ITERATIONS,
+      iterations,
     },
     key,
     256,
@@ -103,9 +111,15 @@ function safeEqual(left: string, right: string): boolean {
   return difference === 0;
 }
 
-async function hashPassword(password: string): Promise<{ hash: string; salt: string }> {
+async function hashPassword(
+  password: string,
+): Promise<{ hash: string; salt: string; iterations: number }> {
   const salt = randomToken(16);
-  return { hash: await derivePasswordHash(password, salt), salt };
+  return {
+    hash: await derivePasswordHash(password, salt),
+    salt,
+    iterations: PBKDF2_ITERATIONS,
+  };
 }
 
 async function readAuthRecord(storage: StorageAdapter): Promise<AdminAuthRecord | null> {
@@ -114,7 +128,19 @@ async function readAuthRecord(storage: StorageAdapter): Promise<AdminAuthRecord 
 
   try {
     const record = JSON.parse(raw) as AdminAuthRecord;
-    if (record.version !== 1 || !record.username || !record.passwordHash || !record.passwordSalt) {
+    if (
+      record.version !== 1 ||
+      !record.username ||
+      !record.passwordHash ||
+      !record.passwordSalt ||
+      (
+        record.passwordIterations !== undefined &&
+        (
+          !Number.isInteger(record.passwordIterations) ||
+          record.passwordIterations <= 0
+        )
+      )
+    ) {
       return null;
     }
     return record;
@@ -149,6 +175,8 @@ export async function getEffectiveAdminCredentials(
         username: record.username,
         passwordHash: record.passwordHash,
         passwordSalt: record.passwordSalt,
+        passwordIterations:
+          record.passwordIterations ?? LEGACY_PBKDF2_ITERATIONS,
       };
     }
   } catch (error) {
@@ -165,10 +193,30 @@ export async function verifyAdminPassword(
   credentials: AdminCredentials,
 ): Promise<boolean> {
   if (credentials.passwordHash && credentials.passwordSalt) {
-    return safeEqual(
-      await derivePasswordHash(password, credentials.passwordSalt),
-      credentials.passwordHash,
-    );
+    try {
+      return safeEqual(
+        await derivePasswordHash(
+          password,
+          credentials.passwordSalt,
+          credentials.passwordIterations ?? PBKDF2_ITERATIONS,
+        ),
+        credentials.passwordHash,
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (
+          error.name === "NotSupportedError" ||
+          error.message.includes("iteration counts above")
+        )
+      ) {
+        console.warn(
+          "[Admin Auth] The stored PBKDF2 cost is unsupported by this runtime. Reset the admin password to migrate it.",
+        );
+        return false;
+      }
+      throw error;
+    }
   }
   return typeof credentials.password === "string" && safeEqual(password, credentials.password);
 }
@@ -275,12 +323,13 @@ export async function setAdminPassword(
 ): Promise<AdminCredentials> {
   if (!username.trim()) throw new Error("Admin username is required.");
   if (password.length < 20) throw new Error("Generated admin passwords must contain at least 20 characters.");
-  const { hash, salt } = await hashPassword(password);
+  const { hash, salt, iterations } = await hashPassword(password);
   const record: AdminAuthRecord = {
     version: 1,
     username: username.trim(),
     passwordHash: hash,
     passwordSalt: salt,
+    passwordIterations: iterations,
     updatedAt: new Date().toISOString(),
   };
   await writeAuthRecord(storage, record);
@@ -288,5 +337,6 @@ export async function setAdminPassword(
     username: record.username,
     passwordHash: record.passwordHash,
     passwordSalt: record.passwordSalt,
+    passwordIterations: record.passwordIterations,
   };
 }

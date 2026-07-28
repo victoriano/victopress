@@ -38,5 +38,6 @@ describe("local admin password reset", () => {
     const stored = await storage.getText(".victopress/admin-auth.json");
     expect(stored).not.toContain("second-secure-password-value");
     expect(JSON.parse(stored).passwordHash).toBeString();
+    expect(JSON.parse(stored).passwordIterations).toBe(100_000);
   });
 });
