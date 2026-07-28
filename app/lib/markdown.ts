@@ -192,9 +192,7 @@ function createRenderer(options: MarkdownRenderOptions): Renderer {
 
     return [
       `<span class="blog-image-frame"${galleryAttribute}>`,
-      `<a class="blog-image-link" href="${escapeHtml(src)}" target="_blank" rel="noopener noreferrer">`,
       `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}"${titleAttribute} loading="lazy" decoding="async">`,
-      "</a>",
       caption,
       "</span>",
     ].join("");

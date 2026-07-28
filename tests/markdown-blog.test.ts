@@ -59,6 +59,8 @@ describe("blog Markdown", () => {
     expect(html).toContain('<p class="blog-image-row" data-gallery-columns="2">');
     expect(html.match(/class="blog-image-frame"/g)).toHaveLength(3);
     expect(html).toContain('src="/api/images/blog/photo.jpg?v=mime-v2"');
+    expect(html).not.toContain('class="blog-image-link"');
+    expect(html).not.toContain('href="/api/images/blog/photo.jpg?v=mime-v2"');
   });
 
   test("all migrated posts are HTML-free Markdown with every image referenced", async () => {

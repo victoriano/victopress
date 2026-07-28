@@ -326,15 +326,10 @@
   width: 100%;
 }
 
-.markdown-blog-content .blog-image-frame,
-.markdown-blog-content .blog-image-link {
+.markdown-blog-content .blog-image-frame {
   display: block;
   min-width: 0;
   width: 100%;
-}
-
-.markdown-blog-content .blog-image-link:hover {
-  text-decoration: none;
 }
 
 .markdown-blog-content .blog-image-frame img {
@@ -368,12 +363,12 @@
   padding-bottom: 35px;
 }
 
-.markdown-blog-content [data-gallery-columns="2"] .blog-image-link {
+.markdown-blog-content .blog-image-frame[data-gallery-columns="2"] {
   aspect-ratio: 2 / 3;
   overflow: hidden;
 }
 
-.markdown-blog-content [data-gallery-columns="3"] .blog-image-link {
+.markdown-blog-content .blog-image-frame[data-gallery-columns="3"] {
   aspect-ratio: 1;
   overflow: hidden;
 }
