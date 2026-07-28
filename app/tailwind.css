@@ -195,6 +195,11 @@
   margin: 0 0 1em;
 }
 
+.markdown-blog-content strong {
+  color: #121212;
+  font-weight: 700;
+}
+
 .markdown-blog-content a {
   color: #000;
   text-decoration: none;

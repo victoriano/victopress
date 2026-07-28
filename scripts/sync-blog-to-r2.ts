@@ -85,6 +85,7 @@ function contentType(filename: string): string {
     ".webp": "image/webp",
     ".avif": "image/avif",
     ".svg": "image/svg+xml",
+    ".pdf": "application/pdf",
     ".md": "text/markdown; charset=utf-8",
     ".json": "application/json; charset=utf-8",
   };

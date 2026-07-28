@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "sourceDatabase": "https://victorianoi.notion.site/a8debf3e344043a690fb56a1858ac0d4?v=52bd3360b23c4ae793aef6d745ffe5fa",
+  "importedAt": "2026-07-28",
+  "selection": {
+    "databaseRows": 25,
+    "excludedStatus": "Posted",
+    "excludedRows": 20,
+    "importedRows": 5,
+    "importAsDrafts": true
+  },
+  "assets": {
+    "images": 3,
+    "files": 1
+  },
+  "posts": [
+    {
+      "notionPageId": "22535803-8bc5-8011-9b85-d3f84023e99c",
+      "title": "Consejos para viajar a Japón",
+      "status": "Draft",
+      "date": "2025-07-03",
+      "locale": "es",
+      "target": "blog/2025/7/3/consejos-para-viajar-a-japon/index.md",
+      "assets": []
+    },
+    {
+      "notionPageId": "1f435803-8bc5-800a-be6b-fe7800fe7734",
+      "title": "Tiny teams cook the best software in the AI era",
+      "status": "Presentation",
+      "date": "2025-06-30",
+      "locale": "en",
+      "target": "blog/2025/6/30/tiny-teams-cook-the-best-software-in-the-ai-era/index.md",
+      "assets": [
+        {
+          "path": "blog/2025/6/30/tiny-teams-cook-the-best-software-in-the-ai-era/mapfre-catit-30-junio-2025-victoriano-izquierdo.pdf",
+          "sha256": "551cffc6a0e60ad2afebfc7655f0ec2e2b1cd64b46b5deec2f232c26d5c8764b"
+        }
+      ]
+    },
+    {
+      "notionPageId": "7241b455-7502-4668-9d28-b5df71935ede",
+      "title": "Do Data Engineering First",
+      "status": "Draft",
+      "date": "2023-10-09",
+      "locale": "en",
+      "target": "blog/2023/10/9/do-data-engineering-first/index.md",
+      "assets": [
+        {
+          "path": "blog/2023/10/9/do-data-engineering-first/data-maturity-ladder.jpg",
+          "sha256": "828abef6a02f369da8f069bd5a32656de4b7550733272f4e3e02641136a60205"
+        },
+        {
+          "path": "blog/2023/10/9/do-data-engineering-first/data-analysis-process.png",
+          "sha256": "78ebc1d4a68910814ed545e8309f6e5a5fdb667cb6881ec5521174a8f1a37b71"
+        }
+      ]
+    },
+    {
+      "notionPageId": "f32f111e-c1f2-4021-a566-6720c9c38cfa",
+      "title": "Controlling Addiction to Tech",
+      "status": "Brainstormed",
+      "date": "2023-10-06",
+      "locale": "en",
+      "target": "blog/2023/10/6/controlling-addiction-to-tech/index.md",
+      "assets": [
+        {
+          "path": "blog/2023/10/6/controlling-addiction-to-tech/one-sec-app-usage.png",
+          "sha256": "e7d3c90c3f04944b1a9d8ed3fb095e556eba14e15e2315dc37938b120bb1e8e5"
+        }
+      ]
+    },
+    {
+      "notionPageId": "c49b039f-2b7d-4ac2-a410-f1c4997c946f",
+      "title": "Cambio Climático. Temperaturas anomarles",
+      "status": "Brainstormed",
+      "date": "2023-08-11",
+      "locale": "es",
+      "target": "blog/2023/8/11/cambio-climatico-temperaturas-anomarles/index.md",
+      "emptySourcePage": true,
+      "assets": []
+    }
+  ],
+  "layoutRepair": {
+    "version": 2,
+    "repairedAt": "2026-07-28",
+    "blockBoundariesPreserved": true
+  }
+}

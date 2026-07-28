@@ -200,12 +200,17 @@ describe("headless blog contract", () => {
 });
 
 describe("migrated blog through the headless contract", () => {
-  test("publishes all five real posts and all 24 body images in both editions", async () => {
+  test("publishes all five Squarespace posts with every localized body image", async () => {
     const storage = new LocalStorageAdapter(`${process.cwd()}/content`);
     const posts = await scanBlog(storage);
+    const migration = JSON.parse(
+      await readFile(join(process.cwd(), "content/blog/_migration-manifest.json"), "utf8"),
+    ) as { posts: Array<{ slug: string }> };
+    const migratedSlugs = new Set(migration.posts.map((post) => post.slug));
     for (const locale of ["es", "en"] as const) {
       const index = buildHeadlessBlogIndex(posts, config, locale);
-      const details = index.posts.map((summary) =>
+      const migratedPosts = index.posts.filter((summary) => migratedSlugs.has(summary.slug));
+      const details = migratedPosts.map((summary) =>
         buildHeadlessBlogPost(posts, summary.slug, config, locale),
       );
       const renderedImages = details.reduce(
@@ -213,23 +218,49 @@ describe("migrated blog through the headless contract", () => {
         0,
       );
 
-      expect(index.count).toBe(5);
+      expect(migratedPosts).toHaveLength(5);
       expect(index.locale).toBe(locale);
-      expect(index.posts.every((item) => item.resolvedLocale === locale)).toBe(true);
-      expect(index.posts.every((item) => item.isFallback === false)).toBe(true);
-      expect(index.posts.every((item) =>
+      expect(migratedPosts.every((item) => item.resolvedLocale === locale)).toBe(true);
+      expect(migratedPosts.every((item) => item.isFallback === false)).toBe(true);
+      expect(migratedPosts.every((item) =>
         item.availableLocales.includes("es") && item.availableLocales.includes("en"))).toBe(true);
       const canonicalBlogPath = locale === "es" ? "/es/blog/" : "/blog/";
-      expect(index.posts.every((item) => item.canonicalUrl.includes(canonicalBlogPath))).toBe(true);
+      expect(migratedPosts.every((item) => item.canonicalUrl.includes(canonicalBlogPath))).toBe(true);
       if (locale === "en") {
-        expect(index.posts.every((item) => !item.canonicalUrl.includes("/en/"))).toBe(true);
+        expect(migratedPosts.every((item) => !item.canonicalUrl.includes("/en/"))).toBe(true);
       }
       expect(details.every(Boolean)).toBe(true);
-      expect(renderedImages).toBe(24);
+      expect(renderedImages).toBe(locale === "es" ? 33 : 24);
       expect(details.every((detail) =>
         !detail?.post.contentHtml.includes('src="/api/images/'))).toBe(true);
       expect(details.every((detail) =>
         !/<script\b/i.test(detail?.post.contentHtml || ""))).toBe(true);
+    }
+  });
+
+  test("publishes every Notion Posted row on its source date and keeps imported drafts private", async () => {
+    const storage = new LocalStorageAdapter(`${process.cwd()}/content`);
+    const posts = await scanBlog(storage);
+    const published = buildHeadlessBlogIndex(posts, config);
+    const postedImport = JSON.parse(
+      await readFile(
+        join(process.cwd(), "content/blog/_notion-posted-import-manifest.json"),
+        "utf8",
+      ),
+    ) as { posts: Array<{ date: string; target: string }> };
+    const draftImport = JSON.parse(
+      await readFile(join(process.cwd(), "content/blog/_notion-import-manifest.json"), "utf8"),
+    ) as { posts: Array<{ target: string }> };
+    const bySlug = new Map(published.posts.map((post) => [post.slug, post]));
+
+    expect(postedImport.posts).toHaveLength(20);
+    for (const post of postedImport.posts) {
+      const slug = post.target.replace(/^blog\//, "").replace(/\/index\.md$/, "");
+      expect(bySlug.get(slug)?.date).toBe(post.date);
+    }
+    for (const post of draftImport.posts) {
+      const slug = post.target.replace(/^blog\//, "").replace(/\/index\.md$/, "");
+      expect(bySlug.has(slug)).toBe(false);
     }
   });
 
@@ -258,7 +289,7 @@ describe("migrated blog through the headless contract", () => {
         translations?: { es?: { title?: string } };
       }));
 
-    expect(galleries).toHaveLength(27);
+    expect(galleries).toHaveLength(31);
     expect(galleries.every((gallery) => gallery.locale === "en")).toBe(true);
     expect(galleries.every((gallery) => Boolean(gallery.translations?.es?.title))).toBe(true);
 

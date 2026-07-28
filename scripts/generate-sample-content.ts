@@ -29,8 +29,10 @@ const TEXT_EXTENSIONS = [".yaml", ".yml", ".md", ".json", ".html", ".css", ".txt
 // Note: Images are NOT bundled (to keep size small for Cloudflare Workers)
 // Only image metadata (path, size) is included - actual images served from R2
 
-// Image extensions (for reference/listing only, not bundled)
+// Binary extensions (for reference/listing only, not bundled)
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"];
+const DOCUMENT_EXTENSIONS = [".pdf"];
+const BINARY_EXTENSIONS = [...IMAGE_EXTENSIONS, ...DOCUMENT_EXTENSIONS];
 
 async function scanDirectory(dir: string, files: BundledFile[], basePath: string = ""): Promise<void> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -72,9 +74,9 @@ async function scanDirectory(dir: string, files: BundledFile[], basePath: string
           lastModified: stats.mtime.toISOString(),
           isDirectory: false,
         });
-      } else if (IMAGE_EXTENSIONS.includes(ext)) {
-        // For images: only store metadata (path, size), not content
-        // This keeps the bundle small - images are served from R2 in production
+      } else if (BINARY_EXTENSIONS.includes(ext)) {
+        // For binary assets: only store metadata (path, size), not content.
+        // This keeps the bundle small; the bytes are served from R2 in production.
         files.push({
           path: relativePath,
           content: "", // Empty - no base64 data
@@ -100,11 +102,13 @@ async function main() {
   };
   
   const imageFiles = files.filter(f => IMAGE_EXTENSIONS.some(ext => f.path.toLowerCase().endsWith(ext)));
+  const documentFiles = files.filter(f => DOCUMENT_EXTENSIONS.some(ext => f.path.toLowerCase().endsWith(ext)));
   
   console.log(`📦 Found ${files.length} files/directories`);
   console.log(`   - Directories: ${files.filter(f => f.isDirectory).length}`);
-  console.log(`   - Text files: ${files.filter(f => !f.isDirectory && !IMAGE_EXTENSIONS.some(ext => f.path.toLowerCase().endsWith(ext))).length}`);
+  console.log(`   - Text files: ${files.filter(f => !f.isDirectory && !BINARY_EXTENSIONS.some(ext => f.path.toLowerCase().endsWith(ext))).length}`);
   console.log(`   - Images: ${imageFiles.length} (metadata only, no base64)`);
+  console.log(`   - Documents: ${documentFiles.length} (metadata only, no base64)`);
   
   await writeFile(OUTPUT_FILE, JSON.stringify(output, null, 2));
   

@@ -3,10 +3,10 @@ import { readFile } from "node:fs/promises";
 import { renderMarkdown } from "../app/lib/markdown";
 
 const POSTS = [
-  "content/blog/2017/1/22/granada/index.md",
-  "content/blog/2017/1/31/aos-de-crcel/index.md",
-  "content/blog/2017/1/31/la-nia-fotgrafa-de-sol/index.md",
-  "content/blog/2017/1/31/tiendas-de-barrio/index.md",
+  "content/blog/2017/1/22/granada/index.en.md",
+  "content/blog/2017/1/31/aos-de-crcel/index.en.md",
+  "content/blog/2017/1/31/la-nia-fotgrafa-de-sol/index.en.md",
+  "content/blog/2017/1/31/tiendas-de-barrio/index.en.md",
   "content/blog/2021/10/3/testing-iphone-13-pro-in-granada/index.md",
 ];
 
@@ -19,6 +19,24 @@ describe("blog Markdown", () => {
     expect(html).toContain('target="_blank"');
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>");
+  });
+
+  test("renders strong annotations imported from Notion even with edge whitespace", () => {
+    const html = renderMarkdown([
+      "Understand** why it happens**, then act.",
+      "",
+      "The **important conclusion. **Next paragraph.",
+      "",
+      "### **Usage data. **",
+      "",
+      "***Strong italic***",
+    ].join("\n"));
+
+    expect(html).toContain("Understand <strong>why it happens</strong>, then act.");
+    expect(html).toContain("<strong>important conclusion.</strong> Next paragraph.");
+    expect(html).toContain("<h3><strong>Usage data.</strong> </h3>");
+    expect(html).toContain("<em><strong>Strong italic</strong></em>");
+    expect(html).not.toContain("**");
   });
 
   test("drops unsafe link protocols", () => {

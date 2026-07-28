@@ -124,6 +124,7 @@ export class R2StorageAdapter implements StorageAdapter {
         'webp': 'image/webp',
         'avif': 'image/avif',
         'svg': 'image/svg+xml',
+        'pdf': 'application/pdf',
         'md': 'text/markdown',
         'yaml': 'text/yaml',
         'yml': 'text/yaml',

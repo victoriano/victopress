@@ -37,7 +37,7 @@ const BRANCH = "main";
 const TEXT_EXTENSIONS = [".yaml", ".yml", ".md", ".json", ".html", ".css", ".txt"];
 
 // Binary files (will be fetched as arraybuffer)
-const BINARY_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif", ".svg"];
+const BINARY_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif", ".svg", ".pdf"];
 
 async function scanDirectory(dir: string, files: ManifestFile[], basePath: string = ""): Promise<void> {
   const entries = await readdir(dir, { withFileTypes: true });

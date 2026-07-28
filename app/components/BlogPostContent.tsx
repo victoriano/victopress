@@ -28,6 +28,7 @@ export function MarkdownContent({ content }: { content: string }) {
   return (
     <div
       className="markdown-blog-content"
+      suppressHydrationWarning
       dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
     />
   );

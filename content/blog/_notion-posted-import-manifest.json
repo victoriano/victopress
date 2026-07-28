@@ -1,0 +1,1284 @@
+{
+  "version": 1,
+  "sourceDatabase": "https://victorianoi.notion.site/a8debf3e344043a690fb56a1858ac0d4?v=52bd3360b23c4ae793aef6d745ffe5fa",
+  "importedAt": "2026-07-28",
+  "selection": {
+    "databaseRows": 25,
+    "sourceStatus": "Posted",
+    "sourceRows": 20,
+    "importedAsPublished": true,
+    "newPosts": 18,
+    "reconciledExistingPosts": 2
+  },
+  "dateFallbacks": [
+    {
+      "notionPageId": "29d35803-8bc5-80e8-a9ab-eef52b03d38f",
+      "title": "ChatGPT Intelligence",
+      "date": "2025-10-31",
+      "source": "created_time"
+    }
+  ],
+  "assets": {
+    "images": 139
+  },
+  "posts": [
+    {
+      "notionPageId": "22535803-8bc5-800f-83cc-e629b4350921",
+      "title": "Why after Pouring Millions into Data, Companies Still Make Zero Data-Driven Decisions",
+      "status": "Posted",
+      "sourceDate": "2025-06-08",
+      "date": "2025-06-08",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/225358038bc5800f83cce629b4350921",
+      "externalUrls": {
+        "linkedIn": "https://www.linkedin.com/pulse/why-after-pouring-millions-data-companies-still-make-zero-izquierdo-ixtee/?trackingId=4hyk9yWhqGCMlaMpOd%2FivQ%3D%3D",
+        "twitter": null,
+        "substack": null
+      },
+      "sourceContentSha256": "f183f3db0c0abaea6ee639df8dc101d9f844f982c57a27ad8b85c1cbf765013d",
+      "contentSha256": "df69bb1d5d2c50f337c7ed74c70224f4938059786e4175b349edd7eb81e67511",
+      "assets": [
+        {
+          "path": "blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/image-01.png",
+          "sha256": "c9b96a40027e6238f096bc41aa3cf0568fa3ded7464ba193550bffcf5c638d33",
+          "bytes": 1665809,
+          "contentType": "image/png"
+        }
+      ]
+    },
+    {
+      "notionPageId": "68fc4fc1-e599-4c42-a9d6-fdd1a9c65cfd",
+      "title": "How to implement churn predictive models that are actually useful and profitable for Revenue Operations teams.",
+      "status": "Posted",
+      "sourceDate": "2024-07-06",
+      "date": "2024-07-06",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/68fc4fc1e5994c42a9d6fdd1a9c65cfd",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": null
+      },
+      "sourceContentSha256": "4232170df3ac88fd78d50671bda0f8df505a3c8c3b1def757e033e860fcacce8",
+      "contentSha256": "5696603eb8e17114a8d5bf23c9c38af602227d92ba8e282376f9748a6a961b2a",
+      "assets": [
+        {
+          "path": "blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/image-01.png",
+          "sha256": "4a6f5fa0dd2f6e7ca7552ce9f8ba990157506c3aabda5d45c07fb1191945b4fa",
+          "bytes": 83640,
+          "contentType": "image/png"
+        }
+      ]
+    },
+    {
+      "notionPageId": "ce6c7602-d10a-43f9-86c2-28b6fb3845d3",
+      "title": "Los ingenieros 10x en la era de la IA",
+      "status": "Posted",
+      "sourceDate": "2023-10-29",
+      "date": "2023-10-29",
+      "dateSource": "Date",
+      "locale": "es",
+      "target": "blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/ce6c7602d10a43f986c228b6fb3845d3",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": "https://twitter.com/victorianoi/status/1718662464974528974",
+        "substack": "https://us2.campaign-archive.com/?u=374c664073e1a1fa3deca53b4&id=93f4ce628c"
+      },
+      "sourceContentSha256": "1ee3071c8989feaacbe2a16c7dbfe176cba3806191c5dd71802ec553bb0bf68c",
+      "contentSha256": "30008ebca13b70e19b7f053945184628d9414185b58efd8efa5676dcf3df9028",
+      "assets": [
+        {
+          "path": "blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/image-01.png",
+          "sha256": "3b7b2933a9e006b631dd1b1010f4bfbcc67c47d10d966e05d58eb0bafd014950",
+          "bytes": 1165930,
+          "contentType": "image/png"
+        }
+      ]
+    },
+    {
+      "notionPageId": "510339d3-9035-4d30-9632-9a78da518216",
+      "title": "Why data without profound human interpretation, is meaningless, even in the era of AI",
+      "status": "Posted",
+      "sourceDate": "2023-10-16",
+      "date": "2023-10-16",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/510339d390354d3096329a78da518216",
+      "externalUrls": {
+        "linkedIn": "https://www.linkedin.com/posts/victorianoizquierdo_data-by-nature-is-always-subjective-many-activity-7119583431658737664-dKL9?utm_source=share&utm_medium=member_desktop",
+        "twitter": "https://twitter.com/victorianoi/status/1713821000218108389",
+        "substack": "https://www.graphext.com/post/profound-human-interpretation"
+      },
+      "sourceContentSha256": "5adb10827ed71d5bac3fb7698947e253cd76e1cada31e28a8ca6a4e91a7e9d7e",
+      "contentSha256": "8a00e7a7ee9f7780279ec2be9ada848c7ee96d4b619977269c3e3d7e970c6bf6",
+      "assets": [
+        {
+          "path": "blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/image-01.jpg",
+          "sha256": "f8dfe86b1ba18f3b6b6492fcfbf358412657c59bcdbf288e3439279e4eb1ef7b",
+          "bytes": 224407,
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "notionPageId": "f5431eeb-3374-496b-82c4-4e6bbfbef194",
+      "title": "Predicting the future of a country's economy by the complexity of the products & software it can produce.",
+      "status": "Posted",
+      "sourceDate": "2023-10-07",
+      "date": "2023-10-07",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/f5431eeb3374496b82c44e6bbfbef194",
+      "externalUrls": {
+        "linkedIn": "https://www.linkedin.com/pulse/predicting-future-countrys-economy-complexity-can-izquierdo",
+        "twitter": "https://twitter.com/victorianoi/status/1710566654835327075",
+        "substack": null
+      },
+      "sourceContentSha256": "426419dec18e88eae7934d9bf7d8746303cbded142e942a4cbef4494d07e0fdd",
+      "contentSha256": "ecf0c396ef965bfe5049cd647a73d7a13816e246977771fceef86a52b3722bf3",
+      "assets": [
+        {
+          "path": "blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/image-01.png",
+          "sha256": "77c56d9e12662164ef324f3fcf9db2965aee82acc459a8ffbe86b06cdfe095a9",
+          "bytes": 287396,
+          "contentType": "image/png"
+        }
+      ]
+    },
+    {
+      "notionPageId": "fdd9cca3-4bae-4175-8627-2458c743706c",
+      "title": "Manna: AI serving a dystopian capitalism vs an utopian socialism",
+      "status": "Posted",
+      "sourceDate": "2023-08-20",
+      "date": "2023-08-20",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2023/8/20/manna-ai-serving-a-dystopian-capitalism-vs-an-utopian-socialism/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/fdd9cca34bae417586272458c743706c",
+      "externalUrls": {
+        "linkedIn": "https://www.linkedin.com/posts/victorianoizquierdo_during-these-holidays-ive-read-manna-activity-7098968038565175296-Tl44?utm_source=share&utm_medium=member_desktop",
+        "twitter": "https://twitter.com/victorianoi/status/1693199018866737397",
+        "substack": null
+      },
+      "sourceContentSha256": "3b7a64774d73a65ef611523bb9d1e93333a4bea671ed7f2be1faab65aede8154",
+      "contentSha256": "f25a5cb6c70a9da4477ac60f047493862f86aff87153edf401d3bcf34fea8a9f",
+      "assets": [
+        {
+          "path": "blog/2023/8/20/manna-ai-serving-a-dystopian-capitalism-vs-an-utopian-socialism/image-01.png",
+          "sha256": "cf0e624ca3e6cc122f5a0d2b6d0caa546168a630573c0cd287739e7942a7c45a",
+          "bytes": 12540593,
+          "contentType": "image/png"
+        }
+      ]
+    },
+    {
+      "notionPageId": "ef6ae8fe-e934-4b57-baa4-1b0effa9bad4",
+      "title": "The best argument against remote work I've come across: a company is a machine for creating knowledge.",
+      "status": "Posted",
+      "sourceDate": "2023-07-08",
+      "date": "2023-07-08",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2023/7/8/the-best-argument-against-remote-work-ive-come-across-a-company-is-a-machine-for-creating-knowledge/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/ef6ae8fee9344b57baa41b0effa9bad4",
+      "externalUrls": {
+        "linkedIn": "https://www.linkedin.com/pulse/best-argument-against-remote-work-ive-come-across-izquierdo/",
+        "twitter": "https://twitter.com/victorianoi/status/1677635092951314433",
+        "substack": null
+      },
+      "sourceContentSha256": "dc06141532aea19e8727900f5a7b19bef29b682255af24ee92b2d1c05be78b2b",
+      "contentSha256": "7c16e21a4d432426a128b96e90447510785113b34de226d7c59820f64e66ec21",
+      "assets": [
+        {
+          "path": "blog/2023/7/8/the-best-argument-against-remote-work-ive-come-across-a-company-is-a-machine-for-creating-knowledge/image-01.png",
+          "sha256": "69166a0aac1147f5942f14c46959833e32141155b4d75bd2cf59d8c0357f9131",
+          "bytes": 14600621,
+          "contentType": "image/png"
+        }
+      ]
+    },
+    {
+      "notionPageId": "153056c9-495e-479c-a94c-e4990010213f",
+      "title": "How big is the political polarization in the US? How predictable are voters?",
+      "status": "Posted",
+      "sourceDate": "2020-11-15",
+      "date": "2020-11-15",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/153056c9495e479ca94ce4990010213f",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://www.complexfacts.com/p/how-big-is-the-political-polarization"
+      },
+      "sourceContentSha256": "83a3559fc97dbd2b1b846c5e28d8a4c55404699a28bbd0000c9f353ff95cf675",
+      "contentSha256": "4d386c8246fbca21c6ed1664ad890e0fbd9e645609cdbf2c8d041368f799f2ca",
+      "assets": [
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-01.jpg",
+          "sha256": "13d8e18f2f2b5f0cc9278001c3f4c4e843251482a44ae9d27dc25c7c726f36c9",
+          "bytes": 370729,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-02.jpg",
+          "sha256": "a228054532e4567b0bb2f81fe7bfe8e922ca5275871383c20d73eb3aabe2dcbd",
+          "bytes": 103452,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-03.jpg",
+          "sha256": "90f0cc1ffe2cc997e946f0c11c92516e80a7440c3bd7fce708832c6edb51cf7e",
+          "bytes": 50770,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-04.gif",
+          "sha256": "ffcb096a1d2e99273ff9e9ace74df5a823f7dcf09f507091dfa37501361d70ee",
+          "bytes": 5259714,
+          "contentType": "image/gif"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-05.jpg",
+          "sha256": "b56a04291b04ee6ddb182c66ca8adb2ce409330eb63bccbd2daafdc2d9197e7d",
+          "bytes": 188640,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-06.jpg",
+          "sha256": "776fac7c8076d07a7458b6605a8eb0c3ad71082f3936d4211572581f583610a0",
+          "bytes": 595805,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-07.jpg",
+          "sha256": "8d9380eaf438fa4a711970e0c72b0af12a56efd7bcaaf8bb8d20b61450d8586e",
+          "bytes": 147327,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-08.jpg",
+          "sha256": "491b495e4828875ef9d3cda1811c7c6a808f48797f21f5851e5bb317fcf4e168",
+          "bytes": 299145,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-09.jpg",
+          "sha256": "9651f56976e6d2550525744bfc898f68754d13a6c326eeebc11313d0d6c744c9",
+          "bytes": 1309,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-10.jpg",
+          "sha256": "e79359d526d3c5f01c3441723e9e6b083261571338dc87f38d38d35dc5b2c4e7",
+          "bytes": 72597,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-11.jpg",
+          "sha256": "982c2b141c001c17d38cb4202f9c29f74a479ac884d7ff2281599524650fca8f",
+          "bytes": 236250,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-12.jpg",
+          "sha256": "68e5fda5dc7920d7da95f4b739043f27a1f5a31de69db57267b50297929574cf",
+          "bytes": 123972,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-13.jpg",
+          "sha256": "678ed126c176a75f6b1fc596b936e77aa713551a25375e01b7231216b912de2b",
+          "bytes": 150155,
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "notionPageId": "e78de784-0c19-4f40-a0ec-eb558993e4bc",
+      "title": "Why women earn less? Why houses are so expensive now but weren't for our parents? ... and more!",
+      "status": "Posted",
+      "sourceDate": "2020-11-01",
+      "date": "2020-11-01",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/e78de7840c194f40a0eceb558993e4bc",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://www.complexfacts.com/p/the-child-penalty-affordable-housing"
+      },
+      "sourceContentSha256": "22aa8a94775bc0481227c5de07d337e6fa805dc217b1fc4accad340cd82ac66b",
+      "contentSha256": "71e9fc8461ff7d767a2317a9cdca464ab6279c5c68c42c57a540140ef324d833",
+      "assets": [
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-01.jpg",
+          "sha256": "94ca7c9f1c83c3701af278ea4f43b51948d10105ae71b04399076948194f9acd",
+          "bytes": 134915,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-02.jpg",
+          "sha256": "6b0e67ec51698d1983c13753da7e68278eb267475f2de981a41b53f2691ffae4",
+          "bytes": 72988,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-03.jpg",
+          "sha256": "be0b55fbdfa728ccca491a877efd3e91dccc3d878a879c8b5293f8ede4d3123b",
+          "bytes": 181326,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-04.jpg",
+          "sha256": "435c7c24dbae277917e75ffa50dd8c5064ebe9b6a3e2d20193069914bb009094",
+          "bytes": 34511,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-05.jpg",
+          "sha256": "07d9b97ea453759fd993edb3abc3f742891999561d005700512d5c15856f8c54",
+          "bytes": 80009,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-06.jpg",
+          "sha256": "2760a3140d40f4249f87590320135d48823a686841f1ca98773802c94a9f0075",
+          "bytes": 36923,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-07.jpg",
+          "sha256": "2a0090f3f85a59641590b46e22281523e62543b24f45895dd0e4cbe521f7d27a",
+          "bytes": 37116,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-08.jpg",
+          "sha256": "9191fa4d317284a1edb2ebda1a576b1c60d70f648930e77ce54576559da3c9a7",
+          "bytes": 73892,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-09.jpg",
+          "sha256": "949218c7c8ad45622a5bfe6f152cf211ea7d5b3a31187973e30c81b217f9ed3e",
+          "bytes": 83403,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-10.png",
+          "sha256": "7a0d39c107658c7a072d6d4092a203d824b4ceef1d029981b94311e6c373082c",
+          "bytes": 66800,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-11.jpg",
+          "sha256": "42fdeb90d9014960d10d66a09c0f0cc928303ea8e390e6784d82af5f87988304",
+          "bytes": 78449,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-12.jpg",
+          "sha256": "6dcfd660d5b6c2703b745245964ff44e3a50fe69d6589270e09fbac44deea023",
+          "bytes": 30959,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-13.png",
+          "sha256": "4641df512e229fbae0a7f5ddacee70d4133e33831a9447ff41c3de14b9a4bfe8",
+          "bytes": 41435,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-14.jpg",
+          "sha256": "6112c9dc4a8f94cb747ec4d7dfc3b50e6f87b2044740e55c68a84ff84dbca24f",
+          "bytes": 35655,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-15.jpg",
+          "sha256": "24e52ed6703e7a974f704e9e40499f04d833136287e4ae99fa747c342bf98d1a",
+          "bytes": 31525,
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "notionPageId": "519646eb-8f84-4b6f-babe-377ae19ed001",
+      "title": "Analyzing the complex relationship between the most loved, hated and used programming languages",
+      "status": "Posted",
+      "sourceDate": "2019-10-12",
+      "date": "2019-10-12",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/519646eb8f844b6fbabe377ae19ed001",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://medium.com/graphext/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages-4f7ae105e843"
+      },
+      "sourceContentSha256": "d332a9a5b1c634f1647fd3052f52d8ebe6729a3b118ecc6c86a4a0b505212da3",
+      "contentSha256": "b2332dc6112f9fab653bf07590758c29263e7adc69cc05aabb238710e9ebf778",
+      "assets": [
+        {
+          "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-01.jpg",
+          "sha256": "cb54548719e19db0c8768c0c0e399689e90314cad3bd54d0847edc792696ddc6",
+          "bytes": 413680,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-02.jpg",
+          "sha256": "0c2c06acbecb676343e9d67b1c9852d42158677673c2003e84c7f1440396855d",
+          "bytes": 311194,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-03.jpg",
+          "sha256": "eb3e4de959b6944e3f412867fbf7780eecc86badb28ebfc635af4c763bc15da7",
+          "bytes": 278384,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-04.jpg",
+          "sha256": "e5491f3c3cff778d60693fd7fa2418e313666f5c41394dabcdd436d55089aa5b",
+          "bytes": 328187,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-05.jpg",
+          "sha256": "8c589cf9e82224c53f09af03c9f1dc79b9346c9a7af12e6b87bc2b5c22e31a7f",
+          "bytes": 297624,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-06.jpg",
+          "sha256": "6a31bfa0e642f95e843158f2f1f69a1a7aae75cdc2c79baf0976dd09c307b012",
+          "bytes": 305644,
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "notionPageId": "6a3f4fb5-bd6e-4257-b300-ea065106c1bc",
+      "title": "¿Informática o Matemáticas? Qué carrera estudiar si te quieres dedicar al mundo de los datos",
+      "status": "Posted",
+      "sourceDate": "2019-06-08",
+      "date": "2019-06-08",
+      "dateSource": "Date",
+      "locale": "es",
+      "target": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/6a3f4fb5bd6e4257b300ea065106c1bc",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://medium.com/@victoriano/inform%C3%A1tica-o-matem%C3%A1ticas-qu%C3%A9-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos-62670c465e40"
+      },
+      "sourceContentSha256": "3e0ff005f005c360523a0a99782c25492aabcdf76d2ab3666d269699f068024d",
+      "contentSha256": "34a91a729ded55111f1426c8b70a5c325a8f9f7ccc734eb79b6515e1bf1e7ec9",
+      "assets": [
+        {
+          "path": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/image-01.png",
+          "sha256": "9f1b0bbf5ad6a111ce214561d0238c9a51384de1e354ee971dae319cd4041061",
+          "bytes": 937764,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/image-02.png",
+          "sha256": "bbf9d3e3862309aec32087290d170d62ec88218d70bc2036b7e338d97a82c45f",
+          "bytes": 895037,
+          "contentType": "image/png"
+        }
+      ]
+    },
+    {
+      "notionPageId": "2da3c2b6-cf9f-4166-87cc-6b548c53ff14",
+      "title": "4 días infiltrados en el Camino de Santiago",
+      "status": "Posted",
+      "sourceDate": "2018-09-09",
+      "date": "2018-09-09",
+      "dateSource": "Date",
+      "locale": "es",
+      "target": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/2da3c2b6cf9f416687cc6b548c53ff14",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://medium.com/@victoriano/4-d%C3%ADas-infiltrado-en-el-camino-de-santiago-ac92b69b3cd1"
+      },
+      "sourceContentSha256": "7bdcc1bdca44a4f7351e49308239887dce85a6a30f40eee7b6acf9c212ed49da",
+      "contentSha256": "7b930d16c9745a6189b304a3f46acec13892998118ee16f0035becaa936921fe",
+      "assets": [
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-01.jpg",
+          "sha256": "b1a92e5c67341dcec4d4f853857cf2115aa0245deac823669b82ad2b50eb7c60",
+          "bytes": 628466,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-02.jpg",
+          "sha256": "34da7d68194b5fdfc1190f8117a32894b3e46e59639ef34fd1d3e116a7a43b3f",
+          "bytes": 1505488,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-03.jpg",
+          "sha256": "49bdcb2941d36c876a72e5563c324b60b6a0f5ac04c18504b47fb0992d168cd9",
+          "bytes": 2601555,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-04.jpg",
+          "sha256": "76fc02844435185390350697c81715abbbc6efaebb4c63fbf92795b704995c00",
+          "bytes": 1921999,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-05.jpg",
+          "sha256": "4f187837ea6ee0b159cc16e97b73fa7c971d55a66a980bf70c300059d6adf08b",
+          "bytes": 3073505,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-06.jpg",
+          "sha256": "52f8a164d37a6b8faf6760264d9d4053bdbc233fdb40a342789384526fbcd1b2",
+          "bytes": 2279074,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-07.jpg",
+          "sha256": "142b391adba6f04c83a57e09c7ce61dea61d2aadd07fe2c48914d7e94f9ed06a",
+          "bytes": 2492819,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-08.jpg",
+          "sha256": "4b1d47131cf87b540b0404224be0780be49cfc98e5cff5d52c7111daba0464db",
+          "bytes": 2260788,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-09.jpg",
+          "sha256": "9b5845855df54cbfa2305160124f909efbab66ba53699111ff8fea4512677caa",
+          "bytes": 1913492,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-10.jpg",
+          "sha256": "c78dacbe86067e89eaaaa7fd347eca0db2c8744d5b9deac89d0071908c651120",
+          "bytes": 424948,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-11.jpg",
+          "sha256": "006680d165b43fa3a7ba86f9fc8b9cd50464c919a730ba3122b197bc7893562c",
+          "bytes": 2328265,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-12.jpg",
+          "sha256": "8f64c3d9a32253f837d988f36469a72ef20378c9b3cdb52e58d766cfa06a83e3",
+          "bytes": 1883021,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-13.jpg",
+          "sha256": "dd23fcf98bc8b2d4a0ca57156e6b7ef3842e6c656c5c96648186d1793efbc4c9",
+          "bytes": 2685067,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-14.jpg",
+          "sha256": "f5e059ed03e39bc19a6eb61bda1dd40a6554f6988b68b99c63c7c8136b1c3282",
+          "bytes": 2025542,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-15.jpg",
+          "sha256": "0678d7b97a9031fc6f16283c4d14674493e9f9288b1c748b271b900415731577",
+          "bytes": 2615773,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-16.jpg",
+          "sha256": "8dd2199ab79996145a13c3fcbbe2b4bdc19cca8b1f1e2bf151b7df0f3e8ebb43",
+          "bytes": 412105,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-17.jpg",
+          "sha256": "e697d32e586ed4c8a53ff3753a5521ec08decd663c448bdf7ebbdb6b77fee0e9",
+          "bytes": 1990930,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-18.jpg",
+          "sha256": "4e8634ab0cf6e64ea5c94ac112db9404a4b28aa8cdca0039ce23dcb21747937b",
+          "bytes": 2780382,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-19.jpg",
+          "sha256": "b0802912c8d67483f741aea22d0fd90bce8784b2f22d0690a1fc1e599944481f",
+          "bytes": 2447600,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-20.jpg",
+          "sha256": "785fa7dc00af77c7861ae07f76785a52688b4befae8515bf9b86595c1ffaa7a9",
+          "bytes": 1511681,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-21.jpg",
+          "sha256": "7c37e84a888fb3a535683d37a2bdcc26e40a76ae742d03dcd7afa17a32225e0c",
+          "bytes": 390328,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-22.jpg",
+          "sha256": "46473afd7ebf80f5eebf35f2c8fcf5a82f43df40e5094ace9ca5320f8a3fc6e5",
+          "bytes": 627916,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-23.jpg",
+          "sha256": "d5e7857e890d5b4f94b69a04fa8c750e0515e7e9ea3ade9be7e2d4a11a22ccbf",
+          "bytes": 1136916,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-24.jpg",
+          "sha256": "350a264a0c2493e449cde7e7aad53cde9cd7dd5da9e77541f3dcae82794a01d6",
+          "bytes": 2754010,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-25.jpg",
+          "sha256": "d7e728041e451fe1f6ebe9d59d0b651aae1b4e89d3137fd4943fbb285ac6234b",
+          "bytes": 594586,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-26.jpg",
+          "sha256": "7107b201f6e4d5ce65f4d066adbe6b030532adf9a9b5aa727e399e47fae050a1",
+          "bytes": 1481897,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-27.jpg",
+          "sha256": "27c6dbd5faf619cb6a0ccfdb3bcf6933aa4c8ce031722c97fce897c79a524e38",
+          "bytes": 2922833,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-28.jpg",
+          "sha256": "c27b1524df1fdbeb530801268d265fcc3a944836d7f8ee781c40e9de04914df9",
+          "bytes": 1792521,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-29.jpg",
+          "sha256": "2be0e6dac73a7fd2372e65cfb3ea8d885443f58beaa434551505e1e6e200f647",
+          "bytes": 1995216,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-30.jpg",
+          "sha256": "829607c9a11a35bcd4dbb81270bb2096d11e79053f0a3667d3ce715ca303286c",
+          "bytes": 1610883,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-31.jpg",
+          "sha256": "697cd3f34db81239a2f5c9ddadc66a5ea0069f9aefddfdf09218e1703445d100",
+          "bytes": 2064185,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-32.jpg",
+          "sha256": "843052c517e4505ea855f90a25536aac32f2e8c045b06f0ebd3977e187607980",
+          "bytes": 1242174,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-33.jpg",
+          "sha256": "b33b7d32c38fcb68ca5c84fcc13bd85e03ba4b592f0f7dcbc44d5c0e5152d5d2",
+          "bytes": 1466373,
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "notionPageId": "17f14169-b3a9-4db9-bd53-d0ade5a4045f",
+      "title": "III Graphext Bookclub - Deep Work",
+      "status": "Posted",
+      "sourceDate": "2017-08-24",
+      "date": "2017-08-24",
+      "dateSource": "Date",
+      "locale": "es",
+      "target": "blog/2017/8/24/iii-graphext-bookclub-deep-work/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/17f14169b3a94db9bd53d0ade5a4045f",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://medium.com/graphext/iii-graphext-bookclub-deep-work-5866d6eba95a"
+      },
+      "sourceContentSha256": "f99c283989a761f6529550fcd01a451016cde0c396e4638ac732082c86c3d28e",
+      "contentSha256": "e13c2a6cd2b638d219656ecedcce287471aa2e2a9a0ed6419bccdb069297d2ce",
+      "assets": [
+        {
+          "path": "blog/2017/8/24/iii-graphext-bookclub-deep-work/image-01.jpg",
+          "sha256": "59484090a1b6580208b9da976c146008d428029cf858329742cc1bce374a2990",
+          "bytes": 130046,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/8/24/iii-graphext-bookclub-deep-work/image-02.jpg",
+          "sha256": "9ee5e8639fabbd83ee962d9ac6dc1291a2a47159629867e6855f97691609c4f2",
+          "bytes": 143185,
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "notionPageId": "5c3d41ae-1c9f-48ef-b7e6-f013a253b280",
+      "title": "Centralized or Decentralized? Free scale networks!",
+      "status": "Posted",
+      "sourceDate": "2017-08-19",
+      "date": "2017-08-19",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2017/8/19/centralized-or-decentralized-free-scale-networks/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/5c3d41ae1c9f48efb7e6f013a253b280",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://medium.com/@victoriano/centralized-or-decentralized-free-scale-networks-c933917ad04e"
+      },
+      "sourceContentSha256": "8f1967d241a2329fc1ec0605094b360e58c8fcfe7ac8cd4ba2a995489b656f50",
+      "contentSha256": "469e264c27b3ed08d08bcd97887dfabf9080f4ae062d44293ce7ede5c2e425dc",
+      "assets": [
+        {
+          "path": "blog/2017/8/19/centralized-or-decentralized-free-scale-networks/image-01.jpg",
+          "sha256": "6d8147f5b19d89b119a9841d83f5114ecbe8a7f359c3049a1f7d8f48d74494d1",
+          "bytes": 70137,
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "notionPageId": "95a22acd-e75d-4d90-80a9-022611269e31",
+      "title": "The unpublished golden information",
+      "status": "Posted",
+      "sourceDate": "2016-12-24",
+      "date": "2016-12-24",
+      "dateSource": "Date",
+      "locale": "es",
+      "target": "blog/2016/12/24/the-unpublished-golden-information/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/95a22acde75d4d9080a9022611269e31",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://medium.com/@victoriano/la-informaci%C3%B3n-dorada-no-publicada-827df7223bfb"
+      },
+      "sourceContentSha256": "e61cd37886ff4dfc24b479517376699c7299d1ed8b3f5036752aa4eb12bf3f68",
+      "contentSha256": "2b698ef3ad42f9fffd509915377258d21ca93aefcad93c03bd2ce9d9381fa21c",
+      "assets": [
+        {
+          "path": "blog/2016/12/24/the-unpublished-golden-information/image-01.png",
+          "sha256": "10479704e7e15fbe6849ec2edb4fd1923f0ec6b6dd594369f75a654e7015da58",
+          "bytes": 376373,
+          "contentType": "image/png"
+        }
+      ]
+    },
+    {
+      "notionPageId": "451adeb9-b057-4066-84db-24bf11c425a7",
+      "title": "72 hours in Rome. One year after finishing my Erasmus in… | by Victoriano Izquierdo | Medium",
+      "status": "Posted",
+      "sourceDate": "2015-08-01",
+      "date": "2015-08-01",
+      "dateSource": "Date",
+      "locale": "en",
+      "target": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/451adeb9b057406684db24bf11c425a7",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://medium.com/@victoriano/72-hours-in-rome-a474d96b1e58"
+      },
+      "sourceContentSha256": "bcf409b58522c7fb6acaa35bce80cb30f16495be11bfb582b04b9aa3005ac425",
+      "contentSha256": "76a4e1013926832b9767f8501ee2b3618bf29ff7fcad0c73f117af199d27b6e8",
+      "assets": [
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-01.png",
+          "sha256": "5516651be01469e34bd0dbfabd8dbdacb3102d0fc500d1f7ebe6a722b9714191",
+          "bytes": 3367149,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-02.png",
+          "sha256": "d5b63bf12cdc54b762b9f8ee335cbed2e625a2d884056a76123cfee55a38f330",
+          "bytes": 4200224,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-03.png",
+          "sha256": "630a4563b0f3db107f59767b54e66001e37204213925ddcdd9c95f7153c88309",
+          "bytes": 1606934,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-04.png",
+          "sha256": "91f8dc185bf40f699a021f8fe8fb53948296563a679932677cad995cfaf44c6c",
+          "bytes": 3470248,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-05.png",
+          "sha256": "03b2ebd246ecc52a0ca8d3b40760685841585b197b0061faa0c8c02f71e224f4",
+          "bytes": 3309155,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-06.png",
+          "sha256": "0fe1011a91ee87f2913cfebb66521c0b53dcb10180b5bcc379d3aff496f4bb97",
+          "bytes": 4524053,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-07.png",
+          "sha256": "dfda7fdf5b6a931b790eb66462ccfa0ff3b6cd5bae529f1efedde76046c384a3",
+          "bytes": 3747887,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-08.png",
+          "sha256": "4da46be17d64258ee22d871efcf16bd77681e02cf0fd0d1f3fdf1ff7ac2956f2",
+          "bytes": 5406024,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-09.png",
+          "sha256": "c087f35f7faf782aabc058ea751a86856d932ff30220bffb777fc2fcf07ce23e",
+          "bytes": 3075423,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-10.png",
+          "sha256": "035095f75ce0b9dd40828d298b4034c04ab20446e0cd433dfeba32d98012678f",
+          "bytes": 3219404,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-11.png",
+          "sha256": "01190c1a4cf72cb8498becf3fac9d95e67b3fe8013bbd5551e9afb9fd866fe09",
+          "bytes": 3047334,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-12.png",
+          "sha256": "0678c45852444db999ceb3a01bdc527eb3eb6cb925a0a32e3085a7e5890ed597",
+          "bytes": 2882273,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-13.png",
+          "sha256": "0f95c2335e55032208199cd0a7e29a037873e71d79c9293a0dfe5d3ee66f4c58",
+          "bytes": 3038088,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-14.png",
+          "sha256": "39411743d228d45088aa54bcfc55595d851055719d8e5bd36a361aaf932ed7d2",
+          "bytes": 3802656,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-15.png",
+          "sha256": "9b94fd33b29ae5f703f9acf08b0a77ae511fe882575c99dfd22eef75213c8db2",
+          "bytes": 4829086,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-16.png",
+          "sha256": "60d2b6624af2897086f45c06ff40fdb624f267c5708175b8a71d22200cb36342",
+          "bytes": 4229879,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-17.png",
+          "sha256": "d53b3f436674108d94b81d1a434b9b99238248fa54e43471d6d2517abef400bd",
+          "bytes": 4368321,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-18.png",
+          "sha256": "81f8699947af5fc9a213e5fea24683721406e8c6f80ac11694e92e1826644dba",
+          "bytes": 3989709,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-19.png",
+          "sha256": "1ccbac737be393385ab39768ce39347ac7e48f8308f1174b712f410f34083e14",
+          "bytes": 4674970,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-20.png",
+          "sha256": "028308abcf912b20df2329294d5d42ef37bdf2a6fc3c40ea771f21a6e4b82e19",
+          "bytes": 4706255,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-21.png",
+          "sha256": "7e7f47bbb55ee3d9eb8e24b9a6e041dcf94b6d0753581727113f10bb6846b838",
+          "bytes": 4390578,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-22.png",
+          "sha256": "0309090530b507fbe90b42b5da60d9c6eb6055db6b93191426e41c1ed04d3daf",
+          "bytes": 3422510,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-23.png",
+          "sha256": "a9ab02eee8cc5344ea084750d07652522600ed2e531056f13b771b3d2fd0f491",
+          "bytes": 4286483,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-24.png",
+          "sha256": "5a748ee014545346d8e33606828875dd7b5c04aff6adcebbf45c014326c1c0f9",
+          "bytes": 2810457,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-25.png",
+          "sha256": "50ee637d2f5e843b29d488fcbc1cf885c52f69869802f8f3cd13ae12f36cbc48",
+          "bytes": 5393169,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-26.png",
+          "sha256": "882b3557bed2e6964cc9f1f302e4fecb6d26355c5e91b337eb35fbbb94b613f7",
+          "bytes": 3630490,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-27.png",
+          "sha256": "7f2568b83c2e3a1320bd5397d304dbef65c2f639a273a29e5e490ef2ef8dc8ec",
+          "bytes": 2758050,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-28.png",
+          "sha256": "39034950e359b03e977a872673b9d7588319a3022d3f9d7a84d3bfce79d6da48",
+          "bytes": 2412674,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-29.png",
+          "sha256": "365869214dbb4137824cfa2d3a9aea66f1b51898cc752a1d9b79280c7f3c62d2",
+          "bytes": 2895388,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-30.png",
+          "sha256": "3d8f79e410de3e442d9d3fa6b6775619675700064b901449b5be46a51091e216",
+          "bytes": 4352120,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-31.png",
+          "sha256": "14543ce029e97751db7bdfd2aa92175cd2d952c573aa3b61a1a9b0b5f130e4a1",
+          "bytes": 4366189,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-32.png",
+          "sha256": "4379b8e99ae63a9071d34d99030386c9d3e06e7e3573f5b41b78bf59af229f86",
+          "bytes": 2743773,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-33.png",
+          "sha256": "27982c37cedc781c30981c1701aad543f1c809348ebb3a31bf40567799f79f76",
+          "bytes": 3458461,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-34.png",
+          "sha256": "27cd5b6013dfac948fe4f7432e1c04ce20e9067b73aeecb70d844e8fed571027",
+          "bytes": 3580808,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-35.png",
+          "sha256": "5f5b7e7b167f1be4406234a480bb8b2f75e3e0644cbfa5b9b649368393292d37",
+          "bytes": 4077166,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-36.png",
+          "sha256": "193cbb645c5d52b7cf1ed8a5f67763567073d71732e1d10e3233bf8d8195e979",
+          "bytes": 3965433,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-37.png",
+          "sha256": "826562a9b69129b2ee6de5b8920846403907a4a1158f43fca1bf6535d9c925a7",
+          "bytes": 4451527,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-38.png",
+          "sha256": "bb9625b1d7fb83136e3b11bf252b5b917654e58b2fda973355ac61c7ed9209db",
+          "bytes": 4773169,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-39.png",
+          "sha256": "af173e4a7e91a8aee6102e59efa98f916ca3f68e8d0eea97218fb96a4e815376",
+          "bytes": 4008272,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-40.png",
+          "sha256": "7511f182be21e5b2ca887e39abb408ed73f9cc25da585928b97a9084cb2f8590",
+          "bytes": 2931413,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-41.png",
+          "sha256": "0995ff7ae26975234e43de9d22bd085c49f66ce0122ee8d441a3580173dc1615",
+          "bytes": 4350003,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-42.png",
+          "sha256": "23b349de7a4a66e31ba0ba32e8a03a4d97ae0100ece9c32923db675e2963ddab",
+          "bytes": 4287543,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-43.png",
+          "sha256": "377d3778e5bf2625dc65e029c24167c231040c4c3366fd39035cc2d4a582d915",
+          "bytes": 1683802,
+          "contentType": "image/png"
+        },
+        {
+          "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-44.png",
+          "sha256": "61f808ccb0f9a79efcaf72d0dc3b1c6c52c3c8ada3a42afc69b27e2d6b06b12e",
+          "bytes": 3409251,
+          "contentType": "image/png"
+        }
+      ]
+    },
+    {
+      "notionPageId": "011f4b0a-ff20-4dec-8e09-426847a1cd69",
+      "title": "Viralizarse con el Papa",
+      "status": "Posted",
+      "sourceDate": "2014-01-31",
+      "date": "2014-01-31",
+      "dateSource": "Date",
+      "locale": "es",
+      "target": "blog/2014/1/31/viralizarse-con-el-papa/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/011f4b0aff204dec8e09426847a1cd69",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://medium.com/@victoriano/viralizarse-con-el-papa-4c50092a2846"
+      },
+      "sourceContentSha256": "d157f381428c239e36067ac65eb8ec5f193e089a96a01d1e581c02a6fd7578a3",
+      "contentSha256": "f33a3f3eabf3a0a3874892e1f3415b2963f9499b482254b6378763c903a8eaed",
+      "assets": [
+        {
+          "path": "blog/2014/1/31/viralizarse-con-el-papa/image-01.jpg",
+          "sha256": "90e62413e6ce8506d43dea874178174f28783c01703b18923a600453b35672de",
+          "bytes": 91366,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2014/1/31/viralizarse-con-el-papa/image-02.png",
+          "sha256": "953d825b26afaa2f651184206700fc2da062dffdb873de1ca19040d4f095bf28",
+          "bytes": 638951,
+          "contentType": "image/png"
+        }
+      ]
+    },
+    {
+      "notionPageId": "82be18f5-932d-4ab4-8532-72b4b54e84bb",
+      "title": "Años de cárcel",
+      "status": "Posted",
+      "sourceDate": "2013-10-25",
+      "date": "2013-10-25",
+      "dateSource": "Date",
+      "locale": "es",
+      "target": "blog/2017/1/31/aos-de-crcel/index.md",
+      "reconciledExisting": true,
+      "sourceUrl": "https://app.notion.com/p/82be18f5932d4ab4853272b4b54e84bb",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://medium.com/@victoriano/a%C3%B1os-de-c%C3%A1rcel-3ca7bb332a5c"
+      },
+      "sourceContentSha256": "ecf22b2b917ac461b65f02710b2d54eccdfb170d48fefa60c6a91fa97dd644a5",
+      "contentSha256": "cea34f4373a7e5511478a293b7390126d645b868168f247c429ef279f16120ec",
+      "assets": [
+        {
+          "path": "blog/2017/1/31/aos-de-crcel/image-01.jpg",
+          "sha256": "d396af6535fa8843da9118046c82f67e8ac74bdf272237290f2edccba8a27297",
+          "bytes": 65258,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/31/aos-de-crcel/image-02.jpg",
+          "sha256": "b25c574cfc055956830fb9e679c990d25698b79f5793e0912ba98ed8b48a92a5",
+          "bytes": 48845,
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "notionPageId": "8ef96b7a-ded3-4ec3-93a6-63688b9fef30",
+      "title": "Los granaínos, la malafollá y La Alhambra",
+      "status": "Posted",
+      "sourceDate": "2013-09-13",
+      "date": "2013-09-13",
+      "dateSource": "Date",
+      "locale": "es",
+      "target": "blog/2017/1/22/granada/index.md",
+      "reconciledExisting": true,
+      "sourceUrl": "https://app.notion.com/p/8ef96b7aded34ec393a663688b9fef30",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": "https://medium.com/@victoriano/los-grana%C3%ADnos-la-malafoll%C3%A1-y-la-alhambra-d223cdb4663b"
+      },
+      "sourceContentSha256": "d97fb23ca6496da72299c5f79dd88fd429376bfde2b8022701f766b359a44720",
+      "contentSha256": "f817ac92b6d371113d8814959ef09b8afaa91957fc49eb5ec8938b402f2a0506",
+      "assets": [
+        {
+          "path": "blog/2017/1/22/granada/image-01.jpg",
+          "sha256": "e75d426ffa4fa0be65c4248acf08b3deed1336a25eabcd98fc912acf6cf2d956",
+          "bytes": 69652,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/22/granada/image-02.jpg",
+          "sha256": "f25d6acfe0cd5455b978ecfe9b2908b79371475b64d2faeffc70fb77a0ded27b",
+          "bytes": 47854,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/22/granada/image-03.jpg",
+          "sha256": "e66bea5e1e25e64df3e715a3c6d0b677218064d5df969389fe0e6cbe86cd9aae",
+          "bytes": 91824,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/22/granada/image-04.jpg",
+          "sha256": "8c0087ab05d7f94c945cabf32ff154b8976c4da0706a886edf2f9f413b83bf20",
+          "bytes": 75276,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/22/granada/image-05.jpg",
+          "sha256": "d6e35bbb14b034b3936807e6206076e0cbf2785d730a0a031976400a126e056e",
+          "bytes": 90075,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/22/granada/image-06.jpg",
+          "sha256": "055f0f47c5d617650c277d1f439d1d714f1ab0553d59b1219ffbff68808ec427",
+          "bytes": 96300,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/22/granada/image-07.jpg",
+          "sha256": "7f550bf11ecbbc0f082b156c7daffd89effcdaf42e48d399f9f3eb90c9f62e48",
+          "bytes": 110680,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/22/granada/image-08.jpg",
+          "sha256": "86dba8e6e0c1aed3d06b38c464b4b3add4e0573007dcd3883581255129641aed",
+          "bytes": 71098,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/22/granada/image-09.jpg",
+          "sha256": "56fad61569419ea3b7e6a114434cd66f600ddabf5215eae2fc9f464290e0cd26",
+          "bytes": 59933,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/22/granada/image-10.jpg",
+          "sha256": "0ec1b0e47831625db5ef68444b0168aefd33ebf2c32489d648f9f5c6f5e3b262",
+          "bytes": 91724,
+          "contentType": "image/jpeg"
+        },
+        {
+          "path": "blog/2017/1/22/granada/image-11.jpg",
+          "sha256": "d928ea42966b39bf8f2aecd0cdb42fd5986437a133c3b651639de01f9016b970",
+          "bytes": 81825,
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "notionPageId": "29d35803-8bc5-80e8-a9ab-eef52b03d38f",
+      "title": "ChatGPT Intelligence",
+      "status": "Posted",
+      "sourceDate": null,
+      "date": "2025-10-31",
+      "dateSource": "created_time",
+      "locale": "en",
+      "target": "blog/2025/10/31/chatgpt-intelligence/index.md",
+      "reconciledExisting": false,
+      "sourceUrl": "https://app.notion.com/p/29d358038bc580e8a9abeef52b03d38f",
+      "externalUrls": {
+        "linkedIn": null,
+        "twitter": null,
+        "substack": null
+      },
+      "sourceContentSha256": "4d199aef4531ecc08594b0a210264f294d25491456c6c142523048b0cadce175",
+      "contentSha256": "4d199aef4531ecc08594b0a210264f294d25491456c6c142523048b0cadce175",
+      "assets": []
+    }
+  ],
+  "layoutRepair": {
+    "version": 2,
+    "repairedAt": "2026-07-28",
+    "blockBoundariesPreserved": true
+  }
+}

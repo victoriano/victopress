@@ -1,8 +1,50 @@
-import { Marked, Renderer } from "marked";
+import {
+  Marked,
+  Renderer,
+  type TokenizerAndRendererExtension,
+} from "marked";
 
 const ALLOWED_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
 const ALLOWED_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
 const DEFAULT_IMAGE_CACHE_VERSION = "mime-v2";
+
+const looseStrongExtension = {
+  name: "looseStrong",
+  level: "inline",
+  start(source: string) {
+    return source.indexOf("**");
+  },
+  tokenizer(source: string) {
+    // Let Marked handle valid ***bold italic*** spans as a single construct.
+    if (source.startsWith("***")) return;
+
+    const match = /^\*\*([^\n]*?)\*\*/.exec(source);
+    if (!match) return;
+
+    const whitespace = match[1].match(
+      /^([ \t\u00a0]*)([\s\S]*?)([ \t\u00a0]*)$/,
+    );
+    if (!whitespace) return;
+
+    return {
+      type: "looseStrong",
+      raw: match[0],
+      leading: whitespace[1],
+      trailing: whitespace[3],
+      tokens: whitespace[2]
+        ? this.lexer.inlineTokens(whitespace[2])
+        : [],
+    };
+  },
+  renderer(token) {
+    const childTokens = token.tokens ?? [];
+    const content = childTokens.length
+      ? `<strong>${this.parser.parseInline(childTokens)}</strong>`
+      : "";
+    return `${token.leading}${content}${token.trailing}`;
+  },
+  childTokens: ["tokens"],
+} satisfies TokenizerAndRendererExtension;
 
 export interface MarkdownRenderOptions {
   /** Absolute origin used for VictoPress-owned image routes in headless output. */
@@ -171,6 +213,7 @@ export function renderMarkdown(
     gfm: true,
     renderer: createRenderer(options),
   });
+  markdown.use({ extensions: [looseStrongExtension] });
 
   return markdown.parse(content, { async: false });
 }

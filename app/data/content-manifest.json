@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-07-22T18:14:35.914Z",
+  "generatedAt": "2026-07-28T10:43:00.324Z",
   "repo": "victoriano/victopress",
   "branch": "main",
   "contentPath": "content",
@@ -11,9 +11,324 @@
       "type": "text"
     },
     {
+      "path": "blog/_notion-import-manifest.json",
+      "size": 2903,
+      "type": "text"
+    },
+    {
+      "path": "blog/_notion-posted-import-manifest.json",
+      "size": 59740,
+      "type": "text"
+    },
+    {
       "path": "blog/_source.json",
       "size": 119152,
       "type": "text"
+    },
+    {
+      "path": "blog/2014/1/31/viralizarse-con-el-papa/image-01.jpg",
+      "size": 91366,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2014/1/31/viralizarse-con-el-papa/image-02.png",
+      "size": 638951,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2014/1/31/viralizarse-con-el-papa/index.md",
+      "size": 4509,
+      "type": "text"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-01.png",
+      "size": 3367149,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-02.png",
+      "size": 4200224,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-03.png",
+      "size": 1606934,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-04.png",
+      "size": 3470248,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-05.png",
+      "size": 3309155,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-06.png",
+      "size": 4524053,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-07.png",
+      "size": 3747887,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-08.png",
+      "size": 5406024,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-09.png",
+      "size": 3075423,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-10.png",
+      "size": 3219404,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-11.png",
+      "size": 3047334,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-12.png",
+      "size": 2882273,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-13.png",
+      "size": 3038088,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-14.png",
+      "size": 3802656,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-15.png",
+      "size": 4829086,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-16.png",
+      "size": 4229879,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-17.png",
+      "size": 4368321,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-18.png",
+      "size": 3989709,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-19.png",
+      "size": 4674970,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-20.png",
+      "size": 4706255,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-21.png",
+      "size": 4390578,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-22.png",
+      "size": 3422510,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-23.png",
+      "size": 4286483,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-24.png",
+      "size": 2810457,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-25.png",
+      "size": 5393169,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-26.png",
+      "size": 3630490,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-27.png",
+      "size": 2758050,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-28.png",
+      "size": 2412674,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-29.png",
+      "size": 2895388,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-30.png",
+      "size": 4352120,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-31.png",
+      "size": 4366189,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-32.png",
+      "size": 2743773,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-33.png",
+      "size": 3458461,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-34.png",
+      "size": 3580808,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-35.png",
+      "size": 4077166,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-36.png",
+      "size": 3965433,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-37.png",
+      "size": 4451527,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-38.png",
+      "size": 4773169,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-39.png",
+      "size": 4008272,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-40.png",
+      "size": 2931413,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-41.png",
+      "size": 4350003,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-42.png",
+      "size": 4287543,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-43.png",
+      "size": 1683802,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/image-44.png",
+      "size": 3409251,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2015/8/1/72-hours-in-rome-one-year-after-finishing-my-erasmus-in-by-victoriano-izquierdo-medium/index.md",
+      "size": 6359,
+      "type": "text"
+    },
+    {
+      "path": "blog/2016/12/24/the-unpublished-golden-information/image-01.png",
+      "size": 376373,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2016/12/24/the-unpublished-golden-information/index.md",
+      "size": 1639,
+      "type": "text"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-01.jpg",
+      "size": 69652,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-02.jpg",
+      "size": 47854,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-03.jpg",
+      "size": 91824,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-04.jpg",
+      "size": 75276,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-05.jpg",
+      "size": 90075,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-06.jpg",
+      "size": 96300,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-07.jpg",
+      "size": 110680,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-08.jpg",
+      "size": 71098,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-09.jpg",
+      "size": 59933,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-10.jpg",
+      "size": 91724,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/22/granada/image-11.jpg",
+      "size": 81825,
+      "type": "binary"
     },
     {
       "path": "blog/2017/1/22/granada/image-asset-2.jpeg",
@@ -32,8 +347,18 @@
     },
     {
       "path": "blog/2017/1/22/granada/index.md",
-      "size": 3887,
+      "size": 4649,
       "type": "text"
+    },
+    {
+      "path": "blog/2017/1/31/aos-de-crcel/image-01.jpg",
+      "size": 65258,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/1/31/aos-de-crcel/image-02.jpg",
+      "size": 48845,
+      "type": "binary"
     },
     {
       "path": "blog/2017/1/31/aos-de-crcel/image-asset-2.jpeg",
@@ -52,7 +377,7 @@
     },
     {
       "path": "blog/2017/1/31/aos-de-crcel/index.md",
-      "size": 5483,
+      "size": 5558,
       "type": "text"
     },
     {
@@ -83,6 +408,401 @@
     {
       "path": "blog/2017/1/31/tiendas-de-barrio/index.md",
       "size": 3159,
+      "type": "text"
+    },
+    {
+      "path": "blog/2017/8/19/centralized-or-decentralized-free-scale-networks/image-01.jpg",
+      "size": 70137,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/8/19/centralized-or-decentralized-free-scale-networks/index.md",
+      "size": 5434,
+      "type": "text"
+    },
+    {
+      "path": "blog/2017/8/24/iii-graphext-bookclub-deep-work/image-01.jpg",
+      "size": 130046,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/8/24/iii-graphext-bookclub-deep-work/image-02.jpg",
+      "size": 143185,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2017/8/24/iii-graphext-bookclub-deep-work/index.md",
+      "size": 4975,
+      "type": "text"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-01.jpg",
+      "size": 628466,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-02.jpg",
+      "size": 1505488,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-03.jpg",
+      "size": 2601555,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-04.jpg",
+      "size": 1921999,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-05.jpg",
+      "size": 3073505,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-06.jpg",
+      "size": 2279074,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-07.jpg",
+      "size": 2492819,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-08.jpg",
+      "size": 2260788,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-09.jpg",
+      "size": 1913492,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-10.jpg",
+      "size": 424948,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-11.jpg",
+      "size": 2328265,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-12.jpg",
+      "size": 1883021,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-13.jpg",
+      "size": 2685067,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-14.jpg",
+      "size": 2025542,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-15.jpg",
+      "size": 2615773,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-16.jpg",
+      "size": 412105,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-17.jpg",
+      "size": 1990930,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-18.jpg",
+      "size": 2780382,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-19.jpg",
+      "size": 2447600,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-20.jpg",
+      "size": 1511681,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-21.jpg",
+      "size": 390328,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-22.jpg",
+      "size": 627916,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-23.jpg",
+      "size": 1136916,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-24.jpg",
+      "size": 2754010,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-25.jpg",
+      "size": 594586,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-26.jpg",
+      "size": 1481897,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-27.jpg",
+      "size": 2922833,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-28.jpg",
+      "size": 1792521,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-29.jpg",
+      "size": 1995216,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-30.jpg",
+      "size": 1610883,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-31.jpg",
+      "size": 2064185,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-32.jpg",
+      "size": 1242174,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/image-33.jpg",
+      "size": 1466373,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2018/9/9/4-dias-infiltrados-en-el-camino-de-santiago/index.md",
+      "size": 9828,
+      "type": "text"
+    },
+    {
+      "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-01.jpg",
+      "size": 413680,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-02.jpg",
+      "size": 311194,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-03.jpg",
+      "size": 278384,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-04.jpg",
+      "size": 328187,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-05.jpg",
+      "size": 297624,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/image-06.jpg",
+      "size": 305644,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2019/10/12/analyzing-the-complex-relationship-between-the-most-loved-hated-and-used-programming-languages/index.md",
+      "size": 4052,
+      "type": "text"
+    },
+    {
+      "path": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/image-01.png",
+      "size": 937764,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/image-02.png",
+      "size": 895037,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2019/6/8/informatica-o-matematicas-que-carrera-estudiar-si-te-quieres-dedicar-al-mundo-de-los-datos/index.md",
+      "size": 10351,
+      "type": "text"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-01.jpg",
+      "size": 134915,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-02.jpg",
+      "size": 72988,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-03.jpg",
+      "size": 181326,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-04.jpg",
+      "size": 34511,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-05.jpg",
+      "size": 80009,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-06.jpg",
+      "size": 36923,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-07.jpg",
+      "size": 37116,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-08.jpg",
+      "size": 73892,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-09.jpg",
+      "size": 83403,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-10.png",
+      "size": 66800,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-11.jpg",
+      "size": 78449,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-12.jpg",
+      "size": 30959,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-13.png",
+      "size": 41435,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-14.jpg",
+      "size": 35655,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/image-15.jpg",
+      "size": 31525,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/1/why-women-earn-less-why-houses-are-so-expensive-now-but-werent-for-our-parents-and-more/index.md",
+      "size": 10114,
+      "type": "text"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-01.jpg",
+      "size": 370729,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-02.jpg",
+      "size": 103452,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-03.jpg",
+      "size": 50770,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-04.gif",
+      "size": 5259714,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-05.jpg",
+      "size": 188640,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-06.jpg",
+      "size": 595805,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-07.jpg",
+      "size": 147327,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-08.jpg",
+      "size": 299145,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-09.jpg",
+      "size": 1309,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-10.jpg",
+      "size": 72597,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-11.jpg",
+      "size": 236250,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-12.jpg",
+      "size": 123972,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/image-13.jpg",
+      "size": 150155,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2020/11/15/how-big-is-the-political-polarization-in-the-us-how-predictable-are-voters/index.md",
+      "size": 9415,
       "type": "text"
     },
     {
@@ -183,6 +903,136 @@
     {
       "path": "blog/2021/10/3/testing-iphone-13-pro-in-granada/index.md",
       "size": 5451,
+      "type": "text"
+    },
+    {
+      "path": "blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/image-01.jpg",
+      "size": 224407,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2023/10/16/why-data-without-profound-human-interpretation-is-meaningless-even-in-the-era-of-ai/index.md",
+      "size": 4460,
+      "type": "text"
+    },
+    {
+      "path": "blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/image-01.png",
+      "size": 1165930,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2023/10/29/los-ingenieros-10x-en-la-era-de-la-ia/index.md",
+      "size": 7752,
+      "type": "text"
+    },
+    {
+      "path": "blog/2023/10/6/controlling-addiction-to-tech/index.md",
+      "size": 1481,
+      "type": "text"
+    },
+    {
+      "path": "blog/2023/10/6/controlling-addiction-to-tech/one-sec-app-usage.png",
+      "size": 774427,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/image-01.png",
+      "size": 287396,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2023/10/7/predicting-the-future-of-a-countrys-economy-by-the-complexity-of-the-products-and-software-it-can-produce/index.md",
+      "size": 3956,
+      "type": "text"
+    },
+    {
+      "path": "blog/2023/10/9/do-data-engineering-first/data-analysis-process.png",
+      "size": 307939,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2023/10/9/do-data-engineering-first/data-maturity-ladder.jpg",
+      "size": 196507,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2023/10/9/do-data-engineering-first/index.md",
+      "size": 4671,
+      "type": "text"
+    },
+    {
+      "path": "blog/2023/7/8/the-best-argument-against-remote-work-ive-come-across-a-company-is-a-machine-for-creating-knowledge/image-01.png",
+      "size": 14600621,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2023/7/8/the-best-argument-against-remote-work-ive-come-across-a-company-is-a-machine-for-creating-knowledge/index.md",
+      "size": 3622,
+      "type": "text"
+    },
+    {
+      "path": "blog/2023/8/11/cambio-climatico-temperaturas-anomarles/index.md",
+      "size": 277,
+      "type": "text"
+    },
+    {
+      "path": "blog/2023/8/20/manna-ai-serving-a-dystopian-capitalism-vs-an-utopian-socialism/image-01.png",
+      "size": 12540593,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2023/8/20/manna-ai-serving-a-dystopian-capitalism-vs-an-utopian-socialism/index.md",
+      "size": 2774,
+      "type": "text"
+    },
+    {
+      "path": "blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/image-01.png",
+      "size": 83640,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2024/7/6/how-to-implement-churn-predictive-models-that-are-actually-useful-and-profitable-for-revenue-operations-teams/index.md",
+      "size": 12838,
+      "type": "text"
+    },
+    {
+      "path": "blog/2025/10/31/chatgpt-intelligence/index.md",
+      "size": 1084,
+      "type": "text"
+    },
+    {
+      "path": "blog/2025/6/30/tiny-teams-cook-the-best-software-in-the-ai-era/index.md",
+      "size": 4617,
+      "type": "text"
+    },
+    {
+      "path": "blog/2025/6/30/tiny-teams-cook-the-best-software-in-the-ai-era/mapfre-catit-30-junio-2025-victoriano-izquierdo.pdf",
+      "size": 1422275,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/image-01.png",
+      "size": 1665809,
+      "type": "binary"
+    },
+    {
+      "path": "blog/2025/6/8/why-after-pouring-millions-into-data-companies-still-make-zero-data-driven-decisions/index.md",
+      "size": 4341,
+      "type": "text"
+    },
+    {
+      "path": "blog/2025/7/3/consejos-para-viajar-a-japon/index.md",
+      "size": 6227,
+      "type": "text"
+    },
+    {
+      "path": "blog/2026/7/28/escribir-para-otros-escribir-para-mi/index.md",
+      "size": 12183,
+      "type": "text"
+    },
+    {
+      "path": "blog/2026/7/29/tener-hijos-es-lo-mejor-de-la-vida-adulta/index.md",
+      "size": 10114,
       "type": "text"
     },
     {
@@ -851,8 +1701,23 @@
       "type": "binary"
     },
     {
+      "path": "galleries/geographies/europe/central europe/gallery.yaml",
+      "size": 189,
+      "type": "text"
+    },
+    {
       "path": "galleries/geographies/europe/gallery.yaml",
       "size": 179,
+      "type": "text"
+    },
+    {
+      "path": "galleries/geographies/europe/italy/gallery.yaml",
+      "size": 155,
+      "type": "text"
+    },
+    {
+      "path": "galleries/geographies/europe/italy/rome/gallery.yaml",
+      "size": 164,
       "type": "text"
     },
     {
@@ -1188,6 +2053,11 @@
     {
       "path": "galleries/geographies/europe/united kingdom/gallery.yaml",
       "size": 176,
+      "type": "text"
+    },
+    {
+      "path": "galleries/geographies/europe/united kingdom/london/gallery.yaml",
+      "size": 188,
       "type": "text"
     },
     {
@@ -1641,6 +2511,6 @@
       "type": "text"
     }
   ],
-  "totalSize": 241916196,
-  "totalFiles": 327
+  "totalSize": 514030815,
+  "totalFiles": 501
 }
