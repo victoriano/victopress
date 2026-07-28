@@ -205,6 +205,7 @@ export default function FeaturedPhotoPage() {
   const photoTitle = photo.title;
   const photoDescription = photo.description;
   const photoYear = photo.year;
+  const hasPrimaryPhotoText = Boolean(photoTitle || photoDescription);
 
   // Photo navigation for sidebar
   const photoNav = {
@@ -286,17 +287,20 @@ export default function FeaturedPhotoPage() {
               <h2 className="text-[15px] font-bold text-black dark:text-white leading-tight">{photoTitle}</h2>
             )}
             {photoDescription && (
-              <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-snug">{photoDescription}</p>
+              <p className="text-[14px] font-medium text-gray-800 dark:text-gray-200 leading-[1.35]">{photoDescription}</p>
             )}
             {photoYear && (
-              <p className="text-[12px] text-gray-400 dark:text-gray-500">{photoYear}</p>
+              <p className={`${hasPrimaryPhotoText
+                ? "text-[13px] font-medium text-gray-700 dark:text-gray-300"
+                : "text-[15px] font-bold text-black dark:text-white leading-tight"
+              } tabular-nums`}>{photoYear}</p>
             )}
           </div>
 
           {/* Navigation */}
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 font-medium">
             {/* Photo counter */}
-            <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+            <span className="text-[13px] tabular-nums">
               {currentIndex + 1} {locale === "es" ? "de" : "of"} {totalPhotos}
             </span>
             <span className="text-gray-300 dark:text-gray-600">·</span>
@@ -305,24 +309,24 @@ export default function FeaturedPhotoPage() {
               <Link
                 to={localizedPath(locale, `/featured/${prevIndex}`)}
                 prefetch="render"
-                className="hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide"
+                className="hover:text-black dark:hover:text-white transition-colors uppercase text-[12px] tracking-[0.04em] font-semibold"
               >
                 {locale === "es" ? "ANT" : "PREV"}
               </Link>
             ) : (
-              <span className="text-gray-300 dark:text-gray-600 uppercase text-xs tracking-wide">{locale === "es" ? "ANT" : "PREV"}</span>
+              <span className="text-gray-400 dark:text-gray-600 uppercase text-[12px] tracking-[0.04em] font-semibold">{locale === "es" ? "ANT" : "PREV"}</span>
             )}
             <span className="text-gray-300 dark:text-gray-600">/</span>
             {nextIndex !== null ? (
               <Link
                 to={localizedPath(locale, `/featured/${nextIndex}`)}
                 prefetch="render"
-                className="hover:text-gray-900 dark:hover:text-white transition-colors uppercase text-xs tracking-wide"
+                className="hover:text-black dark:hover:text-white transition-colors uppercase text-[12px] tracking-[0.04em] font-semibold"
               >
                 {locale === "es" ? "SIG" : "NEXT"}
               </Link>
             ) : (
-              <span className="text-gray-300 dark:text-gray-600 uppercase text-xs tracking-wide">{locale === "es" ? "SIG" : "NEXT"}</span>
+              <span className="text-gray-400 dark:text-gray-600 uppercase text-[12px] tracking-[0.04em] font-semibold">{locale === "es" ? "SIG" : "NEXT"}</span>
             )}
           </div>
         </div>

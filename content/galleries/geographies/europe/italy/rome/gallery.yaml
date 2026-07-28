@@ -1,0 +1,8 @@
+title: "Rome"
+description: "Photography from Rome, Italy"
+locale: en
+translations:
+  es:
+    title: "Roma"
+    description: "Fotografías de Roma, Italia"
+order: 1

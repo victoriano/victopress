@@ -41,6 +41,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const username = formData.get("username") as string;
   const password = formData.get("password") as string;
+  const rememberCredentials = formData.get("remember") === "on";
   const requestedRedirect = String(formData.get("redirectTo") || "/admin");
   const redirectTo = requestedRedirect.startsWith("/") && !requestedRedirect.startsWith("//")
     ? requestedRedirect
@@ -52,7 +53,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     // Use Path=/ so cookie works for all admin routes
     return redirect(redirectTo, {
       headers: {
-        "Set-Cookie": adminSessionCookie(token),
+        "Set-Cookie": adminSessionCookie(token, rememberCredentials),
       },
     });
   }
@@ -64,6 +65,7 @@ export default function AdminLogin() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const [rememberCredentials, setRememberCredentials] = useState(true);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 overflow-auto">
@@ -85,7 +87,11 @@ export default function AdminLogin() {
               </div>
             )}
             
-            <Form method="post" className="space-y-5">
+            <Form
+              method="post"
+              autoComplete={rememberCredentials ? "on" : "off"}
+              className="space-y-5"
+            >
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
                   Username
@@ -95,7 +101,7 @@ export default function AdminLogin() {
                   id="username"
                   name="username"
                   required
-                  autoComplete="username"
+                  autoComplete={rememberCredentials ? "username" : "off"}
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                   placeholder="Enter your username"
                 />
@@ -110,10 +116,27 @@ export default function AdminLogin() {
                   id="password"
                   name="password"
                   required
-                  autoComplete="current-password"
+                  autoComplete={rememberCredentials ? "current-password" : "off"}
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                   placeholder="Enter your password"
                 />
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="remember"
+                  name="remember"
+                  checked={rememberCredentials}
+                  onChange={(event) => setRememberCredentials(event.currentTarget.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-900 accent-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+                />
+                <label
+                  htmlFor="remember"
+                  className="ml-3 cursor-pointer select-none text-sm text-gray-300"
+                >
+                  Remember username and password
+                </label>
               </div>
               
               <button

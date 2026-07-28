@@ -1,0 +1,8 @@
+title: "Central Europe"
+description: "Photography from Central Europe"
+locale: en
+translations:
+  es:
+    title: "Europa Central"
+    description: "Fotografías de Europa Central"
+order: 4

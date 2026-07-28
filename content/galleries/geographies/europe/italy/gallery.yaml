@@ -1,0 +1,8 @@
+title: "Italy"
+description: "Photography from Italy"
+locale: en
+translations:
+  es:
+    title: "Italia"
+    description: "Fotografías de Italia"
+order: 3

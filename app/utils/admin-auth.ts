@@ -224,8 +224,9 @@ export async function hasValidAdminSession(
   return Boolean(credentials.password && token === btoa(`${credentials.username}:${credentials.password}`));
 }
 
-export function adminSessionCookie(token: string): string {
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}`;
+export function adminSessionCookie(token: string, persistent = true): string {
+  const maxAge = persistent ? `; Max-Age=${SESSION_TTL_SECONDS}` : "";
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge}`;
 }
 
 function readSessionCookie(request: Request): string | null {

@@ -3,7 +3,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LocalStorageAdapter } from "../app/lib/content-engine/storage/local-adapter.ts";
+import { action as loginAction } from "../app/routes/admin.login.tsx";
 import {
+  adminSessionCookie,
   createAdminSessionToken,
   hasValidAdminSession,
   setAdminPassword,
@@ -38,5 +40,48 @@ describe("local admin password reset", () => {
     const stored = await storage.getText(".victopress/admin-auth.json");
     expect(stored).not.toContain("second-secure-password-value");
     expect(JSON.parse(stored).passwordHash).toBeString();
+  });
+
+  test("persists the session only when remembering credentials", () => {
+    const persistentCookie = adminSessionCookie("signed-token");
+    const browserSessionCookie = adminSessionCookie("signed-token", false);
+
+    expect(persistentCookie).toContain("Max-Age=86400");
+    expect(browserSessionCookie).not.toContain("Max-Age");
+    expect(browserSessionCookie).toContain("HttpOnly; Secure; SameSite=Lax");
+  });
+
+  test("the login form respects the remember choice", async () => {
+    const emptyAuthBucket = {
+      get: async () => null,
+    };
+    const submitLogin = (remember) => loginAction({
+      request: new Request("https://victopress.example/admin/login", {
+        method: "POST",
+        body: new URLSearchParams({
+          username: "admin",
+          password: "test-password",
+          ...(remember ? { remember: "on" } : {}),
+        }),
+      }),
+      context: {
+        cloudflare: {
+          env: {
+            ADMIN_USERNAME: "admin",
+            ADMIN_PASSWORD: "test-password",
+            CONTENT_BUCKET: emptyAuthBucket,
+          },
+        },
+      },
+      params: {},
+    });
+
+    const persistentResponse = await submitLogin(true);
+    const browserSessionResponse = await submitLogin(false);
+
+    expect(persistentResponse.status).toBe(302);
+    expect(persistentResponse.headers.get("Set-Cookie")).toContain("Max-Age=86400");
+    expect(browserSessionResponse.status).toBe(302);
+    expect(browserSessionResponse.headers.get("Set-Cookie")).not.toContain("Max-Age");
   });
 });

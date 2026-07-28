@@ -101,7 +101,7 @@ new fields are additive.
 
 - 5/5 blog posts have complete Spanish and English editions.
 - Each edition preserves all 24 body-image references across the five posts.
-- 27/27 gallery metadata files have Spanish and English titles/descriptions.
+- 31/31 gallery metadata files have Spanish and English titles/descriptions.
 - All 9 existing authored/EXIF photo captions have explicit Spanish and
   English editions; photos without text remain language-neutral.
 - About and Contact have complete Spanish and English editions.

@@ -49,6 +49,7 @@ interface SidebarProps {
 export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEnabled = false, multilingual = false, locale }: SidebarProps) {
   const location = useLocation();
   const messages = photoMessages[locale];
+  const hasPrimaryPhotoText = Boolean(photoNav?.title || photoNav?.description || photoNav?.photoInfo);
   
   // Find all slugs in the active path that should be expanded
   const activePathSlugs = useMemo(() => {
@@ -231,7 +232,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
 
       {/* Bottom section: Photo Info + Nav */}
       {photoNav && (
-        <div className="space-y-3">
+        <div className="space-y-3 text-[#222] dark:text-gray-100">
           {/* Photo Info - Title, Description, Year with distinct styling */}
           {(photoNav.title || photoNav.description || photoNav.year || photoNav.photoInfo) && (
             <div className="space-y-1">
@@ -244,14 +245,17 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
               
               {/* Description - Regular weight, gray */}
               {photoNav.description && (
-                <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-snug">
+                <p className="text-[14px] font-medium text-gray-800 dark:text-gray-200 leading-[1.35]">
                   {photoNav.description}
                 </p>
               )}
               
-              {/* Year - Small, lighter gray */}
+              {/* A lone year is the photo's primary label, as on victoriano.me. */}
               {photoNav.year && (
-                <p className="text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">
+                <p className={`${hasPrimaryPhotoText
+                  ? "text-[13px] font-medium text-gray-700 dark:text-gray-300"
+                  : "text-[15px] font-bold text-black dark:text-white leading-tight"
+                } tabular-nums`}>
                   {photoNav.year}
                 </p>
               )}
@@ -267,7 +271,7 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
           
           {/* Photo counter */}
           {photoNav.currentIndex !== undefined && photoNav.totalPhotos !== undefined && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-[13px] font-medium text-gray-700 dark:text-gray-300">
               {photoNav.currentIndex + 1} {locale === "es" ? "de" : "of"} {photoNav.totalPhotos}
             </p>
           )}
@@ -278,36 +282,36 @@ export function Sidebar({ siteName, navigation, socialLinks, photoNav, photoAiEn
               <Link
                 to={photoNav.prevPhotoUrl}
                 prefetch="render"
-                className="text-gray-500 hover:text-black dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
+                className="text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors uppercase text-[12px] tracking-[0.04em] font-semibold"
               >
                 {locale === "es" ? "ANT" : "PREV"}
               </Link>
             ) : (
-              <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">{locale === "es" ? "ANT" : "PREV"}</span>
+              <span className="text-gray-400 dark:text-gray-600 uppercase text-[12px] tracking-[0.04em] font-semibold">{locale === "es" ? "ANT" : "PREV"}</span>
             )}
-            <span className="text-gray-300">/</span>
+            <span className="text-gray-500 dark:text-gray-500">/</span>
             {photoNav.nextPhotoUrl ? (
               <Link
                 to={photoNav.nextPhotoUrl}
                 prefetch="render"
-                className="text-gray-500 hover:text-black dark:hover:text-white transition-colors uppercase text-xs tracking-wide font-medium"
+                className="text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors uppercase text-[12px] tracking-[0.04em] font-semibold"
               >
                 {locale === "es" ? "SIG" : "NEXT"}
               </Link>
             ) : (
-              <span className="text-gray-300 uppercase text-xs tracking-wide font-medium">{locale === "es" ? "SIG" : "NEXT"}</span>
+              <span className="text-gray-400 dark:text-gray-600 uppercase text-[12px] tracking-[0.04em] font-semibold">{locale === "es" ? "SIG" : "NEXT"}</span>
             )}
           </div>
           
           {/* Show Thumbnails */}
           <Link
             to={photoNav.thumbnailsUrl}
-            className="block text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+            className="block text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors"
           >
-            <span className="text-xs uppercase tracking-wide">{locale === "es" ? "VER MINIATURAS" : "SHOW THUMBNAILS"}</span>
+            <span className="text-[12px] font-semibold uppercase tracking-[0.04em]">{locale === "es" ? "VER MINIATURAS" : "SHOW THUMBNAILS"}</span>
             {photoNav.galleryTitle && (
-              <p className="text-[11px] mt-0.5">
-                {locale === "es" ? "de" : "from"} <span className="font-bold">{photoNav.galleryTitle}</span>
+              <p className="text-[12px] font-medium mt-0.5">
+                {locale === "es" ? "de" : "from"} <span className="font-bold text-black dark:text-white">{photoNav.galleryTitle}</span>
               </p>
             )}
           </Link>

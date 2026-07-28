@@ -1,0 +1,8 @@
+title: "London"
+description: "Photography from London, United Kingdom"
+locale: en
+translations:
+  es:
+    title: "Londres"
+    description: "Fotografías de Londres, Reino Unido"
+order: 1
