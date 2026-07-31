@@ -24,7 +24,7 @@ import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { SimilarPhotos } from "~/components/SimilarPhotos";
 import { CrossfadePhoto } from "~/components/CrossfadePhoto";
 import { generateMetaTags, getBaseUrl, buildImageUrl } from "~/utils/seo";
-import { useEffect, useCallback, useMemo, useState } from "react";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
 import {
   generateSrcSet,
@@ -35,6 +35,7 @@ import {
 import { localizedPath, photoMessages } from "~/lib/i18n";
 import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
 import { readSiteLanguageSettings } from "~/lib/site-languages.server";
+import { captureAnalyticsEvent } from "~/lib/analytics";
 
 // The desktop photo area is the viewport minus the 16rem sidebar and 4rem padding.
 // Giving the browser the real slot size lets Retina displays select the 2400w variant.
@@ -189,6 +190,52 @@ export default function PhotoPage() {
     ogImage,
   } = useLoaderData<typeof loader>();
   const messages = photoMessages[locale];
+  const previousPhotoRef = useRef<{
+    filename: string;
+    gallerySlug: string;
+    index: number;
+  } | null>(null);
+
+  useEffect(() => {
+    captureAnalyticsEvent("photo_viewed", {
+      gallery_slug: gallerySlug,
+      locale,
+      photo_filename: photo.filename,
+      photo_index: currentIndex,
+      source: "gallery",
+      total_photos: totalPhotos,
+    });
+
+    const previous = previousPhotoRef.current;
+    if (previous && previous.filename !== photo.filename) {
+      const adjacent =
+        previous.gallerySlug === gallerySlug &&
+        Math.abs(previous.index - currentIndex) === 1;
+      captureAnalyticsEvent("photo_navigation", {
+        direction: adjacent
+          ? currentIndex > previous.index
+            ? "next"
+            : "previous"
+          : "direct",
+        from_index: previous.index,
+        gallery_slug: gallerySlug,
+        locale,
+        source: "gallery",
+        to_index: currentIndex,
+      });
+    }
+    previousPhotoRef.current = {
+      filename: photo.filename,
+      gallerySlug,
+      index: currentIndex,
+    };
+  }, [
+    currentIndex,
+    gallerySlug,
+    locale,
+    photo.filename,
+    totalPhotos,
+  ]);
 
   const navigate = useNavigate();
 

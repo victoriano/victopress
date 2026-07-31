@@ -23,6 +23,8 @@ bucket_name = "victopress-content"
 SITE_NAME = "VictoPress"
 BLOG_SITE_NAME = "Victoriano Izquierdo"
 PUBLIC_BLOG_URL = "https://victoriano.me/blog"
+POSTHOG_API_HOST = "https://eu.i.posthog.com"
+# Set POSTHOG_PROJECT_TOKEN as an encrypted Pages secret in both environments.
 # PUBLIC_MEDIA_URL is optional. When omitted, API image URLs use the request
 # origin, which becomes https://photos.victoriano.me after the domain move.
 

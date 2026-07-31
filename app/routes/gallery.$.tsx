@@ -8,8 +8,9 @@
  */
 
 import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
-import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
+import { useLoaderData, Link } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
+import { useEffect } from "react";
 import { 
   getStorage, 
   getNavigationFromIndex, 
@@ -27,6 +28,7 @@ import { isGalleryAuthenticated } from "~/utils/gallery-auth";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
 import { readSiteLanguageSettings } from "~/lib/site-languages.server";
+import { captureAnalyticsEvent } from "~/lib/analytics";
 
 const PHOTOS_PER_PAGE = 50;
 
@@ -248,7 +250,26 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 export default function GalleryPage() {
   const { gallery, navigation, siteName, socialLinks, isProtected, isAuthenticated, pagination, locale } =
     useLoaderData<typeof loader>();
-  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (isProtected && !isAuthenticated) return;
+    captureAnalyticsEvent("gallery_viewed", {
+      gallery_slug: gallery.slug,
+      is_protected: isProtected,
+      locale,
+      page: pagination.page,
+      photo_count: pagination.totalPhotos,
+      total_pages: pagination.totalPages,
+    });
+  }, [
+    gallery.slug,
+    isAuthenticated,
+    isProtected,
+    locale,
+    pagination.page,
+    pagination.totalPages,
+    pagination.totalPhotos,
+  ]);
 
   // Show password form for protected galleries
   if (isProtected && !isAuthenticated) {

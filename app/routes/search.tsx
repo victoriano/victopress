@@ -9,6 +9,7 @@ import { isPhotoAiEnabled } from "~/lib/ai/photo-ai-service.server";
 import { localizedPath, photoMessages, type Locale } from "~/lib/i18n";
 import { requireRouteLocale } from "~/lib/i18n.server";
 import { readSiteLanguageSettings } from "~/lib/site-languages.server";
+import { captureAnalyticsEvent } from "~/lib/analytics";
 
 export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
 
@@ -158,6 +159,7 @@ export default function SearchPage() {
     }
 
     const controller = new AbortController();
+    const startedAt = performance.now();
     const parameters = new URLSearchParams({ q: query, limit: "40", locale });
     if (gallery) parameters.set("gallery", gallery);
 
@@ -174,7 +176,17 @@ export default function SearchPage() {
         return parseSearchResponse(await response.json(), locale);
       })
       .then((data) => {
-        if (!controller.signal.aborted) setResults(data);
+        if (!controller.signal.aborted) {
+          setResults(data);
+          captureAnalyticsEvent("photo_search_performed", {
+            duration_ms: Math.round(performance.now() - startedAt),
+            gallery_filter: gallery || null,
+            locale,
+            query_length: query.length,
+            query_word_count: query.split(/\s+/).filter(Boolean).length,
+            result_count: data.photos.length,
+          });
+        }
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
@@ -212,6 +224,7 @@ export default function SearchPage() {
           method="get"
           action={localizedPath(locale, "/search")}
           role="search"
+          data-ph-no-capture="true"
           className="mb-10 grid gap-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-950 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)_auto]"
         >
           <div>

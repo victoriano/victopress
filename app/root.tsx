@@ -6,6 +6,7 @@ import {
   ScrollRestoration,
   useRouteLoaderData,
 } from "@remix-run/react";
+import { Analytics } from "~/components/Analytics";
 import { json } from "@remix-run/cloudflare";
 import type {
   HeadersFunction,
@@ -43,8 +44,28 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     // Setup and unconfigured-storage routes still need a renderable document.
   }
   const locale = localeForRequest(request, siteLanguages);
+  const analyticsEnv = context.cloudflare?.env as
+    | (Env & {
+        POSTHOG_API_HOST?: string;
+        POSTHOG_PROJECT_TOKEN?: string;
+      })
+    | undefined;
+  const posthogApiHost = analyticsEnv?.POSTHOG_API_HOST?.trim();
+  const posthogProjectToken = analyticsEnv?.POSTHOG_PROJECT_TOKEN?.trim();
   return json(
-    { photoAiEnabled: isPhotoAiEnabled(context), locale, siteLanguages },
+    {
+      photoAiEnabled: isPhotoAiEnabled(context),
+      locale,
+      siteLanguages,
+      analytics:
+        posthogApiHost && posthogProjectToken
+          ? {
+              apiHost: posthogApiHost,
+              projectToken: posthogProjectToken,
+              site: "photos.victoriano.me" as const,
+            }
+          : null,
+    },
     { headers: localeResponseHeaders(request, locale, siteLanguages) },
   );
 }
@@ -274,6 +295,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         // unstyled frame; no JavaScript or observer timing is involved.
         style={{ display: "none" }}
       >
+        <Analytics config={data?.analytics ?? null} />
         {children}
         <ScrollRestoration />
         <Scripts />

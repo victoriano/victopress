@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useFetcher } from "@remix-run/react";
 import type { Locale } from "~/lib/i18n";
+import { captureAnalyticsEvent } from "~/lib/analytics";
 
 interface SubscribeResponse {
   ok: boolean;
@@ -45,12 +46,23 @@ export function NewsletterSignup({
 }) {
   const fetcher = useFetcher<SubscribeResponse>();
   const formRef = useRef<HTMLFormElement>(null);
+  const trackedSuccessRef = useRef(false);
   const messages = copy[locale];
   const submitting = fetcher.state !== "idle";
 
   useEffect(() => {
-    if (fetcher.data?.ok) formRef.current?.reset();
-  }, [fetcher.data]);
+    if (fetcher.state !== "idle") trackedSuccessRef.current = false;
+    if (fetcher.state === "idle" && fetcher.data?.ok) {
+      formRef.current?.reset();
+      if (!trackedSuccessRef.current) {
+        trackedSuccessRef.current = true;
+        captureAnalyticsEvent("newsletter_subscription_completed", {
+          locale,
+          source,
+        });
+      }
+    }
+  }, [fetcher.data, fetcher.state, locale, source]);
 
   if (!enabled) return null;
 
@@ -78,6 +90,7 @@ export function NewsletterSignup({
           method="post"
           action="/api/newsletter/subscribe"
           className="max-w-xl"
+          data-ph-no-capture="true"
         >
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="source" value={source} />

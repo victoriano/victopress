@@ -13,13 +13,14 @@ import { getStorage, getNavigationFromIndex, getHomePhotosFromIndex } from "~/li
 import { Layout } from "~/components/Layout";
 import { GalleryBreadcrumb } from "~/components/GalleryBreadcrumb";
 import { CrossfadePhoto } from "~/components/CrossfadePhoto";
-import { useEffect, useCallback, useMemo, useState } from "react";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import yaml from "js-yaml";
 import { usePhotoPreloading } from "~/hooks/usePhotoNavigation";
 import { getOptimizedImageUrl, getOriginalImageUrl } from "~/utils/image-optimization";
 import { localizedPath, photoMessages } from "~/lib/i18n";
 import { localizedAlternates, requireRouteLocale } from "~/lib/i18n.server";
 import { readSiteLanguageSettings } from "~/lib/site-languages.server";
+import { captureAnalyticsEvent } from "~/lib/analytics";
 
 export { mergeLocalizedRouteHeaders as headers } from "~/lib/i18n.server";
 
@@ -40,6 +41,7 @@ export const meta: MetaFunction<typeof loader> = ({ data, params }) => {
     { tagName: "link", rel: "canonical", href: data.alternates.canonical },
     ...(data.alternates.es ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "es", href: data.alternates.es }] : []),
     ...(data.alternates.en ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "en", href: data.alternates.en }] : []),
+    ...(data.alternates.xDefault ? [{ tagName: "link" as const, rel: "alternate", hrefLang: "x-default", href: data.alternates.xDefault }] : []),
   ];
 };
 
@@ -90,10 +92,13 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     ? getOptimizedImageUrl(nextPhoto.path, { width: 1600 })
     : null;
 
+  // Featured URLs are positional and can point at another image after an
+  // editorial reorder. Canonicalize them to the photo's stable archive URL.
+  const stablePhotoPath = `/photo/${photo.gallerySlug}/${encodeURIComponent(photo.filename)}`;
   const alternates = localizedAlternates(
     request,
     locale,
-    `/featured/${index}`,
+    stablePhotoPath,
     siteLanguages,
   );
 
@@ -137,6 +142,42 @@ export default function FeaturedPhotoPage() {
     locale,
   } = useLoaderData<typeof loader>();
   const messages = photoMessages[locale];
+  const previousPhotoRef = useRef<{
+    filename: string;
+    index: number;
+  } | null>(null);
+
+  useEffect(() => {
+    captureAnalyticsEvent("photo_viewed", {
+      gallery_slug: photo.gallerySlug,
+      locale,
+      photo_filename: photo.filename,
+      photo_index: currentIndex,
+      source: "featured",
+      total_photos: totalPhotos,
+    });
+
+    const previous = previousPhotoRef.current;
+    if (previous && previous.filename !== photo.filename) {
+      const adjacent = Math.abs(previous.index - currentIndex) === 1;
+      captureAnalyticsEvent("photo_navigation", {
+        direction: adjacent
+          ? currentIndex > previous.index
+            ? "next"
+            : "previous"
+          : "direct",
+        from_index: previous.index,
+        gallery_slug: photo.gallerySlug,
+        locale,
+        source: "featured",
+        to_index: currentIndex,
+      });
+    }
+    previousPhotoRef.current = {
+      filename: photo.filename,
+      index: currentIndex,
+    };
+  }, [currentIndex, locale, photo.filename, photo.gallerySlug, totalPhotos]);
 
   const navigate = useNavigate();
   const [useOriginal, setUseOriginal] = useState(false);

@@ -9,10 +9,11 @@ import type { LoaderFunctionArgs } from "@remix-run/cloudflare";
 import {
   filterPublishedPosts,
   filterVisiblePages,
+  getAllGalleriesFromIndex,
   getStorage,
   scanBlog,
-  scanGalleries,
   scanPages,
+  type GalleryDataEntry,
 } from "~/lib/content-engine";
 import { resolveHeadlessBlogConfig } from "~/lib/headless-blog";
 import { localizedPath, type Locale } from "~/lib/i18n";
@@ -72,13 +73,13 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const blogLivesHere = new URL(blogConfig.publicBlogUrl).origin === new URL(baseUrl).origin;
 
   const [allGalleries, allPosts, allPages] = await Promise.all([
-    scanGalleries(storage),
+    getAllGalleriesFromIndex(storage),
     blogLivesHere ? scanBlog(storage) : Promise.resolve([]),
     scanPages(storage),
   ]);
 
   // Filter public content
-  const publicGalleries = allGalleries.filter((g) => !g.private);
+  const publicGalleries = allGalleries.filter((gallery) => !gallery.isProtected);
   const publishedPosts = filterPublishedPosts(allPosts);
   const publicPages = filterVisiblePages(allPages);
 
@@ -108,7 +109,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   // Gallery pages
   for (const gallery of publicGalleries) {
     urls.push(...localizedUrls(baseUrl, `/gallery/${gallery.slug}`, {
-      lastmod: formatDate(gallery.lastModified),
+      lastmod: formatDate(galleryLastModified(gallery)),
       changefreq: "weekly",
       priority: 0.8,
     }, siteLanguages));
@@ -121,7 +122,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         baseUrl,
         `/photo/${gallery.slug}/${encodeURIComponent(photo.filename)}`,
         {
-        lastmod: formatDate(photo.dateTaken || gallery.lastModified),
+        lastmod: formatDate(photo.lastModified || photo.dateTaken),
         changefreq: "monthly",
         priority: 0.5,
         imageLoc: imageUrl(baseUrl, photo.path),
@@ -146,6 +147,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     headers: {
       "Content-Type": "application/xml",
       "Cache-Control": "public, max-age=3600, s-maxage=86400",
+      "Cloudflare-CDN-Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
     },
   });
 }
@@ -155,6 +157,17 @@ function formatDate(date: Date | string | undefined): string | undefined {
   const d = typeof date === "string" ? new Date(date) : date;
   if (isNaN(d.getTime())) return undefined;
   return d.toISOString().split("T")[0]; // YYYY-MM-DD format
+}
+
+function galleryLastModified(gallery: GalleryDataEntry): string | undefined {
+  return gallery.photos.reduce<string | undefined>((latest, photo) => {
+    const candidate = photo.lastModified || photo.dateTaken;
+    if (!candidate) return latest;
+    if (!latest) return candidate;
+    return new Date(candidate).getTime() > new Date(latest).getTime()
+      ? candidate
+      : latest;
+  }, undefined);
 }
 
 function generateSitemapXml(urls: SitemapUrl[]): string {
