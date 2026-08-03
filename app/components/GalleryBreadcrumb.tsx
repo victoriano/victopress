@@ -6,7 +6,7 @@
  */
 
 import { Link } from "@remix-run/react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { createPortal } from "react-dom";
 import { personalSiteSectionHref } from "./PersonalSiteNavLinks";
 import type { NavItem } from "./Sidebar";
@@ -18,16 +18,17 @@ interface GalleryBreadcrumbProps {
   locale: Locale;
 }
 
-interface BreadcrumbSegment {
+export interface BreadcrumbSegment {
   title: string;
   slug: string;
   path: string;
-  children: NavItem[]; // Next level galleries to discover
+  options: NavItem[];
+  selectedOptionSlug?: string;
 }
 
 export function GalleryBreadcrumb({ currentSlug, navigation, locale }: GalleryBreadcrumbProps) {
   const messages = photoMessages[locale];
-  const segments = currentSlug ? buildBreadcrumb(currentSlug, navigation, locale) : [];
+  const segments = currentSlug ? buildBreadcrumbSegments(currentSlug, navigation, locale) : [];
   const staticPages = [
     {
       title: messages.blog,
@@ -49,24 +50,29 @@ export function GalleryBreadcrumb({ currentSlug, navigation, locale }: GalleryBr
     },
   ];
   
-  // Create root segment with galleries only
+  // Create root segment with galleries only.
   const rootSegment: BreadcrumbSegment = {
     title: locale === "es" ? "FOTOS" : "PHOTOS",
     slug: "",
     path: localizedPath(locale, "/"),
-    children: navigation,
+    options: navigation,
+    selectedOptionSlug: segments[0]?.slug,
   };
 
   const isRootPage = !currentSlug || segments.length === 0;
 
   return (
-    <nav className="lg:hidden sticky top-16 z-40 bg-white/90 dark:bg-gray-950/90 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800">
-      <div className="flex items-center gap-2 px-4 py-3 overflow-x-auto scrollbar-hide">
+    <nav
+      aria-label={locale === "es" ? "Navegación de galerías" : "Gallery navigation"}
+      className="lg:hidden sticky top-16 z-40 bg-white/90 dark:bg-gray-950/90 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800"
+    >
+      <div className="flex items-center gap-2 px-4 py-1 overflow-x-auto scrollbar-hide">
         {/* Root "PHOTOS" with dropdown */}
         <BreadcrumbItem
           segment={rootSegment}
           isLast={isRootPage && segments.length === 0}
           isRoot={true}
+          locale={locale}
         />
         
         {/* Gallery path segments */}
@@ -75,6 +81,7 @@ export function GalleryBreadcrumb({ currentSlug, navigation, locale }: GalleryBr
             key={segment.slug}
             segment={segment}
             isLast={index === segments.length - 1}
+            locale={locale}
           />
         ))}
 
@@ -83,7 +90,7 @@ export function GalleryBreadcrumb({ currentSlug, navigation, locale }: GalleryBr
           <>
             {staticPages.map((page) => {
               const className =
-                "shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors py-1 px-2";
+                "shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950 rounded-md transition-colors py-3 px-2";
 
               return page.external ? (
                 <a key={page.slug} href={page.path} className={className}>
@@ -110,16 +117,19 @@ function BreadcrumbItem({
   segment, 
   isLast,
   isRoot = false,
+  locale,
 }: { 
   segment: BreadcrumbSegment; 
   isLast: boolean;
   isRoot?: boolean;
+  locale: Locale;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  const dropdownId = useId();
 
   // Track if we're mounted (for portal)
   useEffect(() => {
@@ -139,21 +149,29 @@ function BreadcrumbItem({
         setIsOpen(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
 
     // Small delay to prevent immediate close on the same tap
     const timer = setTimeout(() => {
       document.addEventListener("click", handleClickOutside);
       document.addEventListener("touchstart", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
     }, 100);
 
     return () => {
       clearTimeout(timer);
       document.removeEventListener("click", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen]);
 
-  const hasChildren = segment.children.length > 0;
+  const hasOptions = segment.options.length > 0;
 
   const handleOpen = () => {
     if (buttonRef.current) {
@@ -173,14 +191,20 @@ function BreadcrumbItem({
       
       {/* Segment with dropdown */}
       <div className="relative">
-        {hasChildren ? (
+        {hasOptions ? (
           <>
             <button
               ref={buttonRef}
               type="button"
               onClick={handleOpen}
+              aria-expanded={isOpen}
+              aria-haspopup="menu"
+              aria-controls={isOpen ? dropdownId : undefined}
+              aria-label={`${locale === "es" ? "Elegir galería" : "Choose gallery"}: ${segment.title}`}
               className={`
-                flex items-center gap-1 text-sm font-medium transition-colors py-1 px-2
+                flex items-center gap-1 text-sm font-medium transition-colors py-3 px-2 rounded-md
+                hover:bg-gray-100/70 dark:hover:bg-gray-900
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950
                 ${isRoot
                   ? "text-gray-500 dark:text-gray-400 uppercase tracking-wide text-xs"
                   : isLast 
@@ -196,7 +220,10 @@ function BreadcrumbItem({
             {/* Dropdown - rendered via portal to escape overflow constraints */}
             {isOpen && mounted && typeof document !== 'undefined' && createPortal(
               <div
+                id={dropdownId}
                 ref={dropdownRef}
+                role="menu"
+                aria-label={`${locale === "es" ? "Opciones de" : "Options for"} ${segment.title}`}
                 className="fixed min-w-[180px] max-h-[50vh] overflow-y-auto bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1"
                 style={{
                   top: dropdownPos.top,
@@ -204,19 +231,30 @@ function BreadcrumbItem({
                   zIndex: 9999,
                 }}
               >
-                {segment.children.map((child) => (
-                  <Link
-                    key={child.slug}
-                    to={child.path}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsOpen(false);
-                    }}
-                    className="block px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    {child.title}
-                  </Link>
-                ))}
+                {segment.options.map((option) => {
+                  const isSelected = option.slug === segment.selectedOptionSlug;
+
+                  return (
+                    <Link
+                      key={option.slug}
+                      to={option.path}
+                      role="menuitem"
+                      aria-current={isSelected ? "page" : undefined}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(false);
+                      }}
+                      className={`flex min-h-11 items-center justify-between gap-4 px-4 py-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400 ${
+                        isSelected
+                          ? "bg-gray-50 text-black dark:bg-gray-800 dark:text-white"
+                          : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                      }`}
+                    >
+                      <span>{option.title}</span>
+                      {isSelected && <CheckIcon className="shrink-0 text-gray-500 dark:text-gray-400" />}
+                    </Link>
+                  );
+                })}
               </div>,
               document.body
             )}
@@ -225,7 +263,9 @@ function BreadcrumbItem({
           <Link
             to={segment.path}
             className={`
-              text-sm font-medium transition-colors max-w-[120px] truncate block py-1
+              text-sm font-medium transition-colors max-w-[120px] truncate block py-3 px-2 rounded-md
+              hover:bg-gray-100/70 dark:hover:bg-gray-900
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950
               ${isLast 
                 ? "text-black dark:text-white" 
                 : "text-gray-600 dark:text-gray-400"
@@ -241,15 +281,25 @@ function BreadcrumbItem({
 }
 
 /**
- * Build breadcrumb segments from current slug and navigation tree
- * Each segment includes its children (next level) for discovery
+ * Build breadcrumb segments from the current slug and navigation tree.
+ *
+ * The active gallery is represented at its actual depth. When it has children,
+ * a synthetic "All" segment makes that next level visible immediately. Selecting
+ * a child replaces "All" while keeping "All" and its siblings in the dropdown.
  */
-function buildBreadcrumb(currentSlug: string, navigation: NavItem[], locale: Locale): BreadcrumbSegment[] {
+export function buildBreadcrumbSegments(
+  currentSlug: string,
+  navigation: NavItem[],
+  locale: Locale,
+): BreadcrumbSegment[] {
   const segments: BreadcrumbSegment[] = [];
   const slugParts = currentSlug.split("/");
+  const allTitle = locale === "es" ? "Todas" : "All";
   
   let currentLevel = navigation;
   let accumulatedSlug = "";
+  let parentItem: NavItem | undefined;
+  let lastItem: NavItem | undefined;
   
   for (let i = 0; i < slugParts.length; i++) {
     const part = slugParts[i];
@@ -263,10 +313,22 @@ function buildBreadcrumb(currentSlug: string, navigation: NavItem[], locale: Loc
         title: item.title,
         slug: item.slug,
         path: item.path,
-        children: item.children || [], // Show children for discovery
+        options: parentItem
+          ? [
+              {
+                title: allTitle,
+                slug: parentItem.slug,
+                path: parentItem.path,
+              },
+              ...currentLevel,
+            ]
+          : [],
+        selectedOptionSlug: item.slug,
       });
       
       // Move to children for next iteration
+      parentItem = item;
+      lastItem = item;
       currentLevel = item.children || [];
     } else {
       // Item not found in navigation, create a basic segment
@@ -275,10 +337,38 @@ function buildBreadcrumb(currentSlug: string, navigation: NavItem[], locale: Loc
         title,
         slug: accumulatedSlug,
         path: localizedPath(locale, `/gallery/${accumulatedSlug}`),
-        children: [],
+        options: parentItem
+          ? [
+              {
+                title: allTitle,
+                slug: parentItem.slug,
+                path: parentItem.path,
+              },
+              ...currentLevel,
+            ]
+          : [],
+        selectedOptionSlug: accumulatedSlug,
       });
+      lastItem = undefined;
       break;
     }
+  }
+
+  if (lastItem?.children?.length) {
+    segments.push({
+      title: allTitle,
+      slug: `${lastItem.slug}::__all__`,
+      path: lastItem.path,
+      options: [
+        {
+          title: allTitle,
+          slug: lastItem.slug,
+          path: lastItem.path,
+        },
+        ...lastItem.children,
+      ],
+      selectedOptionSlug: lastItem.slug,
+    });
   }
   
   return segments;
@@ -317,6 +407,25 @@ function ChevronDownIcon({ className }: { className?: string }) {
       strokeLinejoin="round"
     >
       <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="20 6 9 17 4 12" />
     </svg>
   );
 }
