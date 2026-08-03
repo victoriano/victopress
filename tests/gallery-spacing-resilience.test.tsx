@@ -54,6 +54,18 @@ describe("gallery spacing resilience", () => {
     );
   });
 
+  test("uses a subtle opacity hover without changing the photo framing", () => {
+    const markup = renderToStaticMarkup(
+      <PhotoItem src="/api/images/photo.jpg" alt="Hover preview" />,
+    );
+
+    expect(markup).toContain("transition-opacity");
+    expect(markup).toContain("duration-200");
+    expect(markup).toContain("group-hover:opacity-90");
+    expect(markup).toContain("group-focus-visible:opacity-90");
+    expect(markup).not.toContain("group-hover:scale-");
+  });
+
   test("uses a uniform 3:2 crop by default and can preserve the original frame", () => {
     const uniformMarkup = renderToStaticMarkup(
       <PhotoItem src="/api/images/photo.jpg" alt="Uniform photo" />,

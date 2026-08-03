@@ -259,7 +259,7 @@ export function PhotoItem({
       alt={alt}
       width={width}
       height={height}
-      className="w-full h-full transition-transform duration-500 group-hover:scale-105"
+      className="w-full h-full transition-opacity duration-200 ease-out group-hover:opacity-90 group-focus-visible:opacity-90"
       sizes={sizes}
       loading={priority ? "eager" : "lazy"}
       priority={priority}
