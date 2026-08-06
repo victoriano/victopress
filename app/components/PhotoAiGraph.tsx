@@ -5,22 +5,15 @@ import {
   useMemo,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
 } from "react";
+import { PhotoGraphCanvas, type PhotoGraphNode } from "~/components/PhotoGraphCanvas";
 import { getOptimizedImageUrl } from "~/utils/image-optimization";
 
-interface MapNode {
-  assetId: string;
+interface MapNode extends PhotoGraphNode {
   path: string;
-  filename: string;
-  caption: string;
   tags: string[];
   gallerySlug: string;
   gallerySlugs: string[];
-  x: number;
-  y: number;
-  clusterId: number;
 }
 
 interface MapCluster {
@@ -52,27 +45,8 @@ interface PhotoAiGraphProps {
   onNotice: (notice: { type: "success" | "error"; text: string }) => void;
 }
 
-const WIDTH = 1_000;
-const HEIGHT = 680;
-const MIN_ZOOM = 0.6;
-const MAX_ZOOM = 8;
-const CLUSTER_COLORS = [
-  "#7c3aed",
-  "#0891b2",
-  "#db2777",
-  "#65a30d",
-  "#ea580c",
-  "#2563eb",
-  "#ca8a04",
-  "#9333ea",
-];
-
 function isMapData(value: PhotoAiMapData | { error: string } | undefined): value is PhotoAiMapData {
   return Boolean(value && "nodes" in value && "clusters" in value && "galleries" in value);
-}
-
-function clampZoom(value: number): number {
-  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
 }
 
 export function PhotoAiGraph({ onChanged, onNotice }: PhotoAiGraphProps) {
@@ -80,13 +54,10 @@ export function PhotoAiGraph({ onChanged, onNotice }: PhotoAiGraphProps) {
   const assignmentFetcher = useFetcher<AssignmentResponse>();
   const initialLoadStarted = useRef(false);
   const handledAssignment = useRef<AssignmentResponse | null>(null);
-  const svgRef = useRef<SVGSVGElement | null>(null);
-  const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const [tag, setTag] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [targetGallery, setTargetGallery] = useState("");
-  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
 
   const refresh = useCallback(() => mapFetcher.load("/api/admin/ai-map"), [mapFetcher]);
 
@@ -190,57 +161,6 @@ export function PhotoAiGraph({ onChanged, onNotice }: PhotoAiGraphProps) {
     });
   }, []);
 
-  const resetView = useCallback(() => setTransform({ x: 0, y: 0, scale: 1 }), []);
-  const zoomBy = useCallback((factor: number) => {
-    setTransform((current) => {
-      const nextScale = clampZoom(current.scale * factor);
-      const centerX = WIDTH / 2;
-      const centerY = HEIGHT / 2;
-      return {
-        scale: nextScale,
-        x: centerX - ((centerX - current.x) * nextScale) / current.scale,
-        y: centerY - ((centerY - current.y) * nextScale) / current.scale,
-      };
-    });
-  }, []);
-
-  const handleWheel = useCallback((event: ReactWheelEvent<SVGSVGElement>) => {
-    event.preventDefault();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const pointerX = ((event.clientX - rect.left) / rect.width) * WIDTH;
-    const pointerY = ((event.clientY - rect.top) / rect.height) * HEIGHT;
-    const factor = event.deltaY < 0 ? 1.16 : 1 / 1.16;
-    setTransform((current) => {
-      const nextScale = clampZoom(current.scale * factor);
-      return {
-        scale: nextScale,
-        x: pointerX - ((pointerX - current.x) * nextScale) / current.scale,
-        y: pointerY - ((pointerY - current.y) * nextScale) / current.scale,
-      };
-    });
-  }, []);
-
-  const beginPan = useCallback((event: ReactPointerEvent<SVGSVGElement>) => {
-    if (event.button !== 0) return;
-    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }, []);
-
-  const pan = useCallback((event: ReactPointerEvent<SVGSVGElement>) => {
-    const drag = dragRef.current;
-    const svg = svgRef.current;
-    if (!drag || !svg || drag.pointerId !== event.pointerId) return;
-    const rect = svg.getBoundingClientRect();
-    const deltaX = ((event.clientX - drag.x) / rect.width) * WIDTH;
-    const deltaY = ((event.clientY - drag.y) / rect.height) * HEIGHT;
-    dragRef.current = { ...drag, x: event.clientX, y: event.clientY };
-    setTransform((current) => ({ ...current, x: current.x + deltaX, y: current.y + deltaY }));
-  }, []);
-
-  const endPan = useCallback((event: ReactPointerEvent<SVGSVGElement>) => {
-    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
-  }, []);
-
   if (!data && !error) {
     return <div className="h-[680px] rounded-xl bg-gray-100 dark:bg-gray-900 animate-pulse" role="status" aria-label="Building embedding map" />;
   }
@@ -300,98 +220,20 @@ export function PhotoAiGraph({ onChanged, onNotice }: PhotoAiGraphProps) {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
-          <div className="absolute right-3 top-3 z-10 flex overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <button type="button" onClick={() => zoomBy(1.25)} aria-label="Zoom in" className="px-3 py-2 text-lg text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800">+</button>
-            <button type="button" onClick={() => zoomBy(0.8)} aria-label="Zoom out" className="border-x border-gray-300 px-3 py-2 text-lg text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">−</button>
-            <button type="button" onClick={resetView} className="px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800">Reset</button>
-          </div>
-          <svg
-            ref={svgRef}
-            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-            className="h-[620px] w-full cursor-grab touch-none active:cursor-grabbing"
-            onWheel={handleWheel}
-            onPointerDown={beginPan}
-            onPointerMove={pan}
-            onPointerUp={endPan}
-            onPointerCancel={endPan}
-            aria-label={`${visibleNodes.length} photos clustered by visual similarity`}
-          >
-            <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.scale})`}>
-              {data.clusters.map((cluster) => (
-                <g key={`cluster-${cluster.id}`} opacity={visibleNodes.some((node) => node.clusterId === cluster.id) ? 1 : 0.15}>
-                  <circle
-                    cx={cluster.x * WIDTH}
-                    cy={cluster.y * HEIGHT}
-                    r={110}
-                    fill={CLUSTER_COLORS[cluster.id % CLUSTER_COLORS.length]}
-                    opacity={0.045}
-                  />
-                  <text
-                    x={cluster.x * WIDTH}
-                    y={cluster.y * HEIGHT - 116}
-                    textAnchor="middle"
-                    fontSize={12}
-                    fontWeight={600}
-                    fill={CLUSTER_COLORS[cluster.id % CLUSTER_COLORS.length]}
-                  >
-                    {cluster.label} · {cluster.count}
-                  </text>
-                </g>
-              ))}
-              {data.edges.map((edge) => {
-                if (!visibleIds.has(edge.source) || !visibleIds.has(edge.target)) return null;
-                const source = nodesById.get(edge.source);
-                const target = nodesById.get(edge.target);
-                if (!source || !target) return null;
-                return (
-                  <line
-                    key={`${edge.source}-${edge.target}`}
-                    x1={source.x * WIDTH}
-                    y1={source.y * HEIGHT}
-                    x2={target.x * WIDTH}
-                    y2={target.y * HEIGHT}
-                    stroke="currentColor"
-                    className="text-gray-300 dark:text-gray-700"
-                    strokeWidth={0.7 / transform.scale}
-                    opacity={0.42}
-                  />
-                );
-              })}
-              {visibleNodes.map((node) => {
-                const selected = selectedIds.has(node.assetId);
-                const active = activeId === node.assetId;
-                return (
-                  <circle
-                    key={node.assetId}
-                    cx={node.x * WIDTH}
-                    cy={node.y * HEIGHT}
-                    r={(active ? 9 : selected ? 7.5 : 5.2) / Math.sqrt(transform.scale)}
-                    fill={CLUSTER_COLORS[node.clusterId % CLUSTER_COLORS.length]}
-                    stroke={selected ? "white" : "transparent"}
-                    strokeWidth={selected ? 2 / transform.scale : 0}
-                    className="cursor-pointer transition-opacity hover:opacity-70"
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      selectNode(node, event.metaKey || event.ctrlKey || event.shiftKey);
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") selectNode(node, event.shiftKey);
-                    }}
-                  >
-                    <title>{node.caption || node.filename}</title>
-                  </circle>
-                );
-              })}
-            </g>
-          </svg>
-          <div className="absolute bottom-3 left-3 rounded-lg bg-white/90 px-3 py-2 text-xs text-gray-600 shadow-sm backdrop-blur dark:bg-gray-900/90 dark:text-gray-300">
-            Scroll or use +/− to zoom · drag to pan · Shift/Cmd click to multi-select
-          </div>
-        </div>
+        <PhotoGraphCanvas
+          nodes={visibleNodes}
+          edges={data.edges}
+          clusters={data.clusters.filter((cluster) =>
+            visibleNodes.some((node) => node.clusterId === cluster.id),
+          )}
+          selectedIds={selectedIds}
+          onSelectNode={selectNode}
+          ariaLabel={`${visibleNodes.length} photos clustered by visual similarity`}
+          instructions="Scroll or use +/− to zoom · drag to pan · Shift/Cmd click to multi-select"
+          resetLabel="Reset"
+          zoomInLabel="Zoom in"
+          zoomOutLabel="Zoom out"
+        />
 
         <aside className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
           {activeNode ? (

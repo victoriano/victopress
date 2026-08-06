@@ -35,6 +35,7 @@ import {
   upsertPhotoAiSearchDocument,
   writePhotoAiSearchIndex,
   type PhotoAiSearchDocument,
+  type PhotoAiSearchIndex,
 } from "./search-index";
 import {
   createPhotoVectorIndex,
@@ -158,6 +159,83 @@ function parsePhotoAiMapCache(
   } catch {
     return null;
   }
+}
+
+function clusterLabelForNodes(
+  nodes: readonly PhotoAiMapData["nodes"][number][],
+  fallback: string,
+): string {
+  const tags = new Map<string, { label: string; count: number }>();
+  for (const node of nodes) {
+    for (const rawTag of node.tags) {
+      const label = rawTag.trim();
+      if (!label) continue;
+      const key = label.toLocaleLowerCase();
+      const existing = tags.get(key);
+      tags.set(key, {
+        label: existing?.label ?? label,
+        count: (existing?.count ?? 0) + 1,
+      });
+    }
+  }
+  const leading = Array.from(tags.values())
+    .sort((left, right) =>
+      right.count - left.count || left.label.localeCompare(right.label),
+    )
+    .slice(0, 2)
+    .map((tag) => tag.label);
+  return leading.length > 0 ? leading.join(" · ") : fallback;
+}
+
+/**
+ * Removes non-public documents from the administrative map and recomputes all
+ * derived labels/counts so hidden metadata cannot leak through cluster names.
+ */
+export function filterPublicPhotoAiMap(
+  data: PhotoAiMapData,
+  searchIndex: PhotoAiSearchIndex,
+): PhotoAiMapData {
+  const publicIds = new Set(
+    Object.values(searchIndex.documents)
+      .filter((document) => !document.hidden && !document.protected)
+      .map((document) => document.assetId),
+  );
+  const publicGallerySlugs = new Set(data.galleries.map((gallery) => gallery.slug));
+  const nodes = data.nodes
+    .filter((node) => publicIds.has(node.assetId))
+    .map((node) => ({
+      ...node,
+      gallerySlugs: node.gallerySlugs.filter((slug) => publicGallerySlugs.has(slug)),
+    }));
+  const visibleIds = new Set(nodes.map((node) => node.assetId));
+  const clusters = data.clusters.flatMap((cluster) => {
+    const members = nodes.filter((node) => node.clusterId === cluster.id);
+    if (members.length === 0) return [];
+    return [{
+      ...cluster,
+      label: clusterLabelForNodes(members, cluster.label),
+      count: members.length,
+      x: members.reduce((sum, node) => sum + node.x, 0) / members.length,
+      y: members.reduce((sum, node) => sum + node.y, 0) / members.length,
+    }];
+  });
+  const tags = Array.from(
+    new Map(
+      nodes.flatMap((node) =>
+        node.tags.map((tag) => [tag.toLocaleLowerCase(), tag] as const),
+      ),
+    ).values(),
+  ).sort((left, right) => left.localeCompare(right));
+
+  return {
+    nodes,
+    edges: data.edges.filter(
+      (edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target),
+    ),
+    clusters,
+    tags,
+    galleries: data.galleries,
+  };
 }
 
 function envRecord(context: PhotoAiContext): Record<string, unknown> {
@@ -867,6 +945,18 @@ export async function getPhotoAiMap(context: PhotoAiContext): Promise<PhotoAiMap
     "application/json",
   );
   return data;
+}
+
+/** Returns the same embedding projection as the backoffice, limited to public photos. */
+export async function getPublicPhotoAiMap(
+  context: PhotoAiContext,
+): Promise<PhotoAiMapData> {
+  const runtime = createRuntime(context, false);
+  const [data, searchIndex] = await Promise.all([
+    getPhotoAiMap(context),
+    readPhotoAiSearchIndex(runtime.storage),
+  ]);
+  return filterPublicPhotoAiMap(data, searchIndex);
 }
 
 export async function enqueueUploadedPhotosForAi(

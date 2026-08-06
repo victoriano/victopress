@@ -38,9 +38,16 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       searchPhotoDocuments(context, query, { gallerySlug, limit }),
       getAllGalleriesFromIndex(getStorage(context), locale),
     ]);
-    const galleryTitles = new Map(localizedGalleries.map((gallery) => [gallery.slug, gallery.title]));
+    const publicGalleries = localizedGalleries.filter(
+      (gallery) => !gallery.isProtected && !gallery.isParentGallery,
+    );
+    const galleryTitles = new Map(publicGalleries.map((gallery) => [gallery.slug, gallery.title]));
     const photosByPath = new Map(
-      localizedGalleries.flatMap((gallery) => gallery.photos.map((photo) => [photo.path, photo] as const)),
+      publicGalleries.flatMap((gallery) =>
+        gallery.photos
+          .filter((photo) => !photo.hidden)
+          .map((photo) => [photo.path, photo] as const),
+      ),
     );
     return json({
       query,
@@ -62,7 +69,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           score,
           thumbnailUrl: getOptimizedImageUrl(document.path, { width: 800 }),
           href: localizedPath(locale, photoHref(document.gallerySlug, document.filename)),
-          tags: localizedPhoto?.tags || document.tags,
+          // Keep the same AI/editorial search tags used by the embedding map so
+          // Explore filters behave identically in graph and grid views.
+          tags: document.tags,
         };
       }),
     }, {

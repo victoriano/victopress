@@ -169,8 +169,8 @@ export function MobileMenu({ navigation, socialLinks, photoAiEnabled = false, mu
             {/* Static Links */}
             <div className="space-y-2 pt-6 mt-2">
               {photoAiEnabled && (
-                <MobileNavLink href={localizedPath(locale, "/search")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
-                  {messages.search}
+                <MobileNavLink href={localizedPath(locale, "/explore")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>
+                  {messages.explore}
                 </MobileNavLink>
               )}
               <MobileNavLink href={localizedPath(locale, "/blog")} currentPath={location.pathname} onClick={() => setIsOpen(false)}>

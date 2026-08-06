@@ -160,8 +160,8 @@ export function Sidebar({ navigation, socialLinks, photoNav, photoAiEnabled = fa
           {/* Static Links */}
           <div className="space-y-2 pt-6 mt-2">
             {photoAiEnabled && (
-              <StaticNavLink href={localizedPath(locale, "/search")} currentPath={location.pathname}>
-                {messages.search}
+              <StaticNavLink href={localizedPath(locale, "/explore")} currentPath={location.pathname}>
+                {messages.explore}
               </StaticNavLink>
             )}
             <StaticNavLink href={localizedPath(locale, "/blog")} currentPath={location.pathname}>
