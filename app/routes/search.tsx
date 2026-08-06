@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { json, redirect } from "@remix-run/cloudflare";
 import { Form, Link, useLoaderData, useSearchParams } from "@remix-run/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ExplorePhotoGraph,
   type ExploreMapData,
@@ -520,15 +520,19 @@ export default function ExplorePage() {
                 active={!tag}
                 onClick={() => setFilter("tag", "")}
               />
-              {displayedTagOptions.map((option) => (
-                <TagFilter
-                  key={option.label}
-                  label={option.label}
-                  count={option.count}
-                  active={normalized(option.label) === normalized(tag)}
-                  onClick={() => setFilter("tag", option.label)}
-                />
-              ))}
+              {displayedTagOptions.map((option) => {
+                const active = normalized(option.label) === normalized(tag);
+                return (
+                  <TagFilter
+                    key={option.label}
+                    label={option.label}
+                    count={option.count}
+                    active={active}
+                    onClick={() => setFilter("tag", option.label)}
+                    onDoubleClick={() => setFilter("tag", "")}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -676,17 +680,31 @@ function TagFilter({
   count,
   active,
   onClick,
+  onDoubleClick,
 }: {
   label: string;
   count: number;
   active: boolean;
   onClick: () => void;
+  onDoubleClick?: () => void;
 }) {
+  // Preserve the state at the start of the gesture: double-clicking an
+  // inactive tag should select it, not select and immediately clear it.
+  const doubleClickStartedActive = useRef(active);
+
   return (
     <button
       type="button"
       aria-pressed={active}
       onClick={onClick}
+      onMouseDown={(event) => {
+        if (event.detail === 1) doubleClickStartedActive.current = active;
+      }}
+      onDoubleClick={(event) => {
+        if (!doubleClickStartedActive.current || !onDoubleClick) return;
+        event.preventDefault();
+        onDoubleClick();
+      }}
       className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 ${
         active
           ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
